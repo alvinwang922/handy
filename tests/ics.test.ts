@@ -26,4 +26,9 @@ describe("buildIcs", () => {
     expect(ics).toContain("SUMMARY:Fix\\, sink");
     expect(ics).toContain("DTSTART:20261013T090000");
   });
+
+  it("cannot be injected with CRLF in user-supplied text", () => {
+    const ics = buildIcs({ uid: "r1@handy", slot: "Tue 9am", summary: "x", location: "y", description: "note\r\nATTENDEE:mailto:evil@example.com" });
+    expect(ics.split("\r\n").some((line) => line.startsWith("ATTENDEE"))).toBe(false);
+  });
 });

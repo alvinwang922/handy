@@ -29,7 +29,8 @@ const fmt = (d: Date) =>
   `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}T` +
   `${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}00`;
 
-const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+// RFC 5545 TEXT escaping; CR/LF are folded into "\n" so user input can't inject new properties.
+const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\r\n|\r|\n/g, "\\n");
 
 export function buildIcs(e: { uid: string; slot: string; summary: string; location: string; description: string }): string {
   const start = parseSlotStart(e.slot);

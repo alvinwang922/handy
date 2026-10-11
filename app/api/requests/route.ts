@@ -68,7 +68,11 @@ export async function POST(request: Request) {
   }
 
   const title = str("title") || description.slice(0, 60);
+  // Only units that exist on the property: the unit name reaches Keewano notes and call scripts.
   const unit = str("unit") || property.units[0];
+  if (!property.units.includes(unit)) {
+    return NextResponse.json({ error: `Unknown unit for ${property.name}` }, { status: 400 });
+  }
   const req: RepairRequest = {
     id,
     title,

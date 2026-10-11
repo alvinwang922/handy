@@ -4,6 +4,14 @@ import { z } from "zod";
 
 export const TradeSchema = z.enum(["plumber", "electrician", "handyman", "hvac", "appliance", "locksmith", "other"]);
 
+export const DiyPlanSchema = z.object({
+  parts: z.array(z.object({ name: z.string(), approxPriceUsd: z.number().nullable(), compatibility: z.string() })),
+  tools: z.array(z.string()),
+  steps: z.array(z.string()),
+  minutes: z.number().nullable(),
+  stopIf: z.string(),
+});
+
 export const DiagnosisSchema = z.object({
   title: z.string(),
   likelyCause: z.string(),
@@ -14,6 +22,15 @@ export const DiagnosisSchema = z.object({
   jobBrief: z.string(),
   questionsForProviders: z.array(z.string()),
   confidence: z.number().min(0).max(1),
+  summary: z.string().nullable().optional(),
+  proposedScope: z.string().nullable().optional(),
+  safetyGuidance: z.string().nullable().optional(),
+  visibleEvidence: z.array(z.string()).optional(),
+  photoAnalyzed: z.boolean().optional(),
+  source: z.enum(["claude", "mock"]).optional(),
+  fixPath: z.enum(["diy", "pro"]).optional(),
+  diyPlan: DiyPlanSchema.nullable().optional(),
+  openQuestions: z.array(z.string()).optional(),
 });
 
 export const QuoteSchema = z.object({

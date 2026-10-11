@@ -31,6 +31,28 @@ export interface Diagnosis {
   jobBrief: string;                // 2–3 sentences the voice agent reads to providers
   questionsForProviders: string[];
   confidence: number;              // 0–1
+  // Optional additions (diagnosis agent): older literals without them stay valid.
+  summary?: string | null;         // plain-language "what's wrong and what needs fixing" for the user
+  proposedScope?: string | null;   // what the repair likely involves (PRD §6 "proposed scope")
+  safetyGuidance?: string | null;  // what to do right now; always set when urgency = "emergency"
+  visibleEvidence?: string[];      // what Claude saw in the photo (empty when no photo was analyzed)
+  photoAnalyzed?: boolean;         // false → assessment is based on the description only
+  source?: "claude" | "mock";      // label mock assessments in the UI
+  fixPath?: "diy" | "pro";         // diy = low-risk part swap a non-expert can do with basic tools
+  diyPlan?: DiyPlan | null;        // set only when fixPath = "diy"
+  openQuestions?: string[];        // what the user should answer/measure to confirm the issue or part (PRD §6)
+}
+
+export interface DiyPlan {
+  parts: {
+    name: string;
+    approxPriceUsd: number | null;
+    compatibility: string;         // what to check so the part fits — unverified until the user confirms
+  }[];
+  tools: string[];
+  steps: string[];                 // general steps; the part's own instructions take precedence
+  minutes: number | null;
+  stopIf: string;                  // when to stop and call a pro instead
 }
 
 export interface UnitInsight {

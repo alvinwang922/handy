@@ -88,7 +88,11 @@ export async function POST(request: Request) {
   }
   // Recurring-issue check needs the trade, so it runs after diagnosis; it shapes the quote-call script.
   if (EMERGENCY.test(`${title} ${description}`)) req.diagnosis.urgency = "emergency";
-  if (req.diagnosis.urgency === "emergency") req.notice = SAFETY_NOTICE;
+  if (req.diagnosis.urgency === "emergency") {
+    req.notice = SAFETY_NOTICE;
+    // An emergency never gets a DIY suggestion, whatever the model said.
+    Object.assign(req.diagnosis, { fixPath: "pro", diyPlan: null, safetyGuidance: req.diagnosis.safetyGuidance || SAFETY_NOTICE });
+  }
   req.unitInsight = await keewano.unitInsight(propertyId, unit, req.diagnosis.trade).catch(() => null);
   req.status = req.diagnosis.urgency === "emergency" ? "emergency" : "diagnosed";
   req.timeline.push({ status: req.status, at: nowIso() });

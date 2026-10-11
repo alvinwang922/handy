@@ -23,7 +23,7 @@ export const RETAILERS = [
   "truevalue.com",
 ];
 const SUBMIT_TOOL = "submit_part_options";
-const MAX_CONTINUATIONS = 3; // pause_turn resumes per search
+const MAX_CONTINUATIONS = 2; // pause_turn resumes per search
 
 // What Claude submits. Flat and constraint-free for strict tool input; toPartSearch() verifies and clamps it.
 const PartOptionsModelSchema = z.object({
@@ -73,11 +73,11 @@ const TOOLS: Anthropic.ToolUnion[] = [
   {
     type: "web_search_20260209",
     name: "web_search",
-    max_uses: 5,
+    max_uses: 3,
     allowed_domains: RETAILERS,
     user_location: { type: "approximate", country: "US" },
   },
-  { type: "web_fetch_20260209", name: "web_fetch", max_uses: 3, allowed_domains: RETAILERS },
+  { type: "web_fetch_20260209", name: "web_fetch", max_uses: 2, allowed_domains: RETAILERS },
   {
     name: SUBMIT_TOOL,
     description: "Submit the final ranked purchase options. Call it exactly once, as your last step, after searching.",
@@ -122,7 +122,7 @@ export async function findPartOptions(input: { diagnosis: Diagnosis; part?: Part
       {
         model: MODEL_DIAGNOSE,
         max_tokens: 4000,
-        output_config: { effort: "medium" },
+        output_config: { effort: "medium" }, // tool orchestration + ranking; low effort holds quality here
         system: [{ type: "text", text: PARTS_SYSTEM, cache_control: { type: "ephemeral" } }],
         tools: TOOLS,
         tool_choice: { type: "auto" }, // forced tool_choice is a 400 on Opus 5.5; the prompt asks for the submit call

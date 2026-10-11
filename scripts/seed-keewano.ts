@@ -33,9 +33,13 @@ const PROFILES: Record<string, { answer: number; onTime: number; drift: number; 
 };
 const BASE_PRICE: Record<Trade, number> = { plumber: 220, hvac: 340, handyman: 160, electrician: 260, appliance: 190, locksmith: 140, other: 200 };
 
-function providerHistory(trade: Trade, p: { answer: number; onTime: number; drift: number; jobs: number }): KEvent[] {
+function providerHistory(name: string, trade: Trade, p: { answer: number; onTime: number; drift: number; jobs: number }): KEvent[] {
   const t0 = NOW - 60 * DAY;
-  const events: KEvent[] = [{ name: "DataSource", value: "seed", timestamp: t0 - 2 }, { name: "Trade", value: trade, timestamp: t0 - 1 }];
+  const events: KEvent[] = [
+    { name: "ProviderName", value: name, timestamp: t0 - 3 },
+    { name: "DataSource", value: "seed", timestamp: t0 - 2 },
+    { name: "Trade", value: trade, timestamp: t0 - 1 },
+  ];
   const starts = Array.from({ length: p.jobs }, () => Math.floor(between(t0, NOW - DAY))).sort((a, b) => a - b);
   for (const t of starts) {
     events.push({ name: "QuoteRequested", timestamp: t });
@@ -96,7 +100,7 @@ function manualRequests(count: number): { entity: KEntity; events: KEvent[] }[] 
 async function main() {
   const providers = listProviders();
   const jobs: { entity: KEntity; events: KEvent[] }[] = [
-    ...providers.filter((p) => PROFILES[p.id]).map((p) => ({ entity: { kind: "provider" as const, id: p.id }, events: providerHistory(p.trade, PROFILES[p.id]) })),
+    ...providers.filter((p) => PROFILES[p.id]).map((p) => ({ entity: { kind: "provider" as const, id: p.id }, events: providerHistory(p.name, p.trade, PROFILES[p.id]) })),
     ...unitHistories(),
     ...manualRequests(120),
   ];

@@ -30,6 +30,7 @@ export const EVENTS = {
   MinutesToBook: { id: 2021, dataType: "uint" },
   UserActiveSec: { id: 2022, dataType: "uint" },
   QuoteApprovedCents: { id: 2023, dataType: "price_usd_cent" },
+  ProviderName: { id: 2030, dataType: "string" },        // provider display name, so live SQL/MCP answers show names, not UUIDs
 } as const satisfies Record<string, { id: number; dataType: DataType }>;
 
 export type EventName = keyof typeof EVENTS;

@@ -8,8 +8,9 @@ import * as dial from "./dial";
 import { bookingInstruction } from "./instructions";
 import * as keewano from "./keewano";
 import * as parts from "./parts";
+import type { Part } from "./parts";
 import { getProperty, getProvider, getRequest, listProviders, newId, nowIso, saveRequest, setStatus } from "./store";
-import type { BookingExtractionInput, BookingJob, CallPurpose, CallRecord, PartSearch, Provider, ProviderScore, QuoteJob, RepairRequest, Trade } from "./types";
+import type { BookingExtractionInput, BookingJob, CallPurpose, CallRecord, Diagnosis, PartSearch, Provider, ProviderScore, QuoteJob, RepairRequest, Trade } from "./types";
 
 // Owner: Claude Code (glue). Drives the call lifecycle; every mutation runs under a per-request lock
 // so the UI's 3s polling can never overwrite a concurrent outreach/booking write.
@@ -409,20 +410,32 @@ function advanceStatus(req: RepairRequest) {
 // search (e.g. after a dev-server restart) is stale, and the retry route may start a new one.
 export const isPartSearchRunning = (id: string) => partSearches.has(id);
 
+// Whether a part search is allowed for this diagnosis, and the confirmed part to search for when one
+// is already known. A DIY diagnosis names its part directly; a pro-path diagnosis has none yet — the
+// part-search agent infers it from the diagnosis itself (lib/parts.ts), rather than being handed the
+// repair's title as if it were a product name. The user can still look for a part even after the
+// review recommends a professional (PRD: DIY is optional, not one-way). Never offered for an emergency.
+export function partForSearch(diagnosis: Diagnosis | null | undefined): { part?: Part } | undefined {
+  if (!diagnosis || diagnosis.urgency === "emergency") return undefined;
+  if (diagnosis.fixPath !== "diy") return {};
+  const part = diagnosis.diyPlan?.parts[0];
+  return part ? { part } : undefined;
+}
+
 // Runs the part-search agent (web search, up to ~1 min) outside the lock so polls and outreach aren't
 // blocked, then stores the result under the lock. Never throws: failures are saved as status "failed".
 export async function searchPartsForRequest(id: string): Promise<void> {
   const diagnosis = getRequest(id)?.diagnosis;
-  const part = diagnosis?.fixPath === "diy" ? diagnosis.diyPlan?.parts[0] : undefined;
-  if (!diagnosis || !part || partSearches.has(id)) return;
+  const search = partForSearch(diagnosis);
+  if (!diagnosis || !search || partSearches.has(id)) return;
   partSearches.add(id);
   try {
     let result: PartSearch;
     try {
-      result = await parts.findPartOptions({ diagnosis, part });
+      result = await parts.findPartOptions({ diagnosis, part: search.part });
     } catch (e) {
       result = {
-        ...parts.searchingPartSearch(part.name),
+        ...parts.searchingPartSearch(search.part?.name ?? "the right replacement part"),
         status: "failed",
         searchedAt: nowIso(),
         error: `Part search failed: ${(e as Error).message}`,

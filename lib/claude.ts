@@ -29,7 +29,7 @@ const DiyPlanModelSchema = z.object({
     )
     .describe("Parts to buy at a hardware store, with typical US prices"),
   tools: z.array(z.string()).describe("Tools needed, e.g. 'Phillips screwdriver'"),
-  steps: z.array(z.string()).describe("At most 6 short, plain-language steps"),
+  steps: z.array(z.string()).describe("At most 4 short, plain-language steps"),
   minutes: z.number().nullable().describe("Typical time for a first-timer"),
   stopIf: z.string().describe("When to stop and call a professional instead"),
 });
@@ -38,11 +38,11 @@ const DiyPlanModelSchema = z.object({
 // onto the Diagnosis contract, clamps numbers and applies the safety guards.
 const DiagnosisModelSchema = z.object({
   title: z.string().describe("Short name of the likely issue, e.g. 'Leaking P-trap under kitchen sink'"),
-  summary: z.string().describe("2–3 plain-language sentences for the user: what is wrong and what needs fixing"),
-  likelyCause: z.string(),
+  summary: z.string().describe("1–2 short plain-language sentences for the user: what is wrong and what needs fixing. No filler."),
+  likelyCause: z.string().describe("One short phrase"),
   visibleEvidence: z
     .array(z.string())
-    .describe("What you can actually see in the photo that supports the diagnosis; empty when there is no photo"),
+    .describe("Up to 3 short phrases on what you can actually see in the photo that supports the diagnosis; empty when there is no photo"),
   trade: TradeSchema,
   urgency: z.enum(["emergency", "soon", "routine"]),
   safetyGuidance: z
@@ -52,7 +52,7 @@ const DiagnosisModelSchema = z.object({
   needsOnsiteInspection: z.boolean(),
   costLowUsd: z.number().describe("Low end of a typical US professional repair cost"),
   costHighUsd: z.number().describe("High end of a typical US professional repair cost"),
-  proposedScope: z.string().describe("What a professional would likely do"),
+  proposedScope: z.string().describe("One short sentence: what a professional would likely do"),
   jobBrief: z.string().describe("2–3 spoken sentences a phone agent reads to a provider"),
   questionsForProviders: z.array(z.string()).describe("Up to 3 questions that would sharpen a quote"),
   confidence: z.number().describe("0 to 1"),
@@ -75,7 +75,9 @@ Urgency is "emergency" for a gas smell, fire or smoke, sparking or burning elect
 
 The jobBrief is read aloud over the phone to a repair business. Write it as 2–3 natural spoken sentences describing the problem and its likely cause. Leave out addresses, names, and formatting.
 
-fixPath is "diy" only when all of these are true: a common hardware-store part and basic hand tools are enough; a first-timer can finish in about 45 minutes; it involves no gas, no electrical work beyond a bulb, plug-in device or cover plate, no water heater or main line, no ladder or roof work, and no permit; and a mistake cannot cause flooding, fire or injury. Otherwise, and whenever you're unsure, fixPath is "pro". For "diy", diyPlan lists the parts with approximate US prices and, for each, what to check so it fits (size, model number, connection type). A part match is never confirmed from a photo alone. Also list the tools, at most 6 short general steps, and a stopIf line saying when to call a pro instead. Always fill in jobBrief and the cost range for a professional repair too, because the user may still choose to get quotes.
+fixPath is "diy" only when all of these are true: a common hardware-store part and basic hand tools are enough; a first-timer can finish in about 45 minutes; it involves no gas, no electrical work beyond a bulb, plug-in device or cover plate, no water heater or main line, no ladder or roof work, and no permit; and a mistake cannot cause flooding, fire or injury. Otherwise, and whenever you're unsure, fixPath is "pro". For "diy", diyPlan lists the parts with approximate US prices and, for each, what to check so it fits (size, model number, connection type). A part match is never confirmed from a photo alone. Also list the tools, at most 4 short general steps, and a stopIf line saying when to call a pro instead. Always fill in jobBrief and the cost range for a professional repair too, because the user may still choose to get quotes.
+
+Be concise everywhere: no filler sentences, no repeating the same point across fields.
 
 When the photo and description don't establish the problem or the right part, put up to 3 short questions for the user in openQuestions (for example, the model number on the tank lid, or the hole spacing of the old handle).`;
 
@@ -109,7 +111,7 @@ export async function diagnose(input: {
   const response = await anthropic().messages.parse(
     {
       model: MODEL_DIAGNOSE,
-      max_tokens: 16000,
+      max_tokens: 4000,
       output_config: { effort: "medium", format: zodOutputFormat(DiagnosisModelSchema) },
       system: [{ type: "text", text: DIAGNOSE_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: [...(image ? [image] : []), { type: "text" as const, text }] }],
@@ -155,11 +157,11 @@ export function toDiagnosis(m: DiagnosisModelOutput, ctx: { photoAnalyzed: boole
     summary: m.summary,
     proposedScope: m.proposedScope,
     safetyGuidance: m.safetyGuidance?.trim() || (emergency ? EMERGENCY_GUIDANCE : null),
-    visibleEvidence: ctx.photoAnalyzed ? m.visibleEvidence : [],
+    visibleEvidence: ctx.photoAnalyzed ? m.visibleEvidence.slice(0, 3) : [],
     photoAnalyzed: ctx.photoAnalyzed,
     source: "claude",
     fixPath: diy ? "diy" : "pro",
-    diyPlan: diy && m.diyPlan ? { ...m.diyPlan, steps: m.diyPlan.steps.slice(0, 6) } : null,
+    diyPlan: diy && m.diyPlan ? { ...m.diyPlan, steps: m.diyPlan.steps.slice(0, 4) } : null,
     openQuestions: m.openQuestions.slice(0, 3),
   });
 }

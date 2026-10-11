@@ -58,7 +58,6 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 | **Keewano** | Typed, append-only event registry (`lib/keewano.ts`); SQL over the Postgres protocol decides **who gets called** and **what to ask**; before/after metrics; live Q&A over MCP | **Load-bearing:** a 4.4★ provider who answers only 59% of calls gets skipped; a unit's repair history adds a replacement-quote question. Example questions: [`docs/keewano-qa.md`](docs/keewano-qa.md) |
 | **Sparta Worlds** | [`sparta/`](sparta/README.md): a deposit-settlement agent that refunds a held deposit **exactly once** when a provider cancels, graded in Sparta's local Stripe copy under an injected HTTP 500 | The naive agent passes **3/6** runs; the fixed one (retry, stable idempotency key, verify after write) passes **6/6**. It runs after booking and isn't wired into the app yet |
 | **Alike** | Team coordination for our 4 engineers' coding agents: shared decisions anchored to contract files, briefings at session start | Contract changes (for example the call-result schema) reach every teammate's agent before it edits those files |
-| Darwin | Prototype only ([`prototypes/darwin-discovery`](prototypes/darwin-discovery/RESULTS.md), `npm run prototype:darwin`); not in the app flow | Two live searches returned no callable home-repair capability: one `no_match`, one directory with `canStartThread=false`. Handy uses its labeled seeded directory until an executable provider-discovery capability exists |
 
 ## Safety and trust
 
@@ -103,7 +102,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 | `lib/keewano.ts`, `scripts/seed-keewano.ts` | Event registry, queries, seed |
 | `lib/types.ts`, `lib/schemas.ts`, `lib/evidence.ts` | Shared contracts and evidence checks |
 | `sparta/` | Sparta Worlds deposit-settlement agent and evidence |
-| `prototypes/dial-contract/`, `prototypes/darwin-discovery/` | Live Dial contract experiment; Darwin provider-discovery prototype |
+| `prototypes/dial-contract/` | Live Dial contract experiment |
 | `docs/`, `eng-design/`, `PRD.md` | Spec, engineering designs, product requirements |
 | `CLAUDE.md` | Shared conventions for every teammate's coding agent |
 
@@ -118,7 +117,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 ## What's next
 
 - Finish the model-based quote extraction and wire the outreach, quote and booking screens to the live API.
-- Real provider discovery (directory APIs, plus Darwin once agent coverage exists), with verified contacts and service areas.
+- Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
 - Quote revisions and normalized availability windows (start/end plus time zone), so bookings never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.
 

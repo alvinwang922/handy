@@ -50,13 +50,13 @@ flowchart TD
 
 | Owner | Responsibility |
 | --- | --- |
-| P1 calls | Provider discovery (including Darwin), contact eligibility, `lib/dial.ts`, `lib/instructions.ts`, receptionist setup; proposed messaging adapter and narrow photo-sharing tool. P2 does not need to search for contractors. |
+| P1 calls | Provider discovery, contact eligibility, `lib/dial.ts`, `lib/instructions.ts`, receptionist setup; proposed messaging adapter and narrow photo-sharing tool. P2 does not need to search for contractors. |
 | P2 AI | Diagnosis and structured extraction in `lib/claude.ts`; extract provider-confirmed scope and quote evidence from calls/messages. |
 | P3 frontend | Wire existing routes; show sharing status, quote basis, approval terms and scheduling outcomes. |
 | Shared glue | Orchestration, persistence, routes, types and schemas. Coordinate additive changes before implementation. |
 | P4 data | Keewano provider ranking, recurring-issue context, registered events and metrics; analytics failures must not break a call. |
 
-Seeded provider records plus Keewano ranking are the current discovery path. Darwin remains a conditional discovery extension, not a requirement for Dial dispatch. Alike carries development decisions and handoffs; no runtime repair integration is required. Preserve the separate Alike development-workflow document.
+Seeded provider records plus Keewano ranking are the current discovery path. Automatic local-business discovery remains future work. Alike carries development decisions and handoffs; no runtime repair integration is required. Preserve the separate Alike development-workflow document.
 
 The earlier SQL/job-worker design is a deployment upgrade, not a prerequisite for the demo. Public or multi-user operation needs authentication, property authorization, transactional persistence and durable processing. The current unauthenticated local app must not be described as providing those protections. Expose only authenticated tool/webhook endpoints if tunneling is used.
 
@@ -232,10 +232,10 @@ The AI teammate supplies the assessment and uncertainty. The shared backend supp
 | Contract | Required contents |
 | --- | --- |
 | `RepairBrief` | Schema version; `requestId`; immutable `briefVersion`; recommended path; requester role; reference timestamp; observed description; existing `Diagnosis`; city/region/postal code/country and property timezone; photo IDs; unresolved required user questions. |
-| `ProviderTarget` | Stable provider ID, name and trade; discovery source; verified service-area match and contact. Actual phone is resolved from a server-controlled provider record. The test used seeded targets, not Darwin results. |
+| `ProviderTarget` | Stable provider ID, name and trade; discovery source; verified service-area match and contact. Actual phone is resolved from a server-controlled provider record. The test used seeded targets. |
 | `QuoteJob` | Local attempt ID, request/brief/provider association, immutable prompt and snapshot hash, `purpose: quote`, dispatch/idempotency key and duration cap. Save before contacting Dial. |
 
-DIY, emergency, unresolved required questions, wrong trade or unverified contact/service area block dispatch. Unknown optional details such as pipe material can travel in the brief and qualify the resulting estimate. A discovery candidate is not callable until its contact and service area have been verified. The current app's seeded providers and Keewano ranking remain the baseline; Darwin is a discovery extension.
+DIY, emergency, unresolved required questions, wrong trade or unverified contact/service area block dispatch. Unknown optional details such as pipe material can travel in the brief and qualify the resulting estimate. A discovery candidate is not callable until its contact and service area have been verified. The current app uses seeded providers and Keewano ranking.
 
 `briefVersion` is derived from the current repair-packet version so there is one input snapshot. The app integration preserves current request routes and USD field names. The prototype's runnable schema remains in [`prototypes/dial-contract/contract.ts`](../prototypes/dial-contract/contract.ts); the validated subset is now promoted into shared types and schemas.
 
@@ -273,7 +273,7 @@ The app's orchestrator placed a controlled Dial-to-Dial quote call, persisted th
 
 The existing request API exposes the result both through `call.quoteResult` and the compatible `call.quote` fields. `call.quoteRevision` hashes the extracted terms and evidence, so changing terms on the same transcript invalidates approval. Live booking requires the displayed `quoteCallId` and `quoteRevision`. Unknown dispatches and unread booking outcomes require reconciliation; they cannot silently authorize another booking attempt. Inspection-only approval uses the visit fee. Hourly offers require a separately implemented total-cap approval.
 
-Production quote and booking extraction are now implemented using the shared model schemas and provider-evidence validators. A real model replay of the controlled quote passed. P3 rendering/approval submission and automatic provider discovery remain separate integration work. Discovery uses controlled seeded contacts plus Keewano ranking; the Darwin prototype did not find a usable directory route. Live booking is gated while the configured extractor is simulated. The earlier quote-only test did not send MMS, establish photo review, or schedule a live appointment; see the [latest endpoint handoff](dial-endpoint-handoff.md) for full-flow acceptance status.
+Production quote and booking extraction are now implemented using the shared model schemas and provider-evidence validators. A real model replay of the controlled quote passed. P3 rendering/approval submission and automatic provider discovery remain separate integration work. Discovery uses controlled seeded contacts plus Keewano ranking. Live booking is gated while the configured extractor is simulated. The earlier quote-only test did not send MMS, establish photo review, or schedule a live appointment; see the [latest endpoint handoff](dial-endpoint-handoff.md) for full-flow acceptance status.
 
 Subsequent controlled acceptance on October 11, 2026 (`req_live_543e2483`) passed a fresh live quote with production extraction ($220, no visit fee, five evidence entries), image MMS delivery and verified inbound receipt, and a separate approved booking through the actual `/book` and request-polling endpoints. The provider confirmed October 13, 2026, 9–11 AM Pacific from two offered windows with unchanged terms and two evidence entries. Booking extraction succeeded after automatic retries without another call. Both private provider mappings and the receiver persona were restored and verified; no calls remained active. This was a fictional appointment on two owned Dial agents, not a real contractor booking. Image review remains `unknown`: receipt did not prove that the speaking agent viewed the image.
 

@@ -15,7 +15,7 @@
 | Originality (10%) | Agent-to-agent: one provider answers with its own AI receptionist. Keewano history changes *what* we ask (repair vs. replace). |
 | Demo (10%) | Photo → three phones ring → quote table fills → approve → booked. |
 
-Partner prizes targeted: **Dial** (outbound quote + booking calls, inbound AI receptionist), **Keewano** (load-bearing ranking + unit history + before/after metric). Stretch: **Darwin**.
+Partner prizes targeted: **Dial** (outbound quote + booking calls, inbound AI receptionist), **Keewano** (load-bearing ranking + unit history + before/after metric).
 
 ## 2. Primary user and MVP flow
 
@@ -245,7 +245,7 @@ Decisions driven by queries (load-bearing): **provider ranking** (who gets calle
 
 Timeline: 13:00–13:15 scaffold + keys · 13:45 checkpoint · 13:45–15:00 parallel calls, Keewano live, booking, polish · 15:00–15:15 bug bash · **15:15 feature freeze** → demo/pitch prep (team) · **16:30 submit**.
 
-**Stretch (in order):** tenant access-window call · Darwin search for agent-native providers · retry no-answer · mid-call availability check via Dial Context MCP.
+**Stretch (in order):** tenant access-window call · retry no-answer · mid-call availability check via Dial Context MCP.
 
 ## 14. Config
 

@@ -16,9 +16,11 @@ I tap to request quotes, and Dial takes over the phone calls. Its AI agent expla
 
 Then I choose a quote and provide times that work for me. Only after I approve does Dial call the provider again to schedule. It asks for a time within my windows and brings back the confirmation. The appointment stays attached to the right property and unit.
 
-Think about what that takes off my plate: researching the problem, explaining it repeatedly, collecting quotes, and chasing a time that works. My part becomes reporting the issue, choosing a quote, and approving a time. Handy handles the back-and-forth. For a property manager, that same benefit repeats across every unit.
+What if the provider cancels? For future payments, we built a separate agent that refunds a held deposit exactly once. Sparta Worlds tested it in a simulated Stripe environment with an injected error. Adding retries, duplicate protection, and verification took it from three of six runs passing to six of six.
 
-To connect these steps, we used Alike to share engineering decisions across our team's coding sessions, helping us build the app and calling service around the same flow. Keewano provides the history, Dial handles the conversations, and Alike helped us build the pieces together.
+Think about what that takes off my plate: research, repeated explanations, collecting quotes, and scheduling. I report, compare, and approve; Handy handles the back-and-forth. For a property manager, that benefit repeats across every unit.
+
+To connect these steps, we used Alike to share engineering decisions across our team's coding sessions, helping us build the app and calling service around the same flow.
 
 We propose starting with property managers, where repairs repeat across units, with per-unit subscriptions and booking fees. Then we expand to homeowners.
 

@@ -3,8 +3,9 @@ import { config } from "./config";
 import * as dial from "./dial";
 import { bookingInstruction, quoteInstruction } from "./instructions";
 import * as keewano from "./keewano";
+import * as parts from "./parts";
 import { getProperty, getProvider, getRequest, listProviders, newId, nowIso, saveRequest, setStatus } from "./store";
-import type { CallPurpose, CallRecord, Provider, ProviderScore, RepairRequest, Trade } from "./types";
+import type { CallPurpose, CallRecord, PartSearch, Provider, ProviderScore, RepairRequest, Trade } from "./types";
 
 // Owner: Claude Code (glue). Drives the call lifecycle; every mutation runs under a per-request lock
 // so the UI's 3s polling can never overwrite a concurrent outreach/booking write.
@@ -15,8 +16,9 @@ const QUOTE_FANOUT = 3;
 const MAX_EXTRACT_ATTEMPTS = 3;
 
 // Kept on globalThis so all route handlers share one lock table in `next dev`.
-const g = globalThis as unknown as { __handyLocks?: Map<string, Promise<unknown>> };
+const g = globalThis as unknown as { __handyLocks?: Map<string, Promise<unknown>>; __handyPartSearches?: Set<string> };
 const locks = (g.__handyLocks ??= new Map());
+const partSearches = (g.__handyPartSearches ??= new Set<string>());
 
 export async function withLock<T>(id: string, fn: () => Promise<T>): Promise<T> {
   const prev = locks.get(id) ?? Promise.resolve();
@@ -261,5 +263,43 @@ function advanceStatus(req: RepairRequest) {
           ? "Couldn't read the booking call. Check the transcript before calling again."
           : "The provider didn't confirm a time. Pick other windows or another provider.";
     setStatus(req, "quotes_ready");
+  }
+}
+
+// ---- DIY part search ---------------------------------------------------------------------
+
+// True while this process is searching for the request. A stored "searching" status with no running
+// search (e.g. after a dev-server restart) is stale, and the retry route may start a new one.
+export const isPartSearchRunning = (id: string) => partSearches.has(id);
+
+// Runs the part-search agent (web search, up to ~1 min) outside the lock so polls and outreach aren't
+// blocked, then stores the result under the lock. Never throws: failures are saved as status "failed".
+export async function searchPartsForRequest(id: string): Promise<void> {
+  const diagnosis = getRequest(id)?.diagnosis;
+  const part = diagnosis?.fixPath === "diy" ? diagnosis.diyPlan?.parts[0] : undefined;
+  if (!diagnosis || !part || partSearches.has(id)) return;
+  partSearches.add(id);
+  try {
+    let result: PartSearch;
+    try {
+      result = await parts.findPartOptions({ diagnosis, part });
+    } catch (e) {
+      result = {
+        ...parts.searchingPartSearch(part.name),
+        status: "failed",
+        searchedAt: nowIso(),
+        error: `Part search failed: ${(e as Error).message}`,
+      };
+    }
+    await withLock(id, async () => {
+      const fresh = getRequest(id);
+      if (!fresh) return;
+      fresh.partSearch = result;
+      saveRequest(fresh);
+    });
+  } catch (e) {
+    console.error(`[parts] couldn't store the part search for ${id}:`, e);
+  } finally {
+    partSearches.delete(id);
   }
 }

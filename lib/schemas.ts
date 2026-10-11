@@ -4,6 +4,14 @@ import { z } from "zod";
 
 export const TradeSchema = z.enum(["plumber", "electrician", "handyman", "hvac", "appliance", "locksmith", "other"]);
 
+export const DiyPlanSchema = z.object({
+  parts: z.array(z.object({ name: z.string(), approxPriceUsd: z.number().nullable(), compatibility: z.string() })),
+  tools: z.array(z.string()),
+  steps: z.array(z.string()),
+  minutes: z.number().nullable(),
+  stopIf: z.string(),
+});
+
 export const DiagnosisSchema = z.object({
   title: z.string(),
   likelyCause: z.string(),
@@ -14,6 +22,15 @@ export const DiagnosisSchema = z.object({
   jobBrief: z.string(),
   questionsForProviders: z.array(z.string()),
   confidence: z.number().min(0).max(1),
+  summary: z.string().nullable().optional(),
+  proposedScope: z.string().nullable().optional(),
+  safetyGuidance: z.string().nullable().optional(),
+  visibleEvidence: z.array(z.string()).optional(),
+  photoAnalyzed: z.boolean().optional(),
+  source: z.enum(["claude", "mock"]).optional(),
+  fixPath: z.enum(["diy", "pro"]).optional(),
+  diyPlan: DiyPlanSchema.nullable().optional(),
+  openQuestions: z.array(z.string()).optional(),
 });
 
 export const QuoteEvidenceSchema = z.object({
@@ -50,6 +67,31 @@ export const TranscriptTurnSchema = z.object({
   text: z.string(),
   startMs: z.number(),
   endMs: z.number(),
+});
+
+export const PartOptionSchema = z.object({
+  rank: z.number().int().min(1).max(3),
+  label: z.string(),
+  partName: z.string(),
+  product: z.string(),
+  brand: z.string().nullable(),
+  seller: z.string(),
+  url: z.url({ protocol: /^https$/ }),
+  priceUsd: z.number().positive().nullable(),
+  delivery: z.string().nullable(),
+  returnPolicy: z.string().nullable(),
+  rating: z.number().min(0).max(5).nullable(),
+  reviewCount: z.number().int().min(0).nullable(),
+  fitNote: z.string(),
+});
+
+export const PartSearchSchema = z.object({
+  status: z.enum(["searching", "ready", "failed"]),
+  partName: z.string(),
+  options: z.array(PartOptionSchema).max(3),
+  searchedAt: z.string().nullable(),
+  source: z.enum(["claude", "mock"]),
+  error: z.string().nullable(),
 });
 
 export const BookingResultSchema = z.object({

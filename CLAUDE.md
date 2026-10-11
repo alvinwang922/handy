@@ -22,7 +22,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 |---|---|
 | `public/index.html` (vanilla-JS UI prototype; replace its simulated `submitRequest`/`startOutreach`/`book`/`transcript` with API calls) | P3 frontend |
 | `lib/dial.ts`, `lib/instructions.ts`, `scripts/setup-receptionist.ts` | P1 calls |
-| `lib/claude.ts`, `fixtures/transcripts/` | P2 AI |
+| `lib/claude.ts`, `lib/parts.ts`, `fixtures/transcripts/` | P2 AI |
 | `lib/keewano.ts`, `scripts/seed-keewano.ts`, `app/api/metrics/` | P4 data |
 | `lib/types.ts`, `lib/schemas.ts`, `lib/store.ts`, `lib/orchestrator.ts`, `app/api/requests/**` | shared glue: announce every change |
 

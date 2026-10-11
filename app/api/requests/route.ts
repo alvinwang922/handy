@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import * as claude from "@/lib/claude";
 import * as keewano from "@/lib/keewano";
+import { searchPartsForRequest } from "@/lib/orchestrator";
+import { searchingPartSearch } from "@/lib/parts";
 import { getProperty, listRequests, newId, nowIso, saveRequest, UPLOAD_DIR } from "@/lib/store";
 import type { RepairRequest } from "@/lib/types";
 
@@ -88,7 +90,11 @@ export async function POST(request: Request) {
   }
   // Recurring-issue check needs the trade, so it runs after diagnosis; it shapes the quote-call script.
   if (EMERGENCY.test(`${title} ${description}`)) req.diagnosis.urgency = "emergency";
-  if (req.diagnosis.urgency === "emergency") req.notice = SAFETY_NOTICE;
+  if (req.diagnosis.urgency === "emergency") {
+    req.notice = SAFETY_NOTICE;
+    // An emergency never gets a DIY suggestion, whatever the model said.
+    Object.assign(req.diagnosis, { fixPath: "pro", diyPlan: null, safetyGuidance: req.diagnosis.safetyGuidance || SAFETY_NOTICE });
+  }
   req.unitInsight = await keewano.unitInsight(propertyId, unit, req.diagnosis.trade).catch(() => null);
   req.status = req.diagnosis.urgency === "emergency" ? "emergency" : "diagnosed";
   req.timeline.push({ status: req.status, at: nowIso() });
@@ -98,6 +104,12 @@ export async function POST(request: Request) {
     { name: "Channel", value: "handled" },
   ]);
   void keewano.track({ kind: "unit", id: `${propertyId}/${unit}` }, [{ name: "IssueReported", value: req.diagnosis.trade }]);
+  // DIY: search for the part after responding (web search takes ~20–60 s); the UI's 3 s poll picks it up.
+  const diyPart = req.diagnosis.fixPath === "diy" ? req.diagnosis.diyPlan?.parts[0] : undefined;
+  if (diyPart) {
+    req.partSearch = searchingPartSearch(diyPart.name);
+    after(() => searchPartsForRequest(id));
+  }
   saveRequest(req);
   return NextResponse.json(req, { status: 201 });
 }

@@ -8,7 +8,7 @@
    so it survives the full re-renders core does after every mutation. */
 (function(){
 const H = window.H;
-const MAX_NOTE = 1200, CALL_MS = 2500, AUTO_MS = 60000, MAX_PICK = 6;
+const MAX_NOTE = 1200, CALL_MS = window.HANDY_DEMO ? 500 : 2500, AUTO_MS = 60000, MAX_PICK = 6;
 const drafts = {};
 const draft = id => drafts[id] || (drafts[id] = {picked: [], calling: false, err: null, showPickErr: false, sent: null});
 

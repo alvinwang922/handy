@@ -149,6 +149,7 @@ const unSeen = id => { try { sessionStorage.setItem(SEEN_KEY, JSON.stringify(see
 /* Each price round animates once: round 0 keeps the legacy key (repair id), later rounds add their number. */
 const roundKey = r => { const n = (r.rounds || []).length; return n ? `${r.id}:${n}` : r.id; };
 const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fast = () => !!window.HANDY_DEMO || reduced();
 const wait = ms => new Promise(res => setTimeout(res, ms));
 
 const TRADE = {plumbing:'plumbers', electrical:'electricians', hvac:'heating and cooling pros'};
@@ -240,7 +241,10 @@ const recReason = (q, all) => {
 };
 
 /* ---------- Call animation timeline ---------- */
-const STAGGER = 600, RING = 900, TALK = 2200, NOANSWER = 2800;
+const STAGGER = window.HANDY_DEMO ? 160 : 600;
+const RING = window.HANDY_DEMO ? 260 : 900;
+const TALK = window.HANDY_DEMO ? 520 : 2200;
+const NOANSWER = window.HANDY_DEMO ? 680 : 2800;
 const callEnd = (c, i) => i * STAGGER + (c.status === 'completed' ? RING + TALK : NOANSWER);
 const totalMs = r => Math.max(0, ...r.outreach.map(callEnd)) + 400;
 const stageAt = (c, i, t) => {
@@ -444,14 +448,14 @@ const approveSheet = (r, q) => {
       const closeBtn = d.querySelector('[data-close]'); if (closeBtn) closeBtn.disabled = true;
       form.hidden = true; prog.hidden = false;
       step(1, 'on', 'Saying yes…'); step(2, 'wait', `Calling ${name} to book…`);
-      const minShow = wait(reduced() ? 300 : 900);
+      const minShow = wait(fast() ? 300 : 900);
       const job = H.approveAndBook(r, q, '', pickedWindows());
       await minShow; step(1, 'done', `You said yes to ${name} for ${total}`); step(2, 'on');
       const res = await job;
-      await wait(reduced() ? 200 : 1100);
+      await wait(fast() ? 200 : 1100);
       if (res && res.status === 'scheduled') {
         step(2, 'done', res.booking ? `Booked for ${H.when(res.booking.window.start, res.booking.window.end)}` : 'Booked');
-        await wait(reduced() ? 200 : 700);
+        await wait(fast() ? 200 : 700);
         running = false; close(); H.scrollToEnd(); return;
       }
       /* Something didn't finish: work out what, in plain words, from the latest server state. */

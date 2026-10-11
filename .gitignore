@@ -4,6 +4,7 @@
 /.next/
 /out/
 /build
+/dist/
 next-env.d.ts
 *.tsbuildinfo
 # env + secrets (repo is shared with judges)

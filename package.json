@@ -14,7 +14,9 @@
     "smoke:booking": "tsx --env-file=.env.local scripts/smoke-live-booking.ts",
     "seed:keewano": "tsx --env-file=.env.local scripts/seed-keewano.ts",
     "try:diagnose": "tsx --env-file=.env.local scripts/try-diagnose.ts",
-    "setup:receptionist": "tsx --env-file=.env.local scripts/setup-receptionist.ts"
+    "setup:receptionist": "tsx --env-file=.env.local scripts/setup-receptionist.ts",
+    "demo:check": "node scripts/check-demo-flow.cjs",
+    "demo:build": "node scripts/build-demo-site.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",

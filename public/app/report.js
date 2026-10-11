@@ -279,7 +279,12 @@ const bind = root => {
     if (sample) sample.addEventListener('click', () => {
       if (S.photos.length + S.processing >= MAX_PHOTOS || S.photos.includes(SAMPLE)) return;
       S.photos.push(SAMPLE); S.photoNote = ''; repaintPhotos();
-      const next = $('#rp-desc'); if (next && !next.value.trim()) next.focus({preventScroll:true});
+      const next = $('#rp-desc');
+      if (window.HANDY_DEMO && next && !next.value.trim()) {
+        S.description = 'There is water under the kitchen sink, and the cabinet floor is getting damp.';
+        next.value = S.description; clearErr('description'); saveDraft();
+      }
+      if (next) next.focus({preventScroll:true});
     });
     form.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
       S.photos.splice(+b.dataset.rm, 1); S.photoNote = ''; repaintPhotos();
@@ -320,7 +325,7 @@ const bind = root => {
     S.pending = true; S.stage = 'look'; H.render(); scrollWait();
 
     let repair;
-    try { [{ repair }] = await Promise.all([H.api('POST', '/api/repairs', body), sleep(900)]); /* let the first step be readable */ }
+    try { [{ repair }] = await Promise.all([H.api('POST', '/api/repairs', body), sleep(window.HANDY_DEMO ? 220 : 900)]); /* let the first step be readable */ }
     catch (err) {
       S.pending = false; S.stage = ''; S.serverError = kindError(err);
       if (onNew()) {
@@ -336,7 +341,7 @@ const bind = root => {
       /* Show the next step in place for a beat before opening the repair */
       S.stage = 'call';
       const s = document.getElementById('rp-stage'); if (s) s.textContent = STAGE.call();
-      await sleep(700);
+      await sleep(window.HANDY_DEMO ? 180 : 700);
     }
     const stillHere = onNew();
     clearDraft(); S = blank();

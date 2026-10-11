@@ -80,6 +80,7 @@ H.prop = id => H.state.properties.find(p => p.id === id);
 
 /* ---------- API ---------- */
 H.api = async (method, path, body) => {
+  if (window.HANDY_DEMO && window.HandyDemoApi) return window.HandyDemoApi.request(method, path, body);
   let res;
   try {
     res = await fetch(path, { method, headers: body !== undefined ? {'Content-Type':'application/json'} : {}, body: body !== undefined ? JSON.stringify(body) : undefined });

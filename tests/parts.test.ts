@@ -51,6 +51,7 @@ describe("toPartSearch", () => {
   it("keeps verified options, ranked, and passes the schema", () => {
     const s = toPartSearch(
       {
+        partName: "Cabinet knob, 1-1/4 in.",
         options: [
           option({ rank: 2, label: "Lowest price", seller: "Amazon", url: AMZ, priceUsd: 2.5 }),
           option({ rank: 1 }),
@@ -65,9 +66,26 @@ describe("toPartSearch", () => {
     expect(s.options[0].partName).toBe("Cabinet knob, 1-1/4 in.");
   });
 
+  it("uses the agent's own resolved part name, not the fallback hint", () => {
+    // The fallback hint (ctx.partName) is the repair's title for a pro-path search with no known
+    // part; the agent must still report the concrete part it actually searched for.
+    const s = toPartSearch(
+      { partName: "Water heater heating element", options: [option({ rank: 1 })] },
+      { partName: "Rumbling water heater with lukewarm hot water", seenUrls: collectSeenUrls(content), searchedAt: "2026-10-11T18:00:00Z" },
+    );
+    expect(s.partName).toBe("Water heater heating element");
+    expect(s.options[0].partName).toBe("Water heater heating element");
+  });
+
+  it("falls back to the hint when the agent leaves partName blank", () => {
+    const s = toPartSearch({ partName: "  ", options: [option({ rank: 1 })] }, ctx());
+    expect(s.partName).toBe("Cabinet knob, 1-1/4 in.");
+  });
+
   it("drops links the agent never saw, http links and duplicates, then renumbers", () => {
     const s = toPartSearch(
       {
+        partName: "Cabinet knob, 1-1/4 in.",
         options: [
           option({ rank: 1, url: "https://www.homedepot.com/p/made-up/999" }),
           option({ rank: 2, url: HD.replace("https:", "http:") }),
@@ -83,20 +101,20 @@ describe("toPartSearch", () => {
 
   it("caps at three options", () => {
     const urls = [HD, AMZ, ACE];
-    const s = toPartSearch({ options: [...urls, HD].map((url, i) => option({ rank: i + 1, url })) }, ctx());
+    const s = toPartSearch({ partName: "Cabinet knob, 1-1/4 in.", options: [...urls, HD].map((url, i) => option({ rank: i + 1, url })) }, ctx());
     expect(s.options).toHaveLength(3);
   });
 
   it("nulls missing or invalid numbers and clamps the rating", () => {
     const [o] = toPartSearch(
-      { options: [option({ priceUsd: 0, rating: 7, reviewCount: -3, brand: "  ", delivery: "" })] },
+      { partName: "Cabinet knob, 1-1/4 in.", options: [option({ priceUsd: 0, rating: 7, reviewCount: -3, brand: "  ", delivery: "" })] },
       ctx(),
     ).options;
     expect(o).toMatchObject({ priceUsd: null, rating: 5, reviewCount: null, brand: null, delivery: null });
   });
 
   it("fails with a message when no option has a verified link", () => {
-    const s = toPartSearch({ options: [option({ url: "https://www.lowes.com/pd/invented/1" })] }, ctx());
+    const s = toPartSearch({ partName: "Cabinet knob, 1-1/4 in.", options: [option({ url: "https://www.lowes.com/pd/invented/1" })] }, ctx());
     expect(s).toMatchObject({ status: "failed", options: [] });
     expect(s.error).toMatch(/No verified product links/);
   });

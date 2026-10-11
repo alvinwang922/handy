@@ -1,5 +1,6 @@
 /* report.js — #/new: report a problem as a chat with Handy.
-   One required thing (what's happening); photo, name and property are optional and quiet.
+   One required thing (what's happening); photo is optional. "Which house?" is a dropdown of H.myProperties()
+   (last-used house first), with a link to #/settings to add one. The title is derived from the first words.
    On Send Handy runs on its own: create the repair, then (unless it is a hazard) ask pros for prices via H.autopilot.
    Room and urgency are no longer asked; the server still needs them, so we send room:'Other', urgency:'Soon'. */
 (function(){
@@ -7,12 +8,13 @@ const H = window.H;
 const SAMPLE = '/assets/sample-sink.svg';
 const MAX_PHOTOS = 3, MAX_SIDE = 1568, MAX_BYTES = 5 * 1024 * 1024;
 const DRAFT_KEY = 'handy-report-draft';
-const DRAFT_FIELDS = ['title', 'description', 'property', 'titleTouched'];
+const DRAFT_FIELDS = ['description', 'property'];
+const LAST_HOUSE = 'handy-last-house';
 const BAD_TYPE = 'That photo type can’t be read. Try a JPG or PNG, or take a new photo.';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- Module state (survives core re-renders; text also survives reload) ---------- */
-const blank = () => ({ title:'', description:'', property:null, titleTouched:false,
+const blank = () => ({ description:'', property:null,
   photos:[], processing:0, photoNote:'', errors:{}, pending:false, stage:'', serverError:'' });
 let S = blank();
 const saveDraft = () => {
@@ -23,16 +25,20 @@ try {
   const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
   if (d) {
     DRAFT_FIELDS.forEach(k => { if (d[k] != null) S[k] = d[k]; });
-    if ('room' in d || 'urgency' in d) saveDraft(); /* drop old room/urgency fields from earlier drafts */
+    if (['room', 'urgency', 'title', 'titleTouched'].some(k => k in d)) saveDraft(); /* drop fields earlier drafts kept */
   }
 } catch {}
 
 const manager = () => (H.isManager ? H.isManager() : H.state.role === 'manager');
+const houses = st => (H.myProperties ? H.myProperties() : (st.properties || [])) || [];
+const lastHouse = () => { try { return localStorage.getItem(LAST_HOUSE + ':' + (H.ROLE || '')); } catch { return null; } };
+const rememberHouse = id => { try { localStorage.setItem(LAST_HOUSE + ':' + (H.ROLE || ''), id); } catch {} };
 const propertyFor = st => {
-  if (!manager()) return 'p1';
-  const ids = (st.properties || []).map(p => p.id);
+  const ids = houses(st).map(p => p.id);
   if (S.property && ids.includes(S.property)) return S.property;
-  if (st.propertyFilter && ids.includes(st.propertyFilter)) return st.propertyFilter;
+  if (manager() && st.propertyFilter && ids.includes(st.propertyFilter)) return st.propertyFilter;
+  const last = lastHouse();
+  if (last && ids.includes(last)) return last;
   return ids[0] || 'p1';
 };
 const titleFrom = text => {
@@ -42,7 +48,7 @@ const titleFrom = text => {
   const t = words.length > 60 ? words.slice(0, 60).replace(/\s+\S*$/, '') : words;
   return t ? t[0].toUpperCase() + t.slice(1) : '';
 };
-const titleFor = () => (S.title.trim() || titleFrom(S.description) || S.description.trim().slice(0, 60) || 'Repair').slice(0, 120);
+const titleFor = () => (titleFrom(S.description) || S.description.trim().slice(0, 60) || 'Repair').slice(0, 120);
 const kindError = err => {
   if (!err || err.status === 0) return (err && err.message) || 'Can’t reach Handy right now. Please try again.';
   if (err.status >= 500) return 'Handy hit a snag on its side. Your words are still here, so please try again in a moment.';
@@ -81,14 +87,17 @@ if (!document.getElementById('css-report')) {
 .rp .req textarea:focus{border-color:var(--green);outline:none;box-shadow:0 0 0 3px var(--green-tint)}
 .rp .req.err textarea{border-color:var(--red)}
 /* Optional fields: quieter label, lighter border, soft fill */
-.rp .opt-group{display:flex;flex-direction:column;gap:14px;padding-top:4px}
-.rp .opt label{font-size:16px;font-weight:600;color:var(--ink2);display:flex;align-items:baseline;gap:8px}
-.rp .opt label .o{font-size:15px;font-weight:400;color:var(--ink3)}
-.rp .opt input,.rp .opt select{min-height:48px;border:1px solid #CFC9BC;background:var(--pinned);color:var(--ink);font-size:17px}
-.rp .opt input:focus,.rp .opt select:focus{background:#fff;border-color:var(--green);outline:none;box-shadow:0 0 0 3px var(--green-tint)}
-.rp .opt .hint{color:var(--ink3)}
-.rp .where{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink2)}
-.rp .where .ic{width:18px;height:18px;color:var(--ink3)}
+/* Which house? — a real dropdown with a quiet way to add one */
+.rp .house{padding-top:4px}
+.rp .house label,.rp .house .label{font-size:17px;font-weight:700;color:var(--ink)}
+.rp .house .hrow{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap}
+.rp .house .sel{position:relative;flex:1 1 260px;min-width:0;display:flex}
+.rp .house select{flex:1;min-width:0;min-height:52px;appearance:none;-webkit-appearance:none;padding-right:44px;cursor:pointer;color:var(--ink);text-overflow:ellipsis}
+.rp .house select:focus{border-color:var(--green);outline:none;box-shadow:0 0 0 3px var(--green-tint)}
+.rp .house .sel .ic{position:absolute;right:14px;top:50%;width:20px;height:20px;transform:translateY(-50%) rotate(90deg);color:var(--ink2);pointer-events:none}
+.rp .house .add{min-height:48px;padding:0 4px;display:inline-flex;align-items:center;gap:6px;font-size:16px}
+.rp .house .add .ic{width:18px;height:18px}
+.rp .house .none{margin:0;font-size:17px;color:var(--ink2)}
 .rp .dock{display:flex;flex-direction:column;gap:8px}
 .rp .dock .acts{display:flex;align-items:center;gap:12px}
 .rp .dock .acts .btn.plain{min-height:52px;padding:0 12px}
@@ -130,14 +139,15 @@ const photosHtml = () => {
       : `<p class="meta-line">${H.icon('check')} That’s 3 photos, the most Handy can take.</p>`}`;
 };
 
+const houseLabel = p => [p.name, p.unit].filter(x => x && String(x).trim()).join(' · ') || 'House';
 const propertyHtml = st => {
-  if (!manager()) {
-    const p = H.prop && H.prop('p1');
-    return `<div class="where">${H.icon('home')}<span>For ${H.esc(p ? `${p.name} · ${p.unit}` : 'Maple House')}</span></div>`;
-  }
-  const cur = propertyFor(st);
-  return `<div class="field opt"><label for="rp-prop">Which property?</label>
-    <select id="rp-prop" ${S.pending ? 'disabled' : ''}>${(st.properties || []).map(p => `<option value="${H.esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${H.esc(p.name)} · ${H.esc(p.unit)}</option>`).join('')}</select></div>`;
+  const list = houses(st), cur = propertyFor(st);
+  const add = S.pending ? '' : `<a class="btn plain add" href="#/settings">${H.icon('plus')}Add a house</a>`;
+  if (!list.length) return `<div class="field house"><span class="label">Which house?</span>
+    <div class="hrow"><p class="none">You haven’t added a house yet.</p>${add}</div></div>`;
+  return `<div class="field house"><label for="rp-prop">Which house?</label>
+    <div class="hrow"><div class="sel"><select id="rp-prop" ${S.pending ? 'disabled' : ''}>${list.map(p =>
+      `<option value="${H.esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${H.esc(houseLabel(p))}</option>`).join('')}</select>${H.icon('chev')}</div>${add}</div></div>`;
 };
 
 const render = st => {
@@ -153,14 +163,9 @@ const render = st => {
     ${H.h(`<p>${S.photos.length ? 'Got it. ' : ''}Now tell me what’s happening.</p>`)}
     <div class="step">
       <div class="field req ${S.errors.description ? 'err' : ''}"><label for="rp-desc">What’s happening?</label>
-        <textarea id="rp-desc" maxlength="1200" placeholder="For example: water drips from the pipe under the kitchen sink when it runs." aria-required="true" aria-describedby="${described('description', 'rp-desc-h')}" ${S.errors.description ? 'aria-invalid="true"' : ''} ${dis}>${H.esc(S.description)}</textarea>
-        <span class="hint" id="rp-desc-h">Say which room it’s in. Mention any smell of gas, sparks or flooding.</span>${errMsg('description')}</div>
-      <div class="opt-group">
-        <div class="field opt"><label for="rp-title">Name it <span class="o">Optional</span></label>
-          <input id="rp-title" maxlength="120" autocomplete="off" placeholder="Handy names it for you" value="${H.esc(S.title)}" aria-describedby="rp-title-h" ${dis}>
-          <span class="hint" id="rp-title-h">How it shows in your list. Filled in from what you wrote.</span></div>
-        ${propertyHtml(st)}
-      </div>
+        <textarea id="rp-desc" maxlength="1200" placeholder="For example: water drips from the pipe under the kitchen sink when it runs." aria-required="true" ${S.errors.description ? `aria-describedby="${described('description')}" aria-invalid="true"` : ''} ${dis}>${H.esc(S.description)}</textarea>
+        ${errMsg('description')}</div>
+      ${propertyHtml(st)}
     </div>
     ${S.pending ? `<div class="wait">
       ${H.u(`<p>${H.esc(said.length > 160 ? said.slice(0, 157) + '…' : said)}</p>`)}
@@ -284,17 +289,12 @@ const bind = root => {
   bindPhotos();
 
   const prop = $('#rp-prop');
-  if (prop) prop.addEventListener('change', () => { S.property = prop.value; saveDraft(); });
+  if (prop) prop.addEventListener('change', () => { S.property = prop.value; rememberHouse(prop.value); saveDraft(); });
 
-  const desc = $('#rp-desc'), title = $('#rp-title');
+  const desc = $('#rp-desc');
   desc.addEventListener('input', () => {
     S.description = desc.value;
-    if (!S.titleTouched) { S.title = titleFrom(desc.value); title.value = S.title; }
     if (desc.value.trim()) clearErr('description');
-    saveDraft();
-  });
-  title.addEventListener('input', () => {
-    S.title = title.value; S.titleTouched = title.value.trim() !== '';
     saveDraft();
   });
 
@@ -304,7 +304,7 @@ const bind = root => {
   form.addEventListener('submit', async e => {
     e.preventDefault();
     if (S.pending || S.processing || H.state.busy) return;
-    S.description = desc.value; S.title = title.value;
+    S.description = desc.value;
     S.errors = {}; S.serverError = '';
     if (!S.description.trim()) {
       S.errors.description = 'Tell Handy what’s happening, in a sentence or two.';
@@ -313,8 +313,10 @@ const bind = root => {
       if (t) { t.focus({preventScroll:true}); t.closest('.field').scrollIntoView({block:'center'}); }
       return;
     }
-    const body = { title:titleFor(), description:S.description.trim(), property:propertyFor(st),
+    const property = propertyFor(st);
+    const body = { title:titleFor(), description:S.description.trim(), property,
       room:'Other', urgency:'Soon', photos:S.photos.slice() };
+    rememberHouse(property);
     S.pending = true; S.stage = 'look'; H.render(); scrollWait();
 
     let repair;

@@ -8,7 +8,7 @@ import { analytics } from './integrations/keewano.js';
 import { createHandoff } from './integrations/alike.js';
 
 export const properties = [
-  { id: 'p1', name: 'Maple House', address: '124 Maple Avenue', unit: 'Main home', tenant: 'Jamie Chen', serviceArea: 'Demo Bay Area', demo: true },
+  { id: 'p1', name: 'Maple House', address: '124 Maple Avenue', unit: 'Main home', tenant: 'Jamie Chen', serviceArea: 'Demo Bay Area', home: true, demo: true },
   { id: 'p2', name: 'Oak Street Duplex', address: '86 Oak Street', unit: 'Unit 2B', tenant: 'Taylor Reed', serviceArea: 'Demo Bay Area', demo: true },
   { id: 'p3', name: 'Cedar Cottage', address: '32 Cedar Lane', unit: 'Unit 1', tenant: 'Sam Rivera', serviceArea: 'Demo Bay Area', demo: true }
 ];
@@ -30,21 +30,32 @@ export function createHandy({ dataPath = 'data/handy.sqlite', seed = true } = {}
       store.put(r); return r;
     });
   }
+  const allProperties = () => [...properties, ...store.houses()];
   function clearCommitments(r) {
+    if (r.quotes.length || r.outreach.length) r.rounds = [...(r.rounds ?? []), { outreach: r.outreach, quotes: r.quotes, approval: r.approval, booking: r.booking, endedAt: new Date().toISOString() }];
     r.approval = null; r.booking = null; r.appointment = null; r.provider = null;
     r.quotes = []; r.outreach = []; r.discovery = null; r.schedulingCall = null; r.access = '';
     r.status = r.assessment.hazard ? 'hazard' : 'assessment';
   }
   const app = {
     close: () => store.close(),
-    properties: () => structuredClone(properties),
+    properties: () => structuredClone(allProperties()),
+    addProperty(input) {
+      requireCondition(input && typeof input === 'object' && !Array.isArray(input), 'A house object is required.');
+      const name = text(input.name, 'House name', 80), address = text(input.address, 'Address', 160);
+      const unit = input.unit ? text(input.unit, 'Unit', 60) : 'Main home';
+      const tenant = input.tenant ? text(input.tenant, 'Tenant', 80) : '';
+      const house = { id: `h-${randomUUID().slice(0, 8)}`, name, address, unit, tenant, serviceArea: 'Demo Bay Area', home: input.home === true, demo: true };
+      store.transaction(() => store.putHouse(house));
+      return house;
+    },
     getRepair,
     listRepairs: () => store.list(),
     timeline(id) { getRepair(id); return store.events(id); },
     metrics: () => analytics(store.events()),
-    handoff(id) { const r = getRepair(id); return createHandoff(r, properties.find(p => p.id === r.property)); },
+    handoff(id) { const r = getRepair(id); return createHandoff(r, allProperties().find(p => p.id === r.property)); },
     createRepair(input, actor = demoActor) {
-      const fields = validateIssue(input, properties), assessment = assess(fields);
+      const fields = validateIssue(input, allProperties()), assessment = assess(fields);
       return store.transaction(() => {
         const r = { ...fields, id: randomUUID(), assessment, category: assessment.category,
           status: assessment.hazard ? 'hazard' : 'assessment', createdAt: new Date().toISOString(), created: 'Today',
@@ -63,7 +74,7 @@ export function createHandy({ dataPath = 'data/handy.sqlite', seed = true } = {}
       if (existing.status === 'quotes') return existing;
       requireCondition(existing.status === 'assessment', 'Reopen quoting before requesting new estimates.', 409);
       return mutate(id, actor, (r, event) => {
-        const property = properties.find(p => p.id === r.property);
+        const property = allProperties().find(p => p.id === r.property);
         const brief = { repairId: r.id, title: r.title, description: r.description, category: r.category,
           trade: r.assessment.trade, scope: r.assessment.scope, room: r.room, urgency: r.urgency, serviceArea: property.serviceArea };
         r.discovery = discover(brief);
@@ -136,7 +147,7 @@ export function createHandy({ dataPath = 'data/handy.sqlite', seed = true } = {}
       requireCondition(input && typeof input === 'object' && !Array.isArray(input), 'Issue changes must be an object.');
       return mutate(id, actor, (r, event) => {
         requireCondition(!['scheduled', 'complete'].includes(r.status), 'Reopen quoting before changing a scheduled repair scope.', 409);
-        const fields = validateIssue({ ...r, description: input.description === undefined ? r.description : text(input.description, 'Description'), urgency: input.urgency ?? r.urgency }, properties);
+        const fields = validateIssue({ ...r, description: input.description === undefined ? r.description : text(input.description, 'Description'), urgency: input.urgency ?? r.urgency }, allProperties());
         Object.assign(r, fields); r.assessment = assess(fields); r.category = r.assessment.category;
         clearCommitments(r); event('issue.updated', { quotesInvalidated: true });
         event('assessment.proposed', { category: r.category, hazard: r.assessment.hazard }, r.assessment.source);

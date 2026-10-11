@@ -1,16 +1,16 @@
 /* booking.js — scheduling + booked parts of the repair thread.
    Registers H.part('scheduling') (status: scheduling) and H.part('booked') (status: scheduled, complete).
-   Booking is automatic: H.approveAndBook (core) approves and books the earliest offered time in one tap.
+   Booking: on Yes the user picks the 2-hour slots they are free (quotes.js) and H.approveAndBook (core) books the earliest.
    The scheduling picker only appears for reschedules (or if the automatic booking could not go through):
-   one tap on a time, then "Book this time".
+   the same 2-hour chips grouped by day, multi-select up to MAX_PICK, then "Book the earliest".
    The "note for the pro" is optional, added after booking, and kept on this device only (localStorage per repair).
    Local per-repair UI state (picked time, the in-progress booking call, last error) lives in `drafts`
    so it survives the full re-renders core does after every mutation. */
 (function(){
 const H = window.H;
-const MAX_NOTE = 1200, CALL_MS = 2500, AUTO_MS = 60000;
+const MAX_NOTE = 1200, CALL_MS = 2500, AUTO_MS = 60000, MAX_PICK = 6;
 const drafts = {};
-const draft = id => drafts[id] || (drafts[id] = {picked: null, calling: false, err: null, showPickErr: false, sent: null});
+const draft = id => drafts[id] || (drafts[id] = {picked: [], calling: false, err: null, showPickErr: false, sent: null});
 
 /* ---------- Module CSS (injected once) ---------- */
 if (!document.getElementById('css-booking')) {
@@ -19,17 +19,21 @@ if (!document.getElementById('css-booking')) {
 .dock:has(.bk-pick),.dock:has(.bk-wait){position:static}
 .bk-pick,[data-bk-ask]{scroll-margin-top:88px}
 .bk-pick .bk-q{font-weight:700;margin:0 0 10px}
-.bk-pick .slots{margin-bottom:6px}
-.bk-pick .slots button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left;padding:8px 14px;gap:2px;color:var(--ink);transition:border-color .15s ease-out,background-color .15s ease-out}
-.bk-pick .slots button small{font-size:15px}
-.bk-pick .slots button[aria-checked="true"]{border-color:var(--green);background:var(--green-tint);color:var(--green)}
-.bk-pick .slots button[aria-checked="true"] small{color:var(--green)}
-.bk-pick .slots button .bk-tick{display:none}
-.bk-pick .slots button[aria-checked="true"] .bk-tick{display:inline-flex}
-.bk-pick .slots button .bk-day{display:flex;align-items:center;gap:6px}
-.bk-pick .slots button .ic{width:16px;height:16px}
-.bk-pick .slots button:hover{border-color:var(--green)}
-.bk-pick .slots button[disabled]{cursor:default;border-style:dashed;color:var(--ink2);background:#fff}
+.bk-pick .bk-sub{font-size:15px;color:var(--ink2);margin:-6px 0 12px}
+.bk-days{display:flex;flex-direction:column;gap:14px;margin-bottom:6px}
+.bk-days h3{font-size:16px;font-weight:700;margin:0 0 8px;color:var(--ink)}
+.bk-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.bk-chips button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:1.5px solid #C9C3B6;border-radius:12px;background:#fff;color:var(--ink);font:inherit;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;transition:border-color .15s ease-out,background-color .15s ease-out}
+.bk-chips button .ic{width:16px;height:16px;display:none}
+.bk-chips button:hover:not([disabled]):not([aria-disabled="true"]){border-color:var(--green)}
+.bk-chips button[aria-pressed="true"]{border-color:var(--green);background:var(--green-tint);color:var(--green)}
+.bk-chips button[aria-pressed="true"] .ic{display:inline-block}
+.bk-chips button[aria-disabled="true"]{color:var(--ink3);border-color:var(--line);cursor:not-allowed}
+.bk-chips button[disabled]{cursor:default;border-style:dashed;color:var(--ink2);font-weight:600;flex-direction:column;gap:0;line-height:1.15;padding:4px 8px}
+.bk-chips button[disabled] small{font-size:14px;font-weight:600}
+.bk-count-line{font-size:15px;color:var(--ink2);margin:10px 0 0;font-variant-numeric:tabular-nums}
+.bk-card .bk-free{font-size:15px;color:var(--ink2);margin:2px 0 0;display:flex;align-items:center;gap:6px}
+.bk-card .bk-free .ic{width:16px;height:16px;color:var(--ink3)}
 .bk-pick .bk-slotmsg{font-size:15px;color:var(--amber);display:flex;gap:6px;align-items:center;margin:4px 0 0}
 .bk-pick .bk-slotmsg .ic{width:18px;height:18px}
 .bk-pick [data-bk-book]{margin-top:12px}
@@ -79,7 +83,7 @@ if (!document.getElementById('css-booking')) {
   .bk-card .btns .btn{flex:1}
   .bk-done{flex-direction:column}
 }
-@media (prefers-reduced-motion:reduce){.bk-pick .slots button{transition:none}}`;
+@media (prefers-reduced-motion:reduce){.bk-chips button{transition:none}}`;
   document.head.appendChild(st);
 }
 
@@ -87,9 +91,16 @@ if (!document.getElementById('css-booking')) {
 const quoteOf = r => r && r.approval ? (r.quotes || []).find(q => q.id === r.approval.quoteId) || null : null;
 const proName = r => (quoteOf(r) || {}).name || (r.approval && r.approval.providerName) || 'the pro';
 const warrantyOf = r => (quoteOf(r) || {}).warranty || 'workmanship warranty';
-const futureWindows = q => (q && Array.isArray(q.windows) ? q.windows : []).filter(w => Date.parse(w.start) > Date.now()).slice(0, 6);
+const futureWindows = q => (q && Array.isArray(q.windows) ? q.windows : []).filter(w => Date.parse(w.start) > Date.now())
+  .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+/* "8–10 am", "10 am–12 pm": a 2-hour slot in the fewest words */
+const hr = d => { const h = d.getHours() % 12 || 12, m = d.getMinutes(); return m ? `${h}:${String(m).padStart(2, '0')}` : String(h); };
+const ap = d => d.getHours() < 12 ? 'am' : 'pm';
+const slotLabel = w => { const s = new Date(w.start), e = new Date(w.end); return ap(s) === ap(e) ? `${hr(s)}–${hr(e)} ${ap(e)}` : `${hr(s)} ${ap(s)}–${hr(e)} ${ap(e)}`; };
+const dayLabel = iso => new Date(iso).toLocaleDateString('en-US', {weekday: 'long', month: 'short', day: 'numeric'});
+const countLine = n => n ? `${n} of ${MAX_PICK} picked` : 'Nothing picked yet';
+const byDay = wins => { const out = []; wins.forEach(w => { const k = new Date(w.start).toDateString(); const g = out.find(x => x.k === k); if (g) g.wins.push(w); else out.push({k, label: dayLabel(w.start), wins: [w]}); }); return out; };
 const sameWin = (a, b) => !!a && !!b && a.start === b.start && a.end === b.end;
-const split = w => { const s = H.when(w.start, w.end), i = s.indexOf(' · '); return i < 0 ? [s, ''] : [s.slice(0, i), s.slice(i + 3)]; };
 const focusNext = {};
 const focusOnce = (root, id) => {
   if (!focusNext[id]) return;
@@ -121,7 +132,9 @@ function story(r) {
   const lastMove = moves[moves.length - 1];
   const lastConfirm = [...after].reverse().find(e => e.type === 'appointment.confirmed');
   const moved = !!lastMove && !!lastConfirm && lastConfirm.sequence > lastMove.sequence;
-  return {auto, moved, firstWindow: first && first.payload && first.payload.window};
+  const avail = [...after].reverse().find(e => e.type === 'availability.submitted');
+  const free = avail && avail.payload && Array.isArray(avail.payload.windows) ? avail.payload.windows.length : 0;
+  return {auto, moved, free, firstWindow: first && first.payload && first.payload.window};
 }
 
 /* ---------- Note for the pro (client-side only, per repair) ---------- */
@@ -259,16 +272,17 @@ function showTranscript(r) {
 }
 
 /* ---------- Booking call (reschedule or manual pick) ---------- */
-function startBooking(r, win) {
+function startBooking(r, wins) {
   const d = draft(r.id);
-  if (!win) { d.showPickErr = true; focusNext[r.id] = '.bk-pick .slots button:not([disabled])'; H.render(); return; }
+  if (!wins || !wins.length) { d.showPickErr = true; focusNext[r.id] = '.bk-chips button[aria-pressed]'; H.render(); return; }
   if (d.calling || H.state.busy) return;
-  d.calling = true; d.err = null; d.showPickErr = false; d.sent = {start: win.start, end: win.end}; H.state.error = null;
+  const list = wins.slice(0, MAX_PICK).map(w => ({start: w.start, end: w.end})).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  d.calling = true; d.err = null; d.showPickErr = false; d.sent = list; H.state.error = null;
   focusNext[r.id] = '.bk-call';
   H.render();
   /* plain timeout, not H.later: the call must finish even if the user navigates away mid-animation */
   setTimeout(async () => {
-    const done = await H.mutate(r.id, 'book', {windows: [d.sent], access: r.access || ''});
+    const done = await H.mutate(r.id, 'book', {windows: d.sent, access: r.access || ''});
     const dd = draft(r.id); dd.calling = false;
     if (done) { delete drafts[r.id]; focusNext[r.id] = '.bk-card .qn'; H.render(); return; }
     dd.err = errKind(H.state.error); H.state.error = null;
@@ -286,12 +300,13 @@ H.part('scheduling', {
     let out = '';
     if (r.booking) {
       out += H.u('Change the time');
-      out += `<div class="bu h" data-bk-ask><p>Same pro, same price. Only the time changes.</p><p>Right now you’re booked for <b>${H.esc(H.when(r.booking.window.start, r.booking.window.end))}</b>. That stays until ${pro} confirms a new time. Tap the time you want.</p></div>`;
+      out += `<div class="bu h" data-bk-ask><p>Same pro, same price. Only the time changes.</p><p>Right now you’re booked for <b>${H.esc(H.when(r.booking.window.start, r.booking.window.end))}</b>. That stays until ${pro} confirms a new time.</p><p>Tap every 2-hour slot you’re free. I’ll book the earliest one.</p></div>`;
     } else {
-      out += `<div class="bu h" data-bk-ask><p>I couldn’t book ${pro} on my own. Tap a time that works and I’ll call them.</p></div>`;
+      out += `<div class="bu h" data-bk-ask><p>I couldn’t book ${pro} on my own. Tap every 2-hour slot you’re free and I’ll call them to book the earliest.</p></div>`;
     }
     if (d && d.calling && d.sent) {
-      out += H.u(`Book ${H.esc(H.when(d.sent.start, d.sent.end))}`);
+      out += H.u(d.sent.length === 1 ? `Book ${H.esc(H.when(d.sent[0].start, d.sent[0].end))}`
+        : `I’m free ${d.sent.length} times. The earliest is ${H.esc(H.when(d.sent[0].start, d.sent[0].end))}.`);
       out += H.h(`<p>Calling ${pro} to book…</p>`);
       out += `<div class="call bk-call" role="status"><div class="who"><div class="t">${pro}</div><div class="s">Booking call ${H.demo('Demo · simulated call')}</div></div>
         <span class="st live"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span> Talking</span></div>`;
@@ -313,15 +328,21 @@ H.part('scheduling', {
       ${cur && wins.some(w => sameWin(w, cur)) ? '<div class="bk-alt"><button class="btn plain" data-bk-keep>Keep my current time</button></div>' : ''}`;
     const errBox = d.err ? `<div class="note amber bk-err" role="alert">${H.icon('alert')}<span class="grow"><b>I couldn’t book that.</b> ${H.esc(errCopy(d.err, proName(r)))}</span></div>` : '';
     const keep = cur && wins.some(w => sameWin(w, cur));
+    d.picked = d.picked.filter(st => open.some(w => w.start === st));
+    const full = d.picked.length >= MAX_PICK;
     return `<div class="bk-pick">${errBox}
-      <p class="bk-q" id="bk-times-l">${cur ? 'Pick a new time' : `When can ${pro} come?`}</p>
-      <div class="slots" role="radiogroup" aria-labelledby="bk-times-l" ${d.showPickErr ? 'aria-describedby="bk-slot-msg"' : ''}>
-        ${wins.map(w => { const [day, time] = split(w), on = d.picked === w.start;
-          if (sameWin(w, cur)) return `<button type="button" role="radio" aria-checked="false" disabled><span class="bk-day">${H.esc(day)}</span><small>${H.esc(time)} · Your current time</small></button>`;
-          return `<button type="button" role="radio" data-bk-slot="${H.esc(w.start)}" aria-checked="${on}"><span class="bk-day"><span class="bk-tick">${H.icon('check')}</span>${H.esc(day)}</span><small>${H.esc(time)}</small></button>`; }).join('')}
+      <p class="bk-q" id="bk-times-l">${cur ? 'When are you free?' : `When can ${pro} come?`}</p>
+      <p class="bk-sub">Pick up to ${MAX_PICK} slots. I’ll book the earliest.</p>
+      <div class="bk-days" role="group" aria-labelledby="bk-times-l" ${d.showPickErr ? 'aria-describedby="bk-slot-msg"' : ''}>
+        ${byDay(wins).map(g => `<div><h3>${H.esc(g.label)}</h3><div class="bk-chips">${g.wins.map(w => {
+          const lb = slotLabel(w);
+          if (sameWin(w, cur)) return `<button type="button" disabled aria-label="${H.esc(g.label + ', ' + lb)}, your current time">${H.esc(lb)}<small>Your time now</small></button>`;
+          const on = d.picked.includes(w.start);
+          return `<button type="button" data-bk-slot="${H.esc(w.start)}" aria-pressed="${on}" aria-label="${H.esc(g.label + ', ' + lb)}"${!on && full ? ' aria-disabled="true"' : ''}>${H.icon('check')}${H.esc(lb)}</button>`; }).join('')}</div></div>`).join('')}
       </div>
-      ${d.showPickErr ? `<p class="bk-slotmsg" id="bk-slot-msg" role="alert">${H.icon('alert')} Tap a time first.</p>` : ''}
-      <button class="btn block" data-bk-book>${H.icon('phone')} ${d.err ? 'Try booking again' : 'Book this time'}</button>
+      <p class="bk-count-line" aria-live="polite" data-bk-count>${countLine(d.picked.length)}</p>
+      ${d.showPickErr ? `<p class="bk-slotmsg" id="bk-slot-msg" role="alert">${H.icon('alert')} Tap at least one slot first.</p>` : ''}
+      <button class="btn block" data-bk-book>${H.icon('phone')} ${d.err ? 'Try booking again' : 'Book the earliest'}</button>
       <div class="bk-alt">${keep ? '<button class="btn plain" data-bk-keep>Keep my current time</button>' : ''}<button class="btn plain" data-bk-reopen>Choose a different pro</button></div>
     </div>`;
   },
@@ -330,23 +351,24 @@ H.part('scheduling', {
     const d = draft(r.id), q = quoteOf(r);
     root.querySelectorAll('[data-bk-reopen]').forEach(b => b.onclick = () => askReopen(r, !!r.booking));
     const slots = [...root.querySelectorAll('[data-bk-slot]')];
-    const pick = b => {
-      d.picked = b.dataset.bkSlot;
-      slots.forEach(x => { const on = x === b; x.setAttribute('aria-checked', String(on)); x.tabIndex = on ? 0 : -1; });
-      if (d.showPickErr) { d.showPickErr = false; const m = root.querySelector('#bk-slot-msg'); if (m) m.remove(); root.querySelector('.bk-pick .slots').removeAttribute('aria-describedby'); }
+    const sync = () => {
+      const full = d.picked.length >= MAX_PICK;
+      slots.forEach(x => { const on = d.picked.includes(x.dataset.bkSlot); x.setAttribute('aria-pressed', String(on));
+        if (!on && full) x.setAttribute('aria-disabled', 'true'); else x.removeAttribute('aria-disabled'); });
+      const c = root.querySelector('[data-bk-count]'); if (c) c.textContent = countLine(d.picked.length);
     };
-    slots.forEach((b, i) => {
-      b.tabIndex = d.picked ? (d.picked === b.dataset.bkSlot ? 0 : -1) : (i === 0 ? 0 : -1);
-      b.onclick = () => pick(b);
-      b.onkeydown = e => {
-        const k = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[e.key]; if (!k) return;
-        e.preventDefault(); const n = slots[(i + k + slots.length) % slots.length]; n.focus(); pick(n);
-      };
+    slots.forEach(b => b.onclick = () => {
+      const st = b.dataset.bkSlot, i = d.picked.indexOf(st);
+      if (i >= 0) d.picked.splice(i, 1);
+      else if (d.picked.length >= MAX_PICK) { H.toast(`You can pick up to ${MAX_PICK} slots. Tap one to remove it first.`); return; }
+      else d.picked.push(st);
+      if (d.showPickErr) { d.showPickErr = false; const m = root.querySelector('#bk-slot-msg'); if (m) m.remove(); const g = root.querySelector('.bk-days'); if (g) g.removeAttribute('aria-describedby'); }
+      sync();
     });
     const go = root.querySelector('[data-bk-book]');
-    if (go) go.onclick = () => startBooking(r, futureWindows(q).find(w => w.start === d.picked && !sameWin(w, r.booking && r.booking.window)));
+    if (go) go.onclick = () => startBooking(r, futureWindows(q).filter(w => d.picked.includes(w.start) && !sameWin(w, r.booking && r.booking.window)));
     const keep = root.querySelector('[data-bk-keep]');
-    if (keep) keep.onclick = () => startBooking(r, r.booking && r.booking.window);
+    if (keep) keep.onclick = () => startBooking(r, r.booking && r.booking.window ? [r.booking.window] : []);
     /* The picker is a full step, not a footer: bring the question into view instead of the thread's end. */
     const ask = root.querySelector('[data-bk-ask]');
     if (ask && !d.calling && !d.err && !d.showPickErr) requestAnimationFrame(() => ask.scrollIntoView({block: 'start'}));
@@ -363,9 +385,9 @@ H.part('booked', {
     if (!['scheduled', 'complete'].includes(r.status) || !r.booking) return '';
     const b = r.booking, pro = H.esc(proName(r)), s = story(r), done = r.status === 'complete';
     const note = noteOf(r);
-    let out = s.auto
-      ? H.h(`<p>Done. I booked <b>${pro}</b> for the earliest time they had.</p>`)
-      : H.h(`<p>Done. I booked <b>${pro}</b> for the time you picked.</p>`);
+    let out = s.free > 1 ? H.h(`<p>Done. I booked <b>${pro}</b> for the first of your times.</p>`)
+      : s.free === 1 ? H.h(`<p>Done. I booked <b>${pro}</b> for the time you picked.</p>`)
+      : H.h(`<p>Done. I booked <b>${pro}</b> for the earliest time they had.</p>`);
     if (s.moved) out += H.u(`Change the time to ${H.esc(H.when(b.window.start, b.window.end))}`);
     const noteRow = note
       ? `<div class="bk-note">${H.icon('key')}<div class="grow"><b>Note for ${pro}</b><p class="bk-nt">${H.esc(note)}</p>
@@ -377,6 +399,7 @@ H.part('booked', {
       <div class="top"><div class="qn">${H.icon('cal')} You’re booked</div>${done ? `<span class="tag">${H.icon('check')} Fixed</span>` : `<span class="tag">${H.icon('check')} Confirmed</span>`}</div>
       <p class="bk-said">${s.moved ? `I called ${pro} and they moved you to the new time.` : `I called ${pro} and they confirmed.`}</p>
       <p class="bk-when">${H.esc(H.when(b.window.start, b.window.end))}</p>
+      ${s.free ? `<p class="bk-free">${H.icon('clock')}You were free: ${s.free} ${s.free === 1 ? 'slot' : 'slots'}</p>` : ''}
       <p class="meta-line">${H.esc(H.money(b.amountCents))} · ${H.esc(warrantyOf(r))}</p>
       ${noteRow}
       <div class="ln"></div>

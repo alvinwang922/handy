@@ -1,7 +1,8 @@
-/* quotes.js — the price calls, every price option side by side with pros and cons, transcripts, and the one-tap
-   "approve and book" sheet. Registers H.part('quotes'). Owns status 'quotes'. Shows its history whenever the repair has outreach.
-   Flow (user review): prices are requested automatically after Send (H.autopilot). Here the user sees all options at once,
-   one clearly recommended, and a single "Yes, approve and book" calls H.approveAndBook (approve + earliest time). */
+/* quotes.js — the price calls, a 3-column side-by-side comparison with pros and cons, transcripts, and the
+   "approve and book" sheet (with "When are you free?" 2-hour slot picking). Registers H.part('quotes'). Owns status 'quotes'.
+   Flow: prices are requested automatically after Send (H.autopilot). The user compares options in aligned columns,
+   picks every 2-hour slot that works, and "Yes, approve and book" calls H.approveAndBook(r, q, '', picked).
+   "Get new prices" keeps the conversation: earlier rounds (repair.rounds) stay as history, then the new calls animate. */
 (function(){
 const H = window.H;
 if (!H) return;
@@ -23,48 +24,77 @@ if (!document.getElementById('css-quotes')) {
 .qz-said:hover{background:var(--green-tint)}
 .qz-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:2px}
 
-/* Price options: recommended full width, the others side by side when there is room */
-.qz-opts{align-self:stretch;container-type:inline-size}
-.qz-grid{display:grid;grid-template-columns:1fr;gap:12px}
-@container (min-width:600px){
-  .qz-grid{grid-template-columns:1fr 1fr}
-  .qz-grid .qz-rec{grid-column:1/-1}
-  .qz-rec .qz-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 28px;align-items:start}
-  .qz-rec .qz-pc{margin-top:2px}
-}
-.qz-opt{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:var(--r-card);padding:16px;min-width:0}
-.qz-opt.qz-rec{border:2px solid var(--green);padding:15px;box-shadow:var(--shadow)}
-.qz-opt.qz-chosen{border:2px solid var(--green);padding:15px}
-.qz-opt.qz-dim{opacity:.62}
-.qz-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.qz-name{font-weight:700;font-size:18px;line-height:1.25;margin:0}
-.qz-price{font-size:30px;font-weight:800;letter-spacing:-.01em;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
-.qz-rec .qz-price{font-size:34px}
-.qz-why{margin:8px 0 2px;color:var(--ink)}
-.qz-why .tag{margin-right:6px;vertical-align:1px}
-.qz-why .tag .ic{width:15px;height:15px}
-.qz-facts{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--ink2)}
-.qz-facts li{display:flex;align-items:center;gap:7px}
-.qz-facts .ic{width:17px;height:17px;color:var(--ink3)}
-.qz-facts .star{color:var(--amber)}
-.qz-pc{margin-top:12px;display:flex;flex-direction:column;gap:6px}
-.qz-pc ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
-.qz-pc li{display:flex;align-items:flex-start;gap:8px;font-size:16px;line-height:1.35}
+/* Price options: true side-by-side comparison. One column per pro, rows aligned through subgrid
+   (same row = same thing: name, price, why, rating, when, guarantee, good, not so good, button). */
+.qz-opts{align-self:stretch;container-type:inline-size;margin:2px 0}
+.qz-cmp{display:grid;grid-template-columns:repeat(var(--k,3),minmax(0,1fr));grid-template-rows:repeat(9,auto);column-gap:10px;row-gap:0;list-style:none;margin:0;padding:0}
+.qz-col{grid-row:1/span 9;display:grid;grid-template-rows:subgrid;background:#fff;border:1px solid var(--line);border-radius:var(--r-card);padding:8px 0 14px;min-width:0}
+.qz-col.qz-rec,.qz-col.qz-chosen{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green),var(--shadow)}
+.qz-col.qz-dim{opacity:.62}
+.qz-c{padding:5px 14px;min-width:0}
+.qz-c:empty{padding:0}
+.qz-hd{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding-top:6px}
+.qz-name{font-weight:700;font-size:17px;line-height:1.25;margin:0;text-wrap:balance}
+.qz-hd .tag .ic{width:15px;height:15px}
+.qz-price{font-size:30px;font-weight:800;letter-spacing:-.01em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.qz-why{font-size:15px;line-height:1.35;color:var(--ink)}
+.qz-f{display:flex;align-items:flex-start;gap:7px;font-size:15px;line-height:1.35;color:var(--ink2)}
+.qz-f .ic{width:17px;height:17px;color:var(--ink3);margin-top:1px}
+.qz-f .star{color:var(--amber)}
+.qz-f + .qz-f{padding-top:3px}
+.qz-pc ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.qz-pc li{display:flex;align-items:flex-start;gap:7px;font-size:15px;line-height:1.35}
+.qz-pc.qz-pros{padding-top:10px;border-top:1px solid var(--line);margin:6px 14px 0;padding-inline:0}
 .qz-pro{color:var(--ink)}
-.qz-pro .ic{width:18px;height:18px;color:var(--green);margin-top:1px}
+.qz-pro .ic{width:17px;height:17px;color:var(--green);margin-top:1px}
 .qz-con{color:var(--ink2)}
-.qz-con::before{content:"";flex:none;width:12px;height:2px;margin:10px 3px 0;border-radius:1px;background:var(--ink3)}
-.qz-fine{margin:12px 0 0;font-size:15px;color:var(--ink2)}
-.qz-cta{margin-top:auto;padding-top:14px}
-.qz-cta .btn{width:100%;min-height:52px}
-.qz-done{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-weight:700;color:var(--green);font-size:15px}
+.qz-con::before{content:"";flex:none;width:11px;height:2px;margin:9px 3px 0;border-radius:1px;background:var(--ink3)}
+.qz-cta{align-self:end;padding-top:12px}
+.qz-cta .btn{width:100%;min-height:52px;padding:8px 12px;font-size:16px;line-height:1.2;text-align:center}
+.qz-done{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--green);font-size:15px}
 .qz-done .ic{width:18px;height:18px}
+.qz-swipe{display:none}
+@supports not (grid-template-rows:subgrid){
+  .qz-col{display:flex;flex-direction:column}
+  .qz-cta{margin-top:auto}
+}
+/* Narrow thread (phones, tablets with the list open): columns scroll sideways and snap, never stack */
+@container (max-width:559px){
+  .qz-cmp{grid-template-columns:repeat(var(--k,3),84%);overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;
+    margin:0 -16px;padding:2px 16px 10px;scroll-padding-inline:16px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  .qz-cmp[data-k="1"]{grid-template-columns:100%}
+  .qz-col{scroll-snap-align:start}
+  .qz-swipe{display:flex}
+}
 @media (prefers-reduced-motion:no-preference){
-  .qz-in .qz-opt{animation:qzIn .5s cubic-bezier(.16,1,.3,1) both}
-  .qz-in .qz-opt:nth-child(2){animation-delay:.08s}
-  .qz-in .qz-opt:nth-child(3){animation-delay:.16s}
+  .qz-in .qz-col{animation:qzIn .5s cubic-bezier(.16,1,.3,1) both}
+  .qz-in .qz-col:nth-child(2){animation-delay:.08s}
+  .qz-in .qz-col:nth-child(3){animation-delay:.16s}
 }
 @keyframes qzIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Earlier price rounds kept in the conversation */
+.bu.h.qz-old{background:var(--pinned);color:var(--ink2);border:1px solid var(--line)}
+.bu.u.qz-again{display:inline-flex;align-items:center;gap:8px}
+.bu.u.qz-again .ic{width:18px;height:18px}
+
+/* "When are you free?" slot picker */
+.qz-when{margin:20px 0 4px}
+.qz-when h3{font-size:19px;line-height:1.25;margin:0 0 4px}
+.qz-when .qz-hint{margin:0 0 14px;color:var(--ink2);font-size:16px}
+.qz-day{margin:0 0 14px;border:0;padding:0}
+.qz-day legend{font-size:15px;font-weight:700;color:var(--ink2);margin:0 0 6px;padding:0}
+.qz-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.qz-chip{min-height:48px;padding:6px 4px;border:1.5px solid #C9C3B6;border-radius:12px;background:#fff;color:var(--ink);font-weight:700;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap;font-variant-numeric:tabular-nums;transition:background-color .15s ease-out,border-color .15s ease-out}
+.qz-chip:hover{border-color:var(--green)}
+.qz-chip .ic{width:15px;height:15px;display:none}
+.qz-chip[aria-pressed="true"]{border-color:var(--green);background:var(--green-tint);color:var(--green)}
+.qz-chip[aria-pressed="true"] .ic{display:block}
+@media (max-width:419px){.qz-chip[aria-pressed="true"] .ic{display:none}.qz-chip[aria-pressed="true"]{box-shadow:inset 0 0 0 1px var(--green)}}
+.qz-chip:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line)}
+.qz-pick-msg{margin:2px 0 0;font-size:15px;color:var(--ink2);display:flex;align-items:center;gap:6px;min-height:22px}
+.qz-pick-msg .ic{width:17px;height:17px}
+.qz-pick-msg[data-warn]{color:var(--amber);font-weight:700}
 
 /* Transcript sheet */
 .qz-lead{margin:0 0 14px;color:var(--ink2)}
@@ -116,6 +146,8 @@ const seenList = () => { try { return JSON.parse(sessionStorage.getItem(SEEN_KEY
 const isSeen = id => seenList().includes(id);
 const markSeen = id => { try { const s = seenList(); if (!s.includes(id)) { s.push(id); sessionStorage.setItem(SEEN_KEY, JSON.stringify(s.slice(-200))); } } catch {} };
 const unSeen = id => { try { sessionStorage.setItem(SEEN_KEY, JSON.stringify(seenList().filter(x => x !== id))); } catch {} };
+/* Each price round animates once: round 0 keeps the legacy key (repair id), later rounds add their number. */
+const roundKey = r => { const n = (r.rounds || []).length; return n ? `${r.id}:${n}` : r.id; };
 const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wait = ms => new Promise(res => setTimeout(res, ms));
 
@@ -125,6 +157,22 @@ const first = name => String(name || '').trim().split(/\s+/)[0] || 'this pro';
 const dollars = n => n == null ? '' : '$' + Number(n).toLocaleString('en-US');
 const gDays = w => { const m = String(w || '').match(/(\d+)\s*-?\s*day/i); return m ? Number(m[1]) : 0; };
 const guarantee = w => gDays(w) ? `${gDays(w)}-day guarantee on the work` : (w || 'No guarantee mentioned');
+const guaranteeShort = w => gDays(w) ? `${gDays(w)}-day guarantee` : (w || 'No guarantee mentioned');
+/* 2-hour slots: "8–10 am", "10 am–12 pm", "12–2 pm" */
+const hm = d => { const h = d.getHours(), m = d.getMinutes(); return { t: (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : ''), ap: h < 12 ? 'am' : 'pm' }; };
+const slotText = w => {
+  const a = hm(new Date(w.start)), b = hm(new Date(w.end));
+  if (b.t === '12' && b.ap === 'pm') return `${a.t} ${a.ap}–noon`;
+  return a.ap === b.ap ? `${a.t}–${b.t} ${b.ap}` : `${a.t} ${a.ap}–${b.t} ${b.ap}`;
+};
+const dayText = iso => {
+  const d = new Date(iso), today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((new Date(iso).setHours(0, 0, 0, 0) - today) / 864e5);
+  const base = d.toLocaleDateString('en-US', {weekday:'long', month:'short', day:'numeric'});
+  return diff === 0 ? `Today, ${base}` : diff === 1 ? `Tomorrow, ${base}` : base;
+};
+const byDay = ws => ws.reduce((acc, w) => { const k = new Date(w.start).toDateString(), g = acc.find(x => x.k === k); if (g) g.ws.push(w); else acc.push({k, ws:[w]}); return acc; }, []);
+const MAX_SLOTS = 6;
 const futureWins = q => (q.windows || []).filter(w => Date.parse(w.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 const soonest = q => { const w = futureWins(q)[0]; return w ? Date.parse(w.start) : Infinity; };
 const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
@@ -205,8 +253,9 @@ const stageAt = (c, i, t) => {
 };
 const starts = {};
 const revealed = new Set();
-const animating = r => r.status === 'quotes' && r.outreach && r.outreach.length && !isSeen(r.id) && !reduced();
-const elapsed = r => starts[r.id] ? Date.now() - starts[r.id] : 0;
+const autoRun = new Set();
+const animating = r => r.status === 'quotes' && r.outreach && r.outreach.length && !isSeen(roundKey(r)) && !reduced();
+const elapsed = r => starts[roundKey(r)] ? Date.now() - starts[roundKey(r)] : 0;
 
 const STAGE = {
   wait: ['wait', () => `${icon('clock')} Waiting`],
@@ -230,28 +279,44 @@ const callRow = (r, c, i, stage) => {
   </div>`;
 };
 
-/* ---------- Price option card ---------- */
-const optionCard = (r, q, all, i) => {
-  const rec = i === 0 && all.length > 0;
+/* ---------- Comparison column (9 aligned rows; empty cells collapse) ---------- */
+const optionCol = (r, q, all, i) => {
   const a = r.approval, open = r.status === 'quotes' && !a;
+  const rec = i === 0 && all.length > 1 && !a;
   const chosen = a && a.quoteId === q.id;
   const {pro, con} = prosCons(q, all);
-  const cls = ['qz-opt', rec && !a ? 'qz-rec' : '', chosen ? 'qz-chosen' : '', a && !chosen ? 'qz-dim' : ''].filter(Boolean).join(' ');
-  const pcList = (items, kind, label) => items.length ? `<ul aria-label="${label}">${items.map(t => `<li class="qz-${kind}">${kind === 'pro' ? icon('check') : ''}<span>${esc(t)}</span></li>`).join('')}</ul>` : '';
-  return `<article class="${cls}" aria-label="${esc(q.name)}, ${esc(H.money(q.amountCents))}${rec ? ', recommended' : ''}">
-    <div class="qz-head"><h3 class="qz-name">${esc(q.name)}</h3><div class="qz-price">${H.money(q.amountCents)}</div></div>
-    ${rec ? `<p class="qz-why"><span class="tag">${icon('check')} Recommended</span>${esc(recReason(q, all))}</p>` : ''}
-    <div class="qz-body">
-      <ul class="qz-facts">
-        <li>${icon('star','star')} ${esc(q.rating)} stars · ${esc(q.reviews)} reviews</li>
-        <li>${icon('clock')} Can come ${esc(win(q))}</li>
-        <li>${icon('shield')} ${esc(guarantee(q.warranty))}</li>
-      </ul>
-      ${pro.length || con.length ? `<div class="qz-pc">${pcList(pro, 'pro', 'Pros')}${pcList(con, 'con', 'Cons')}</div>` : ''}
-    </div>
-    ${open ? `<div class="qz-cta"><button type="button" class="btn${rec ? '' : ' ghost'}" data-book="${esc(q.id)}">Book ${esc(first(q.name))} for ${H.money(q.amountCents)}</button></div>` : ''}
-    ${chosen ? `<span class="qz-done">${icon('check')} You approved this one</span>` : ''}
-  </article>`;
+  const cls = ['qz-col', rec ? 'qz-rec' : '', chosen ? 'qz-chosen' : '', a && !chosen ? 'qz-dim' : ''].filter(Boolean).join(' ');
+  const list = (items, kind, label) => items.length ? `<ul aria-label="${label}">${items.map(t => `<li class="qz-${kind}">${kind === 'pro' ? icon('check') : ''}<span>${esc(t)}</span></li>`).join('')}</ul>` : '';
+  const cta = open ? `<button type="button" class="btn${rec || all.length === 1 ? '' : ' ghost'}" data-book="${esc(q.id)}">Book ${esc(first(q.name))} for ${H.money(q.amountCents)}</button>`
+    : chosen ? `<span class="qz-done">${icon('check')} You approved this one</span>` : '';
+  return `<li class="${cls}" aria-label="${esc(q.name)}, ${esc(H.money(q.amountCents))}${rec ? ', recommended' : ''}">`
+    + `<div class="qz-c qz-hd"><h3 class="qz-name">${esc(q.name)}</h3>${rec ? `<span class="tag">${icon('check')} Recommended</span>` : ''}</div>`
+    + `<div class="qz-c qz-price">${H.money(q.amountCents)}</div>`
+    + `<div class="qz-c qz-why">${rec ? esc(recReason(q, all)) : ''}</div>`
+    + `<div class="qz-c qz-f">${icon('star','star')}<span>${esc(q.rating)} stars · ${esc(q.reviews)} reviews</span></div>`
+    + `<div class="qz-c qz-f">${icon('clock')}<span>Can come ${esc(win(q))}</span></div>`
+    + `<div class="qz-c qz-f">${icon('shield')}<span>${esc(guaranteeShort(q.warranty))}</span></div>`
+    + `<div class="qz-c qz-pc qz-pros">${list(pro, 'pro', 'Good')}</div>`
+    + `<div class="qz-c qz-pc">${list(con, 'con', 'Not so good')}</div>`
+    + `<div class="qz-c qz-cta">${cta}</div>`
+    + `</li>`;
+};
+
+/* ---------- Earlier rounds, kept as conversation ---------- */
+const roundsHtml = r => {
+  const rounds = r.rounds || [];
+  return rounds.map((rd, idx) => {
+    const qs = (rd.quotes || []).slice().sort((x, y) => x.amountCents - y.amountCents);
+    let sum = qs.length ? `Earlier prices: ${qs.map(q => `${esc(q.name)} ${H.money(q.amountCents)}`).join(', ')}.` : 'Last time, no one gave me a price.';
+    if (rd.booking && rd.approval) sum += ` You had said yes to ${esc(rd.approval.providerName)} and booked a visit. Both were cancelled.`;
+    else if (rd.approval) sum += ` You had said yes to ${esc(rd.approval.providerName)}. That was cancelled.`;
+    const last = idx === rounds.length - 1;
+    /* Only say we're calling when this round is actually under way (or done). */
+    const calling = !last || (r.outreach || []).length || r.status === 'assessment';
+    return `<div class="bu h qz-old"><p>${sum}</p></div>`
+      + H.u('Get new prices')
+      + (calling ? H.h(`<p>Calling pros again for fresh prices…</p>`) : '');
+  }).join('');
 };
 
 /* ---------- Sheets ---------- */
@@ -289,20 +354,27 @@ const confirmReopen = async r0 => {
     : a ? `This also cancels your yes to ${esc(a.providerName)} for ${H.money(a.amountCents)}.`
     : 'Nobody is booked.';
   H.sheet('Get new prices?', `
-    <p class="qz-lead" style="color:var(--ink)">I’ll clear the prices you have now and call again for fresh ones. ${what}</p>
+    <p class="qz-lead" style="color:var(--ink)">I’ll call pros again for fresh prices. The prices you have now stay in this chat. ${what}</p>
     <div class="qz-err" data-err hidden></div>
     <div class="qz-act"><button type="button" class="btn" data-go>${icon('refresh')} Yes, get new prices</button>
     <button type="button" class="btn plain" data-keep>Keep these prices</button></div>`, (d, close) => {
     d.querySelector('[data-keep]').onclick = close;
     const go = d.querySelector('[data-go]');
     go.onclick = async () => {
-      go.disabled = true; go.textContent = 'Clearing…';
-      const res = await H.mutate(r.id, 'reopen', {});
-      if (!res) { showErr(d, 'Couldn’t clear the prices. Please try again.'); go.disabled = false; go.innerHTML = `${icon('refresh')} Yes, get new prices`; return; }
-      unSeen(r.id); close();
-      /* autonomous: call again straight away */
-      if (H.autopilot) await H.autopilot(res);
-      H.scrollToEnd();
+      if (H.state.busy) return;
+      go.disabled = true; go.textContent = 'Asking again…';
+      let res = null;
+      H.state.busy = true; H.state.error = null;
+      try { ({ repair: res } = await H.api('POST', `/api/repairs/${encodeURIComponent(r.id)}/reopen`, {})); } catch (e) { H.state.error = null; }
+      H.state.busy = false;
+      if (!res) { showErr(d, 'Couldn’t ask for new prices. Please try again.'); go.disabled = false; go.innerHTML = `${icon('refresh')} Yes, get new prices`; return; }
+      /* The new round animates its calls: clear its seen flag. */
+      unSeen(roundKey(res)); delete starts[roundKey(res)]; autoRun.add(roundKey(res));
+      close();
+      /* Start calling before the first paint, so the thread shows "Calling pros again…" (not a stalled dock). */
+      const job = H.autopilot ? H.autopilot(res) : null;
+      H.upsert(res); H.scrollToEnd();
+      if (job) { await job; H.scrollToEnd(); }
     };
   });
 };
@@ -310,7 +382,7 @@ const confirmReopen = async r0 => {
 const approveSheet = (r, q) => {
   const prop = H.prop ? H.prop(r.property) : null;
   const total = H.money(q.amountCents), name = q.name;
-  const next = futureWins(q)[0];
+  const slots = futureWins(q).slice(0, 15), groups = byDay(slots);
   const yesLabel = `${icon('check')} Yes, approve and book ${total}`;
   H.sheet('Approve and book?', `
     <dl class="qz-ok">
@@ -320,11 +392,20 @@ const approveSheet = (r, q) => {
       <div><dt>What they’ll do</dt><dd>${esc(q.scope || r.title)}</dd></div>
       <div><dt>If they find more</dt><dd>${esc(q.conditions || 'Extra work needs a new OK from you.')}</dd></div>
       <div><dt>Guarantee</dt><dd>${esc(guarantee(q.warranty))}</dd></div>
-      <div><dt>When</dt><dd>${next ? esc(H.when(next.start, next.end)) : 'Their earliest open time'}<small>I’ll book the earliest time they offered. You can change it later.</small></dd></div>
       <div><dt>Where</dt><dd>${esc(prop ? prop.name : 'Your property')}<small>The exact address is shared only after you say yes.</small></dd></div>
     </dl>
     <div class="note">${icon('info')}<span>Nothing is booked until you say yes. ${H.demo('Demo · simulated price and call')}</span></div>
     <div data-form>
+      <section class="qz-when" aria-labelledby="qz-when-h">
+        <h3 id="qz-when-h">When are you free?</h3>
+        ${slots.length ? `<p class="qz-hint">Pick every 2-hour slot that works. I’ll book the first one they can do.</p>
+        ${groups.map(g => `<fieldset class="qz-day"><legend>${esc(dayText(g.ws[0].start))}</legend><div class="qz-chips">${g.ws.map(w => {
+          const i = slots.indexOf(w);
+          return `<button type="button" class="qz-chip" data-slot="${i}" aria-pressed="false" aria-label="${esc(H.when(w.start, w.end))}">${icon('check')}<span>${esc(slotText(w))}</span></button>`;
+        }).join('')}</div></fieldset>`).join('')}
+        <p class="qz-pick-msg" data-pick-msg aria-live="polite"></p>`
+        : `<p class="qz-hint">They didn’t offer any times yet. After you say yes, you can pick a time with them.</p>`}
+      </section>
       <label class="qz-consent"><input type="checkbox" data-consent required><span>I approve this pro and this provisional price.</span></label>
       <div class="qz-err" data-err hidden></div>
       <div class="qz-act"><button type="button" class="btn" data-yes disabled>${yesLabel}</button>
@@ -339,18 +420,32 @@ const approveSheet = (r, q) => {
     const box = d.querySelector('[data-consent]'), yes = d.querySelector('[data-yes]');
     const form = d.querySelector('[data-form]'), prog = d.querySelector('[data-progress]');
     const step = (n, s, text) => { const li = d.querySelector(`[data-step="${n}"]`); if (!li) return; li.dataset.s = s; if (text) li.querySelector('[data-t]').textContent = text; if (s === 'done') li.querySelector('.dot').innerHTML = icon('check'); };
-    box.onchange = () => { yes.disabled = !box.checked; };
+    /* Slot picking: multi-select up to MAX_SLOTS, at least one when the pro offered times */
+    const picked = new Set(), chips = [...d.querySelectorAll('[data-slot]')], msg = d.querySelector('[data-pick-msg]');
+    const needSlot = () => slots.length > 0 && picked.size === 0;
+    const sync = () => {
+      chips.forEach(c => { const on = picked.has(Number(c.dataset.slot)); c.setAttribute('aria-pressed', String(on)); c.disabled = !on && picked.size >= MAX_SLOTS; });
+      if (msg) {
+        if (!picked.size) { msg.innerHTML = box.checked ? `${icon('alert')}<span>Pick at least one time so I can book it.</span>` : '<span>Pick at least one time.</span>'; if (box.checked) msg.dataset.warn = ''; else delete msg.dataset.warn; }
+        else { delete msg.dataset.warn; msg.innerHTML = `${icon('check')}<span>${picked.size} ${picked.size === 1 ? 'time' : 'times'} picked${picked.size >= MAX_SLOTS ? ' (that’s the most I can send)' : ''}.</span>`; }
+      }
+      yes.disabled = !box.checked || needSlot();
+    };
+    chips.forEach(c => c.onclick = () => { const i = Number(c.dataset.slot); if (picked.has(i)) picked.delete(i); else if (picked.size < MAX_SLOTS) picked.add(i); sync(); });
+    const pickedWindows = () => [...picked].sort((a, b) => a - b).map(i => slots[i]);
+    box.onchange = sync;
+    sync();
     d.querySelector('[data-no]').onclick = close;
     let running = false;
     d.addEventListener('cancel', e => { if (running) e.preventDefault(); });
     yes.onclick = async () => {
-      if (!box.checked || running) return;
+      if (!box.checked || needSlot() || running) return;
       running = true;
       const closeBtn = d.querySelector('[data-close]'); if (closeBtn) closeBtn.disabled = true;
       form.hidden = true; prog.hidden = false;
       step(1, 'on', 'Saying yes…'); step(2, 'wait', `Calling ${name} to book…`);
       const minShow = wait(reduced() ? 300 : 900);
-      const job = H.approveAndBook(r, q, '');
+      const job = H.approveAndBook(r, q, '', pickedWindows());
       await minShow; step(1, 'done', `You said yes to ${name} for ${total}`); step(2, 'on');
       const res = await job;
       await wait(reduced() ? 200 : 1100);
@@ -366,7 +461,7 @@ const approveSheet = (r, q) => {
       const fresh = H.repair(r.id) || r;
       if (fresh.status === 'scheduled') { close(); H.scrollToEnd(); return; }
       prog.hidden = true; form.hidden = false;
-      yes.disabled = !box.checked; yes.innerHTML = yesLabel;
+      yes.innerHTML = yesLabel; sync();
       if (fresh.approval && fresh.approval.quoteId === q.id) {
         yes.disabled = true;
         showErr(d, `You said yes to ${fresh.approval.providerName} for ${H.money(fresh.approval.amountCents)}, but I couldn’t book a time with them yet. Pick a time and I’ll call again.`, () => { close(); H.scrollToEnd(); }, 'Pick a time', 'cal');
@@ -391,10 +486,12 @@ H.part('quotes', {
   owns: ['quotes'],
   history(r) {
     const calls = r.outreach || [];
-    if (!calls.length) return '';
+    const again = (r.rounds || []).length > 0;
+    const earlier = roundsHtml(r);
+    if (!calls.length) return earlier;
     const anim = animating(r), t = anim ? elapsed(r) : Infinity;
     const n = calls.length;
-    let html = H.h(`<p>Now I’m calling ${n} ${esc(pros(r, n))} for prices. I tell each one I’m an AI assistant, and I don’t give them your address or book anything.</p>`) +
+    let html = earlier + (again ? '' : H.h(`<p>Now I’m calling ${n} ${esc(pros(r, n))} for prices. I tell each one I’m an AI assistant, and I don’t give them your address or book anything.</p>`)) +
       `<div class="qz-calls" data-qz-calls="${esc(r.id)}">
         <div class="calls" aria-live="off">${calls.map((c, i) => callRow(r, c, i, stageAt(c, i, t))).join('')}</div>
         <p class="meta-line qz-foot">${H.demo('Demo · simulated calls')}${anim ? ' <span>You can leave. The prices will be here when you come back.</span>' : ''}</p>
@@ -407,11 +504,12 @@ H.part('quotes', {
       const k = opts.length;
       const intro = k === 1
         ? `I got 1 price. Here it is, with everything they told me.`
-        : `I got ${k} prices. Here they all are, best match first, with the good and the not-so-good of each. Prices include parts and labor and are confirmed on site.`;
+        : `I got ${k} ${again ? 'fresh ' : ''}prices. Here they are side by side, best match first. Prices include parts and labor and are confirmed on site.`;
       html += H.h(`<p>${intro}</p>`);
       const fresh = revealed.has(r.id); revealed.delete(r.id);
-      html += `<section class="qz-opts${fresh ? ' qz-in' : ''}" aria-label="Price options"><div class="qz-grid">${opts.map((q, i) => optionCard(r, q, opts, i)).join('')}</div>
-        <p class="meta-line qz-foot">${H.demo('Demo · simulated prices')}</p></section>`;
+      html += `<section class="qz-opts${fresh ? ' qz-in' : ''}" aria-label="Compare prices">
+        <ul class="qz-cmp" data-k="${k}" style="--k:${k}">${opts.map((q, i) => optionCol(r, q, opts, i)).join('')}</ul>
+        <p class="meta-line qz-foot">${k > 1 ? `<span class="qz-swipe">Swipe to see all ${k}.</span>` : ''}${H.demo('Demo · simulated prices')}</p></section>`;
     } else {
       html += H.h(`<p>No one gave me a price this time. Tap “Get new prices” and I’ll try again.</p>`);
     }
@@ -439,6 +537,12 @@ H.part('quotes', {
   },
   bind(root, r) {
     const calls = r.outreach || [];
+    /* "Get new prices" from anywhere (e.g. the booked dock) continues by itself: call again right after a fresh reopen. */
+    const rounds = r.rounds || [];
+    if (r.status === 'assessment' && rounds.length && !autoRun.has(roundKey(r)) && H.autopilot) {
+      const last = rounds[rounds.length - 1];
+      if (Date.now() - Date.parse(last.endedAt) < 20000) { autoRun.add(roundKey(r)); unSeen(roundKey(r)); H.autopilot(r); }
+    }
     if (!calls.length) return;
 
     root.querySelectorAll('[data-said]').forEach(b => b.onclick = () => { const c = calls[Number(b.dataset.said)]; if (c) transcriptSheet(r, c); });
@@ -451,11 +555,12 @@ H.part('quotes', {
       else if (k === 'reopen') confirmReopen(r);
     });
 
-    if (r.status === 'quotes' && reduced()) markSeen(r.id);
+    if (r.status === 'quotes' && reduced()) markSeen(roundKey(r));
     if (!animating(r)) return;
 
     /* Live call animation: resumes from where it was if the view re-renders. */
-    if (!starts[r.id]) starts[r.id] = Date.now();
+    const rk = roundKey(r);
+    if (!starts[rk]) starts[rk] = Date.now();
     const box = root.querySelector(`[data-qz-calls="${CSS.escape(r.id)}"]`); if (!box) return;
     const pinS = root.querySelector('.pin .s'), live = box.querySelector('[data-qz-live]');
     const n = calls.length;
@@ -482,7 +587,7 @@ H.part('quotes', {
       (c.status === 'completed' ? [s, s + RING, s + RING + TALK] : [s, s + NOANSWER]).forEach(m => marks.add(m));
     });
     [...marks].filter(m => m > t0).forEach(m => H.later(m - t0 + 20, () => paint(true)));
-    H.later(Math.max(0, totalMs(r) - t0), () => { markSeen(r.id); delete starts[r.id]; revealed.add(r.id); H.render(); H.scrollToEnd(); });
+    H.later(Math.max(0, totalMs(r) - t0), () => { markSeen(rk); delete starts[rk]; revealed.add(r.id); H.render(); H.scrollToEnd(); });
   }
 });
 })();

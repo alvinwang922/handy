@@ -12,7 +12,8 @@ export function createStore(path) {
       repair_id TEXT NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,
       data TEXT NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS events_repair_id ON events(repair_id, sequence);`);
+    CREATE INDEX IF NOT EXISTS events_repair_id ON events(repair_id, sequence);
+    CREATE TABLE IF NOT EXISTS houses (id TEXT PRIMARY KEY, data TEXT NOT NULL);`);
   let closed = false;
   return {
     transaction(fn) {
@@ -29,7 +30,9 @@ export function createStore(path) {
         : db.prepare('SELECT sequence, data FROM events ORDER BY sequence').all();
       return rows.map(row => ({ ...JSON.parse(row.data), sequence: row.sequence }));
     },
-    clear() { db.exec('DELETE FROM repairs'); },
+    houses: () => db.prepare('SELECT data FROM houses ORDER BY rowid').all().map(r => JSON.parse(r.data)),
+    putHouse(house) { db.prepare('INSERT INTO houses (id, data) VALUES (?, ?)').run(house.id, JSON.stringify(house)); },
+    clear() { db.exec('DELETE FROM repairs; DELETE FROM houses'); },
     close() { if (!closed) { db.close(); closed = true; } }
   };
 }

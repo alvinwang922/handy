@@ -1,6 +1,7 @@
 /* dash-owner.js — the homeowner's home screen (#/ in owner.html).
    Registers H.ui.dashboard.owner = {render(state), bind(root)}. Owner: dash-owner module.
-   Reads H.myRepairs() (Maple House only). Every action either opens a repair or starts a report;
+   Reads H.myProperties() / H.myRepairs(): one or more houses. With several houses, "Happening now" groups by house.
+   "Add a house" goes to #/settings (settings.js). Every action either opens a repair or starts a report;
    approval and booking stay inside the repair thread. */
 (function(){
 const H = window.H;
@@ -11,8 +12,19 @@ const css = `
 .do{flex:1;padding:28px 32px 48px;display:flex;flex-direction:column;gap:28px}
 .do h1{font-size:36px;line-height:1.1;letter-spacing:-.015em;margin:0;text-wrap:balance}
 .do-hi p{margin:8px 0 0;font-size:19px;color:var(--ink2);max-width:58ch;text-wrap:pretty}
-.do-hi .do-place{display:inline-flex;align-items:center;gap:6px;font-size:15px;color:var(--ink3);margin-top:10px}
-.do-hi .do-place .ic{width:16px;height:16px}
+.do-houses{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:10px;font-size:16px;color:var(--ink2)}
+.do-houses .do-hs{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.do-houses .do-hs .ic{width:18px;height:18px;color:var(--ink3);flex:none}
+.do-houses .do-hs b{color:var(--ink);font-weight:700}
+.do-addh{min-height:48px;padding:0 4px;border:0;background:none;color:var(--green);font:inherit;font-size:16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1.5px}
+.do-addh:hover{color:var(--green-press)}
+.do-addh .ic{width:18px;height:18px}
+.do-group{display:flex;flex-direction:column;gap:12px}
+.do-group+.do-group{margin-top:22px}
+.do-group h3{margin:0;font-size:17px;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.do-group h3 .ic{width:18px;height:18px;color:var(--ink3)}
+.do-group h3 .c{font-size:15px;font-weight:600;color:var(--ink3);font-variant-numeric:tabular-nums}
+.do-calm{margin:18px 0 0;font-size:15px;color:var(--ink3)}
 
 .do-report{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px 28px;align-items:center;background:var(--green);color:#fff;border-radius:24px;padding:26px 28px;box-shadow:0 10px 28px rgba(36,83,63,.22),0 2px 4px rgba(36,83,63,.12)}
 .do-report h2{margin:0;font-size:26px;line-height:1.15;letter-spacing:-.01em}
@@ -127,6 +139,7 @@ const proName = r => (r.approval && r.approval.providerName)
   || ((r.quotes || []).find(q => r.booking && q.id === r.booking.quoteId) || {}).name || 'your pro';
 const isHazard = r => r.status === 'hazard' || !!(r.assessment && r.assessment.hazard && r.status !== 'complete');
 const photoOf = r => (r.photos || []).find(p => typeof p === 'string' && (p.startsWith('/assets/') || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/.test(p)));
+const houseName = r => (H.prop(r.property) || {}).name || '';
 const firstName = st => String((st.actor && st.actor.name) || (H.prop('p1') || {}).tenant || 'Jamie').trim().split(/\s+/)[0];
 const ORDER = { hazard:0, quotes:1, scheduling:2, assessment:3, scheduled:4 };
 const startOf = r => r.booking && r.booking.window ? Date.parse(r.booking.window.start) : Infinity;
@@ -190,6 +203,7 @@ const card = r => {
   </article>`;
 };
 
+let multi = false;
 const visit = r => {
   const s = new Date(r.booking.window.start);
   const wd = s.toLocaleDateString('en-US', {weekday:'short'}), d = s.getDate(), m = s.toLocaleDateString('en-US', {month:'short'});
@@ -198,7 +212,7 @@ const visit = r => {
   return `<div class="do-visit">
     <div class="do-date" aria-hidden="true"><div class="wd">${H.esc(wd)}</div><div class="d">${d}</div><div class="m">${H.esc(m)}</div></div>
     <div><div class="t">${H.esc(r.title)}</div>
-      <div class="s"><span class="sr">${H.esc(s.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}))}, </span>${H.esc(time)} · ${H.esc(proName(r))}${price ? ' · ' + H.esc(price) : ''}</div>
+      <div class="s"><span class="sr">${H.esc(s.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}))}, </span>${H.esc(time)} · ${multi && houseName(r) ? H.esc(houseName(r)) + ' · ' : ''}${H.esc(proName(r))}${price ? ' · ' + H.esc(price) : ''}</div>
       <div class="do-va"><button class="do-cal" data-ics="${H.esc(r.id)}">${H.icon('cal')} Add to calendar</button>
         <button class="do-open" data-nav="#/repair/${H.esc(r.id)}">Details</button></div></div>
   </div>`;
@@ -207,7 +221,7 @@ const visit = r => {
 const doneRow = r => {
   const price = r.approval ? H.money(r.approval.amountCents) : '';
   return `<button class="do-done" data-nav="#/repair/${H.esc(r.id)}"><span class="ok">${H.icon('check')}</span>
-    <span class="grow"><span class="t">${H.esc(r.title)}</span><br><span class="s">Fixed by ${H.esc(proName(r))}${price ? ' · ' + H.esc(price) : ''}</span></span>${H.icon('chev')}</button>`;
+    <span class="grow"><span class="t">${H.esc(r.title)}</span><br><span class="s">${multi && houseName(r) ? H.esc(houseName(r)) + ' · ' : ''}Fixed by ${H.esc(proName(r))}${price ? ' · ' + H.esc(price) : ''}</span></span>${H.icon('chev')}</button>`;
 };
 
 const reportPanel = empty => `<section class="do-report" aria-labelledby="do-rp">
@@ -230,6 +244,23 @@ const statusLine = (active, coming, done, place) => {
   return `Welcome to Handy. When something breaks at ${H.esc(place)}, we’ll sort it out together.`;
 };
 
+const housesLine = houses => {
+  const names = houses.map(h => h.name);
+  const what = houses.length > 1 ? `<b>${houses.length} houses</b> · ${H.esc(names.join(', '))}` : houses.length ? `<b>${H.esc(names[0])}</b>` : 'No house added yet';
+  return `<div class="do-houses"><span class="do-hs">${H.icon('home')}<span>${what}</span></span>
+    <button type="button" class="do-addh" data-nav="#/settings">${H.icon('plus')} Add a house</button></div>`;
+};
+const nowList = (active, houses) => {
+  if (!active.length) return `<p class="do-quiet">Nothing needs fixing right now.</p>`;
+  if (houses.length < 2) return `<div class="do-cards">${active.map(card).join('')}</div>`;
+  const groups = houses.map(h => ({h, list: active.filter(r => r.property === h.id)}));
+  const busy = groups.filter(g => g.list.length), calm = groups.filter(g => !g.list.length);
+  return busy.map(g => `<div class="do-group" role="group" aria-labelledby="do-g-${H.esc(g.h.id)}">
+      <h3 id="do-g-${H.esc(g.h.id)}">${H.icon('home')}${H.esc(g.h.name)} <span class="c">${g.list.length}</span></h3>
+      <div class="do-cards">${g.list.map(card).join('')}</div></div>`).join('')
+    + (calm.length ? `<p class="do-calm">Nothing open at ${H.esc(calm.map(g => g.h.name).join(', '))}.</p>` : '');
+};
+
 const welcome = () => `<section class="do-sec" aria-labelledby="do-how"><h2 id="do-how">How Handy works</h2>
   <ol class="do-welcome">
     <li><span class="n">1</span><span class="t">Show us what’s wrong</span><span class="s">Take a photo and say what’s happening, in your own words.</span></li>
@@ -242,7 +273,9 @@ const welcome = () => `<section class="do-sec" aria-labelledby="do-how"><h2 id="
 H.ui.dashboard = H.ui.dashboard || {};
 H.ui.dashboard.owner = {
   render(st) {
-    const mine = H.myRepairs(), place = (H.prop('p1') || {}).name || 'Maple House';
+    const houses = H.myProperties(), mine = H.myRepairs();
+    multi = houses.length > 1;
+    const place = houses.length === 1 ? houses[0].name : 'your houses';
     const active = mine.filter(r => r.status !== 'complete')
       .sort((a, b) => ((isHazard(a) ? -1 : ORDER[a.status] ?? 5) - (isHazard(b) ? -1 : ORDER[b.status] ?? 5)) || startOf(a) - startOf(b) || Date.parse(b.updatedAt || 0) - Date.parse(a.updatedAt || 0));
     const coming = mine.filter(r => r.status === 'scheduled' && r.booking && r.booking.window).sort((a, b) => startOf(a) - startOf(b));
@@ -252,12 +285,12 @@ H.ui.dashboard.owner = {
     const spent = paid.reduce((s, r) => s + (r.approval.amountCents || 0), 0);
     const fresh = !animated; animated = true;
     const hi = `<section class="do-hi"><h1>Hi ${H.esc(firstName(st))}</h1><p>${statusLine(active, coming, done, place)}</p>
-      <div class="do-place">${H.icon('home')} ${H.esc(place)}</div></section>`;
+      ${housesLine(houses)}</section>`;
 
     if (!mine.length) return `<div class="do${fresh ? ' fresh' : ''}">${hi}${reportPanel(true)}${welcome()}</div>`;
 
     const now = `<section class="do-sec" aria-labelledby="do-now"><h2 id="do-now">Happening now ${active.length ? `<span class="c">${active.length}</span>` : ''}</h2>
-      ${active.length ? `<div class="do-cards">${active.map(card).join('')}</div>` : `<p class="do-quiet">Nothing needs fixing right now.</p>`}</section>`;
+      ${nowList(active, houses)}</section>`;
     const up = `<section class="do-sec" aria-labelledby="do-up"><h2 id="do-up">Coming up</h2>
       ${coming.length ? `<div class="do-list">${coming.map(visit).join('')}</div>` : `<p class="do-quiet">No visits booked yet. When you say yes to a price, the visit shows up here.</p>`}</section>`;
     const fixed = `<section class="do-sec" aria-labelledby="do-fx"><h2 id="do-fx">Done</h2>

@@ -1,6 +1,6 @@
 /* rail.js — left rail for the two apps (role is fixed per app: H.ROLE / H.isManager() / H.myRepairs()).
-   Homeowner: brand, Report a problem, your repairs at Maple House.
-   Manager: brand, Report a problem, Dashboard / Insights nav, property filter, repairs grouped by property.
+   Homeowner: brand, Report a problem, your repairs across your houses (house name on each row when you have several), Settings link.
+   Manager: brand, Report a problem, Dashboard / Insights / Settings nav, property filter, repairs grouped by property.
    Both: footer with Demo tag, Reset demo (confirm sheet), Switch app link to the chooser.
    Registers H.ui.rail only (the dashboards own #/). Owner: rail module. */
 (function(){
@@ -45,6 +45,10 @@ const css = `
 .rl .row .s .l{flex-basis:100%;color:var(--ink2)}
 .rl .row .s .w{font-weight:700;color:var(--ink)}
 .rl .row .tag{font-size:13px;padding:2px 8px}
+.rl .row .hs{display:flex;align-items:center;gap:4px;margin-top:4px;font-size:14px;color:var(--ink3);overflow-wrap:anywhere}
+.rl .row .hs .ic{width:15px;height:15px}
+.rl-nav.rl-own{padding:12px 8px;margin-top:auto;border-top:1px solid var(--line)}
+.rl-nav.rl-own+.rl-foot{margin-top:0}
 .rl .row>.ic{align-self:center;color:var(--ink3)}
 .rl .row[aria-current="page"]{background:var(--green-tint)}
 .rl .row[aria-current="page"] .si{background:var(--green);color:#fff}
@@ -95,7 +99,7 @@ const shortLine = r => {
   }
 };
 
-const row = r => {
+const row = (r, house) => {
   const current = H.route && H.route.name === 'repair' && H.route.id === r.id;
   const word = H.statusWords[r.status] || r.status;
   const line = shortLine(r);
@@ -104,7 +108,7 @@ const row = r => {
     : `<span class="w">${H.esc(word)}</span>${line ? `<span class="l">${H.esc(line)}</span>` : ''}`;
   return `<div role="listitem"><a class="row st-${H.esc(r.status)}" href="#/repair/${H.esc(r.id)}" data-nav="#/repair/${H.esc(r.id)}"${current ? ' aria-current="page"' : ''}>
     <span class="si">${H.icon(ICON[r.status] || 'wrench')}</span>
-    <span class="grow"><span class="t">${H.esc(r.title)}</span><span class="s">${status}</span></span>${H.icon('chev')}</a></div>`;
+    <span class="grow"><span class="t">${H.esc(r.title)}</span><span class="s">${status}</span>${house ? `<span class="hs">${H.icon('home')}${H.esc(house)}</span>` : ''}</span>${H.icon('chev')}</a></div>`;
 };
 
 /* Manager: one group per property, each with how many repairs need attention. */
@@ -119,7 +123,7 @@ const groups = (S, list) => {
     return `<section aria-labelledby="${gid}">
       <div class="rl-grp"><span class="grow"><span class="gn" id="${gid}">${H.esc(p.name)}</span><span class="gu">${H.esc(p.unit)}</span></span>
         ${need ? `<span class="need">${H.esc(count(need, 'needs you', 'need you'))}</span>` : `<span class="ok">All on track</span>`}</div>
-      <div class="list" role="list" aria-labelledby="${gid}">${rs.map(row).join('')}</div>
+      <div class="list" role="list" aria-labelledby="${gid}">${rs.map(r => row(r)).join('')}</div>
     </section>`;
   }).join('');
 };
@@ -135,19 +139,29 @@ const nowBlock = list => {
   return '';
 };
 
+/* Settings (#/settings): your houses, add a house. Same link in both apps. */
+const settingsLink = () => {
+  const on = H.route && H.route.name === 'settings';
+  return `<a href="#/settings" data-nav="#/settings"${on ? ' aria-current="page"' : ''}>${H.icon('edit')}<span class="grow">Settings</span></a>`;
+};
+
 const failedBlock = `<div class="rl-empty"><p class="t">Couldn’t load your repairs</p><p>Check that the app is running, then try again.</p>
   <button type="button" class="btn ghost block" data-rl-retry>${H.icon('refresh')} Try again</button></div>`;
 
 const ownerRail = S => {
   const list = byUrgency(mine());
-  const p1 = H.prop('p1');
+  const homes = H.myProperties ? H.myProperties() : (S.properties || []).filter(p => p.home);
+  const p1 = homes[0] || H.prop('p1');
+  const many = homes.length > 1;
+  const houseOf = r => { if (!many) return ''; const p = H.prop(r.property); return p ? p.name : ''; };
   const failed = loadFailed(S);
   return `
     ${failed ? '' : nowBlock(list)}
     <div class="rl-head"><h2 id="rl-h" tabindex="-1">Your repairs</h2>${list.length ? `<span class="c">${count(list.length, 'repair', 'repairs')}</span>` : ''}</div>
     ${failed ? failedBlock
-      : list.length ? `<div class="list" role="list" aria-labelledby="rl-h">${list.map(row).join('')}</div>`
-      : `<div class="rl-empty"><p class="t">No repairs yet</p><p>When something breaks at ${H.esc(p1 ? p1.name : 'home')}, send Handy a photo. It will show up here.</p><p class="rl-promise">${H.icon('shield')} Nothing is booked until you say yes.</p></div>`}`;
+      : list.length ? `<div class="list" role="list" aria-labelledby="rl-h">${list.map(r => row(r, houseOf(r))).join('')}</div>`
+      : `<div class="rl-empty"><p class="t">No repairs yet</p><p>When something breaks at ${H.esc(many ? 'one of your houses' : (p1 ? p1.name : 'home'))}, send Handy a photo. It will show up here.</p><p class="rl-promise">${H.icon('shield')} Nothing is booked until you say yes.</p></div>`}
+    <div class="rl-nav rl-own">${settingsLink()}</div>`;
 };
 
 const managerRail = S => {
@@ -163,6 +177,7 @@ const managerRail = S => {
     <div class="rl-nav">
       <a href="#/" data-nav="#/"${route === 'home' ? ' aria-current="page"' : ''}>${H.icon('home')}<span class="grow">Dashboard</span>${needAll ? `<span class="cnt" aria-label="${H.esc(count(needAll, 'repair needs', 'repairs need'))} you">${needAll}</span>` : ''}</a>
       <a href="#/insights" data-nav="#/insights"${route === 'insights' ? ' aria-current="page"' : ''}>${H.icon('chart')}<span class="grow">Insights</span></a>
+      ${settingsLink()}
     </div>
     ${failed ? '' : nowBlock(byUrgency(all))}
     ${props.length ? `<div class="rl-filter"><label for="rl-prop">Show repairs at</label>

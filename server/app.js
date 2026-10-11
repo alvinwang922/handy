@@ -49,6 +49,7 @@ export function createApp(options = {}) {
       if (req.method === 'GET' && path === '/api/health') return json(200, { status: 'ok', mode: 'demo', storage: 'sqlite' });
       if (req.method === 'GET' && path === '/api/bootstrap') return json(200, bootstrap());
       if (req.method === 'GET' && path === '/api/properties') return json(200, { properties: handy.properties() });
+      if (req.method === 'POST' && path === '/api/properties') return json(201, { property: handy.addProperty(await readJSON(req)) });
       if (req.method === 'GET' && path === '/api/analytics') return json(200, { metrics: handy.metrics() });
       if (req.method === 'GET' && path === '/api/repairs') return json(200, { repairs: handy.listRepairs().filter(r => (!url.searchParams.has('property') || r.property === url.searchParams.get('property')) && (!url.searchParams.has('status') || r.status === url.searchParams.get('status'))).map(enrich) });
       if (req.method === 'POST' && path === '/api/repairs') return json(201, { repair: enrich(handy.createRepair(await readJSON(req))) });

@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 export function availableWindows(offset = 1) {
-  return [offset, offset + 1, offset + 2].flatMap(day => [9, 13].map(hour => {
+  return [offset, offset + 1, offset + 2].flatMap(day => [8, 10, 12, 14, 16].map(hour => {
     const start = new Date(); start.setDate(start.getDate() + day); start.setHours(hour, 0, 0, 0);
-    const end = new Date(start); end.setHours(hour + 3);
+    const end = new Date(start); end.setHours(hour + 2);
     return { start: start.toISOString(), end: end.toISOString() };
   }));
 }

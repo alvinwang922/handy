@@ -1,6 +1,7 @@
 /* dash-manager.js — #/ for the property-manager app (manager.html).
    Portfolio dashboard: what needs the manager, each property at a glance, this week's visits,
-   approved spend per property, and the report → booked funnel. Registers H.ui.dashboard.manager. */
+   approved spend per property, and the report → booked funnel. Registers H.ui.dashboard.manager.
+   Properties come from H.myProperties() (includes houses added in Settings); "Add a property" → #/settings. */
 (function(){
 const H = window.H;
 if (!H) return;
@@ -14,6 +15,7 @@ const CSS = `
 .md h2 .md-n{font-size:15px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
 .md .md-sub{font-size:15px;color:var(--ink2);margin:4px 0 0}
 .md-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.md-head .md-acts{display:flex;gap:10px;flex-wrap:wrap}
 .md-head .md-sum{font-size:18px;color:var(--ink2);margin:6px 0 0;font-variant-numeric:tabular-nums}
 .md-head .md-sum b{color:var(--ink)}
 .md-head .md-sum .hot{color:var(--red)}
@@ -176,7 +178,8 @@ const head = (S, props, repairs, needs, weekVisits, filtered) => {
       <p class="md-sum">${parts.join(' · ')}</p>
       ${filtered ? `<div class="md-chip">Showing ${H.esc(filtered.name)}<button type="button" data-md-clear aria-label="Show all properties">${H.icon('x')}</button></div>` : ''}
     </div>
-    <button type="button" class="md-btn" data-md-report="${H.esc(filtered ? filtered.id : '')}">${H.icon('plus')}Report a problem</button>
+    <div class="md-acts"><button type="button" class="md-btn alt" data-nav="#/settings">${H.icon('home')}Add a property</button>
+      <button type="button" class="md-btn" data-md-report="${H.esc(filtered ? filtered.id : '')}">${H.icon('plus')}Report a problem</button></div>
   </div>`;
 };
 
@@ -211,7 +214,7 @@ const propBlock = (p, repairs) => {
   const cnt = (n, label) => `<div><dd class="${n ? '' : 'z'}">${n}</dd><dt>${label}</dt></div>`;
   return `<section class="md-prop md-panel" aria-label="${H.esc(p.name)}">
     <div><div class="nm">${H.esc(p.name)}</div>
-      <div class="ad"><span>${H.icon('pin')}${H.esc(p.address)} · ${H.esc(p.unit)}</span><span>${H.icon('user')}Tenant: ${H.esc(p.tenant)}</span></div></div>
+      <div class="ad"><span>${H.icon('pin')}${H.esc([p.address, p.unit].filter(Boolean).join(' · ') || 'No address yet')}</span><span>${H.icon('user')}${p.tenant ? 'Tenant: ' + H.esc(p.tenant) : 'No tenant'}</span></div></div>
     <dl class="md-cnt">${cnt(active.length, 'Open')}${cnt(booked, 'Booked')}${cnt(fixed, 'Fixed')}</dl>
     ${active.length ? `<ul class="md-rows">${active.map(r => `<li><button type="button" data-nav="#/repair/${H.esc(r.id)}">
         <span class="tw"><span class="t">${H.esc(r.title)}</span>${statusTag(r)}</span>${H.icon('chev', 'go')}</button></li>`).join('')}</ul>`
@@ -259,7 +262,7 @@ const funnelSection = (m, filtered) => {
 
 /* ---------- Render ---------- */
 const render = S => {
-  const allProps = S.properties || [];
+  const allProps = (H.myProperties ? H.myProperties() : S.properties) || [];
   const f = S.propertyFilter || 'all';
   const filtered = f !== 'all' ? allProps.find(p => p.id === f) || null : null;
   const props = filtered ? [filtered] : allProps;

@@ -13,7 +13,9 @@
        H.ui.dashboard.owner   = {render(state), bind(root)}                 → dash-owner.js   (#/ center for the homeowner app)
        H.ui.dashboard.manager = {render(state), bind(root)}                 → dash-manager.js (#/ center for the property-manager app)
      Role is fixed per app (owner.html / manager.html): H.ROLE, H.isManager(), H.myRepairs().
-     Autopilot: H.autopilot(repair) after report; H.approveAndBook(repair, quote, access) on Yes.
+     Autopilot: H.autopilot(repair) after report; H.approveAndBook(repair, quote, access, windows) on Yes (windows = picked 2-hour slots).
+     Houses: H.myProperties(), H.addProperty({name,address,unit?,tenant?}) → #/settings (settings.js: H.ui.settings).
+     Earlier price rounds survive 'Get new prices' as repair.rounds[] = {outreach, quotes, approval, booking, endedAt}.
      Thread for #/repair/<id> = core pin + concatenated history parts + the dock of the part that owns repair.status:
        H.part(name, {history(repair) → html|'' , owns:[statuses], dock(repair) → html, bind(root, repair)})
        Parts render in this order: intake, assessment (assess.js) · quotes (quotes.js) · scheduling, booked (booking.js)
@@ -97,7 +99,14 @@ H.saveUi = () => localStorage.setItem('handy-ui', JSON.stringify({propertyFilter
 H.ROLE = H.state.role;
 H.isManager = () => H.ROLE === 'manager';
 /* Repairs this app shows: homeowners see their one home (p1, Maple House); managers see every property. */
-H.myRepairs = () => H.isManager() ? H.state.repairs : H.state.repairs.filter(r => r.property === 'p1');
+/* Houses in this app: homeowners see their own homes (property.home === true, e.g. Maple House plus any they add);
+   managers see every property. Houses are added in Settings via H.addProperty. */
+H.myProperties = () => H.isManager() ? H.state.properties : H.state.properties.filter(p => p.home);
+H.myRepairs = () => { const ids = new Set(H.myProperties().map(p => p.id)); return H.state.repairs.filter(r => ids.has(r.property)); };
+H.addProperty = async input => {
+  const { property } = await H.api('POST', '/api/properties', { ...input, home: !H.isManager() || input.home === true });
+  H.state.properties = [...H.state.properties, property]; H.render(); return property;
+};
 H.refresh = async () => {
   try { Object.assign(H.state, await H.api('GET','/api/bootstrap'), {error:null, loaded:true}); }
   catch (e) { H.state.error = e.message; H.state.loaded = true; }
@@ -132,13 +141,14 @@ H.autopilot = async repair => {
   try { const { repair: r } = await H.api('POST', `/api/repairs/${repair.id}/quotes`, {}); H.upsert(r); return r; }
   catch (e) { H.state.error = e.message; H.render(); H.toast(e.message); return repair; }
 };
-H.approveAndBook = async (r, q, access = '') => {
+H.approveAndBook = async (r, q, access = '', windows = null) => {
   if (H.state.busy) return null;
   H.state.busy = true; H.state.error = null;
   try {
     let { repair } = await H.api('POST', `/api/repairs/${r.id}/approve`, { quoteId: q.id, amountCents: q.amountCents, consent: true });
-    const win = (q.windows || []).filter(w => Date.parse(w.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
-    if (win) ({ repair } = await H.api('POST', `/api/repairs/${r.id}/book`, { windows: [win], access }));
+    /* windows = the 2-hour slots the user picked (exact objects from q.windows); default = earliest offered */
+    const picked = windows && windows.length ? windows : (q.windows || []).filter(w => Date.parse(w.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start)).slice(0, 1);
+    if (picked.length) ({ repair } = await H.api('POST', `/api/repairs/${r.id}/book`, { windows: picked, access }));
     H.state.busy = false; H.upsert(repair); return repair;
   } catch (e) { H.state.busy = false; H.state.error = e.message; H.render(); H.toast(e.message); return null; }
 };
@@ -168,6 +178,7 @@ const parse = () => {
   const h = location.hash.replace(/^#\/?/, '');
   if (h === 'new') return {name:'new'};
   if (h === 'insights') return {name:'insights'};
+  if (h === 'settings') return {name:'settings'};
   const m = h.match(/^repair\/([a-zA-Z0-9-]+)$/);
   return m ? {name:'repair', id:m[1]} : {name:'home'};
 };
@@ -177,9 +188,9 @@ const pin = r => {
   return `<div class="pin" role="status"><div style="flex:1;min-width:0"><div class="t">${H.esc(r.title)}</div><div class="s">${H.esc(sub)}</div></div>
     <div class="trk" aria-label="Step ${step} of 3">${[1,2,3].map(i => `<b class="${i<=step?'on':''}"></b>`).join('')}</div></div>`;
 };
-const header = (title, sub, back) => `<header class="hd">
+const header = (title, sub, back, action = '') => `<header class="hd">
   ${back ? `<button class="back mobile-only" data-nav="#/" aria-label="Back to your repairs">${H.icon('back')}</button>` : ''}
-  <div class="av">${H.icon('wrench')}</div><div class="grow"><div class="n">${H.esc(title)}</div><div class="s">${H.esc(sub)}</div></div></header>`;
+  <div class="av">${H.icon('wrench')}</div><div class="grow"><div class="n">${H.esc(title)}</div><div class="s">${H.esc(sub)}</div></div>${action}</header>`;
 const errorBox = () => H.state.error ? `<div class="note red err-box" role="alert">${H.icon('alert')}<span>${H.esc(H.state.error)}</span><button class="btn plain" data-dismiss-error>Dismiss</button></div>` : '';
 const safe = (fn, fallback='') => { try { return fn() ?? fallback; } catch (e) { console.error(e); return fallback; } };
 
@@ -195,6 +206,7 @@ H.render = () => {
   let center;
   if (route.name === 'new' && H.ui.report) center = header('Report a problem', 'New repair', true) + safe(() => H.ui.report.render(S));
   else if (route.name === 'insights' && H.ui.insights) center = header('Insights', 'Demo metrics', true) + safe(() => H.ui.insights.render(S));
+  else if (route.name === 'settings' && H.ui.settings) center = header('Settings', 'Your houses', true) + safe(() => H.ui.settings.render(S));
   else if (repair) {
     const owner = ORDER.map(n => H.parts[n]).find(p => p && p.owns && p.owns.includes(repair.status));
     center = header('Handy', 'Your repair helper', true) + pin(repair) + errorBox() +
@@ -206,7 +218,7 @@ H.render = () => {
     H.api('GET', `/api/repairs/${route.id}`).then(d => H.upsert(d.repair)).catch(() => H.render());
     center = header('Handy', 'Your repair helper', true) + `<div class="loading">${H.typing()} Opening your repair…</div>`;
   } else if (route.name === 'repair') center = header('Handy', 'Your repair helper', true) + `<div class="page"><h1>We couldn’t find that repair</h1><p class="lead">It may have been removed when the demo was reset.</p><button class="btn" data-nav="#/">Back to your repairs</button></div>`;
-  else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; center = header('Handy', H.isManager() ? 'Property manager' : 'Your repair helper', false) + errorBox() + (dash ? safe(() => dash.render(S)) : ''); }
+  else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; center = header('Handy', H.isManager() ? 'Property manager' : 'Your repair helper', false, `<button class="act" data-nav="#/settings">${H.icon('home')} Houses &amp; settings</button>`) + errorBox() + (dash ? safe(() => dash.render(S)) : ''); }
   const showDetails = !!repair && !!H.ui.details;
   root.className = 'shell' + (showDetails ? '' : ' no-details');
   /* Phones show one pane: the role's dashboard on #/ (it lists the repairs), otherwise the selected screen */
@@ -221,6 +233,7 @@ H.render = () => {
   safe(() => H.ui.rail && H.ui.rail.bind && H.ui.rail.bind(rail));
   if (route.name === 'new') safe(() => H.ui.report && H.ui.report.bind && H.ui.report.bind(center$));
   else if (route.name === 'insights') safe(() => H.ui.insights && H.ui.insights.bind && H.ui.insights.bind(center$));
+  else if (route.name === 'settings') safe(() => H.ui.settings && H.ui.settings.bind && H.ui.settings.bind(center$));
   else if (repair) {
     ORDER.forEach(n => H.parts[n] && H.parts[n].bind && safe(() => H.parts[n].bind(center$, repair)));
     if (showDetails && H.ui.details.bind) safe(() => H.ui.details.bind(det, repair));

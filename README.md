@@ -46,8 +46,9 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. The wiring commit (`28a9bbe`) records a browser check in mock mode. The backend has separately passed controlled live Dial acceptance; a fresh live browser journey still needs verification |
+| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. Verified live in the browser on 2026-10-11: Claude diagnosis → Keewano ranking (Bay Area Rooter, score 96, called; Mission Pipe Pros, 64, skipped) → one real Dial quote call to our AI-receptionist number → Claude extraction ($180–$250 flat, $89 fee waived if hired) → explicit approval → real Dial booking call → scheduled, with the provider's confirming words stored as evidence. In that run the quote call hit its 240 s cap before availability came up, so the quote was marked partial and the UI showed "Availability not given" instead of guessing; the receptionist persona now states openings up front |
 | Calendar export | An `.ics` route exists, but explicit dates, time zones, and duration are not reliably preserved. Show the stored booking window until export is corrected; see [`docs/submission.md`](docs/submission.md) |
+| Look B design prototype | `public/app/` with its own demo server (`node server/index.js`, then http://127.0.0.1:4173/app/): homeowner and manager dashboards from the design review. **Simulated:** scripted calls and local SQLite, labeled "Demo · simulated data", and not connected to the live backend |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
 
@@ -95,7 +96,8 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 | Path | What's there |
 |---|---|
-| `public/index.html` | Web UI |
+| `public/index.html` | Web UI (live backend) |
+| `public/app/`, `server/` | Look B design prototype and its demo server (simulated) |
 | `app/api/` | Next.js 16 route handlers |
 | `lib/orchestrator.ts` | Call lifecycle: concurrency cap, per-request locking, extraction retries, status machine |
 | `lib/claude.ts`, `lib/parts.ts` | Diagnosis and DIY part search |
@@ -117,7 +119,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 ## What's next
 
-- Verify the newly connected UI with a controlled live journey; production quote and booking extraction have already passed controlled live backend tests.
+- Connect the Look B design (`public/app/`) to the live API, and run several providers' quote calls in parallel live (so far tested in simulation only).
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
 - Quote revisions and normalized availability windows (start/end plus time zone), so bookings never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.

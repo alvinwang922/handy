@@ -50,7 +50,7 @@ flowchart TD
 
 | Owner | Responsibility |
 | --- | --- |
-| P1 calls | `lib/dial.ts`, `lib/instructions.ts`, receptionist setup; proposed messaging adapter and narrow photo-sharing tool. |
+| P1 calls | Provider discovery (including Darwin), contact eligibility, `lib/dial.ts`, `lib/instructions.ts`, receptionist setup; proposed messaging adapter and narrow photo-sharing tool. P2 does not need to search for contractors. |
 | P2 AI | Diagnosis and structured extraction in `lib/claude.ts`; extract provider-confirmed scope and quote evidence from calls/messages. |
 | P3 frontend | Wire existing routes; show sharing status, quote basis, approval terms and scheduling outcomes. |
 | Shared glue | Orchestration, persistence, routes, types and schemas. Coordinate additive changes before implementation. |
@@ -272,6 +272,10 @@ The app's orchestrator placed a controlled Dial-to-Dial quote call, persisted th
 The existing request API exposes the result both through `call.quoteResult` and the compatible `call.quote` fields. `call.quoteRevision` hashes the extracted terms and evidence, so changing terms on the same transcript invalidates approval. Live booking requires the displayed `quoteCallId` and `quoteRevision`. Unknown dispatches and unread booking outcomes require reconciliation; they cannot silently authorize another booking attempt. Inspection-only approval uses the visit fee. Hourly offers require a separately implemented total-cap approval.
 
 Remaining integration work: P2 production quote and booking extraction, P3 rendering and approval submission, and automatic provider discovery. Discovery currently uses verified seeded contacts plus Keewano ranking; Darwin is not wired. Live booking is gated while the configured extractor is simulated. The test did not send MMS, establish photo review, or schedule a live appointment.
+
+The booking handoff now freezes `BookingJob` before dispatch: approved quote/revision, scope and fee treatment, approval basis/amount, offered windows, reference date and timezone. P2 receives that snapshot with the transcript and speaker turns. Live confirmations require an exact offered window, unchanged terms, and provider evidence for both; definite negative outcomes require provider evidence too. Unknown outcomes stay in reconciliation. Quote extraction also uses the original brief snapshot when available.
+
+The simulated backend journey covers three distinct quotes, a maximum of two concurrent calls per request, no booking before explicit approval, and the selected provider accepting the second supplied window. Stale approvals, changed terms and outside-window confirmations are rejected. Transport is fake in these tests; production evidence checks are enabled. See the [complete PRD coverage and owner handoff](dial-prd-coverage.md) for remaining discovery, extraction, messaging, rescheduling, calendar and operational requirements.
 
 ## Section review outcome
 

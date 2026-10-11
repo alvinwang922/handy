@@ -83,17 +83,23 @@ export function bookingInstruction(
   access: string,
   company: string,
   feeTreatment: FeeTreatment = "unknown",
+  context?: Pick<QuoteInstructionContext, "requesterRole" | "referenceAt" | "timeZone">,
 ): string {
   return [
-    `You are calling ${p.name} back to book a job they quoted earlier today.`,
-    disclosure(company),
+    `You are calling ${p.name} back to book a job they previously quoted. You represent the ${context?.requesterRole.replaceAll("_", " ") ?? "property manager"}.`,
+    disclosure(context?.requesterRole === "homeowner" ? "the homeowner" : company),
+    context ? `Reference date: ${context.referenceAt}. Interpret and confirm all appointment dates and times in ${context.timeZone}.` : "",
     `Job: ${d.jobBrief}`,
     `Their quote: ${formatQuote(q, feeTreatment)}. Do not agree to anything outside that quote.`,
+    `Approved scope: ${q?.scope ?? d.jobBrief}. Approved conditions: ${q?.conditions ?? "No additional conditions were established."}`,
+    q?.pricingType === "inspection_only"
+      ? "You may schedule the inspection visit only. No repair work or repair charges have been approved."
+      : "If scope, price or fee treatment changes, ask for the revised terms and do not confirm a booking; the user must approve again.",
     `Offer these time windows in order of preference and confirm exactly one: ${slots.join("; ")}.`,
     `Once a window is agreed, confirm the price, then give the service address and access details: ${access}`,
     `Read back the confirmed window and the address before ending the call.`,
-    `If none of the windows work, ask for their next two openings and say the property manager will confirm.`,
-  ].join("\n\n");
+    `If none of the windows work, ask for their next two openings and say the customer will confirm. Do not book another time.`,
+  ].filter(Boolean).join("\n\n");
 }
 
 // Persona for the second Dial number that plays an AI receptionist in the demo (labeled simulated).

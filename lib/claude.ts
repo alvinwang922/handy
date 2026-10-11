@@ -4,7 +4,7 @@ import { z } from "zod";
 import { config } from "./config";
 import { DiagnosisSchema, TradeSchema } from "./schemas";
 import { mockExtractQuote, type QuoteExtractionInput } from "./communications/mock-quote-extractor";
-import type { BookingResult, Diagnosis, QuoteResult, Trade, UnitInsight } from "./types";
+import type { BookingExtractionInput, BookingResult, Diagnosis, QuoteResult, Trade, UnitInsight } from "./types";
 
 // Owner: P2. Every Claude result is validated with lib/schemas.ts before it leaves this file.
 export const MODEL_DIAGNOSE = "claude-opus-5-5";
@@ -169,7 +169,7 @@ export async function extractQuote(input: QuoteExtractionInput): Promise<QuoteRe
   throw new Error("TODO(P2): extractQuote() — transcript evidence → QuoteResultSchema. Set MOCK_CLAUDE_EXTRACT=1 meanwhile.");
 }
 
-export async function extractBooking(input: { transcript: string; offeredSlots: string[] }): Promise<BookingResult> {
+export async function extractBooking(input: BookingExtractionInput): Promise<BookingResult> {
   if (config.mockClaudeExtract && config.mockDial) return { confirmed: true, slot: input.offeredSlots[0] ?? null, notes: "Mock: provider accepted the first window." };
   if (config.mockClaudeExtract) throw new Error("Live booking requires provider-evidence extraction; the simulated booking extractor cannot confirm a real call.");
   throw new Error("TODO(P2): extractBooking() — transcript → BookingResultSchema. Set MOCK_CLAUDE_EXTRACT=1 meanwhile.");

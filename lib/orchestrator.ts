@@ -2,13 +2,14 @@ import { createHash } from "node:crypto";
 import * as claude from "./claude";
 import { config } from "./config";
 import { bookingNeedsReconciliation, getQuoteRevision, isActionableQuote } from "./communications/approval";
+import { validateBookingResult } from "./communications/booking-contract";
 import { buildProviderTarget, buildQuoteJob, validateQuoteResult } from "./communications/call-contract";
 import * as dial from "./dial";
 import { bookingInstruction } from "./instructions";
 import * as keewano from "./keewano";
 import * as parts from "./parts";
 import { getProperty, getProvider, getRequest, listProviders, newId, nowIso, saveRequest, setStatus } from "./store";
-import type { CallPurpose, CallRecord, PartSearch, Provider, ProviderScore, QuoteJob, RepairRequest, Trade } from "./types";
+import type { BookingExtractionInput, BookingJob, CallPurpose, CallRecord, PartSearch, Provider, ProviderScore, QuoteJob, RepairRequest, Trade } from "./types";
 
 // Owner: Claude Code (glue). Drives the call lifecycle; every mutation runs under a per-request lock
 // so the UI's 3s polling can never overwrite a concurrent outreach/booking write.
@@ -149,8 +150,22 @@ export async function startBookingCall(
   const quote = approvedQuoteCall?.quote ?? null;
   const property = getProperty(req.propertyId);
   const access = `${property?.address ?? "address on file"}, ${req.unit}. ${req.accessNote || "Contact the property manager on arrival."}`;
-  const instruction = bookingInstruction(provider, req.diagnosis!, quote, req.offeredSlots, access, config.companyName, approvedQuoteCall?.quoteResult?.feeTreatment);
-  req.calls.push(newCall(providerId, "booking", instruction, null));
+  const bookingJob: BookingJob = {
+    requestId: req.id,
+    providerId,
+    quoteCallId: approvedQuoteCall.id,
+    quoteRevision: getQuoteRevision(approvedQuoteCall),
+    approvedQuote: structuredClone(quote!),
+    feeTreatment: approvedQuoteCall.quoteResult?.feeTreatment ?? quote?.feeTreatment ?? "unknown",
+    approvalAmountUsd: req.approval.amountUsd,
+    approvalBasis: req.approval.basis ?? (quote?.pricingType === "inspection_only" ? "inspection_visit" : "repair_quote"),
+    offeredSlots: [...slots],
+    timeZone: config.propertyTimeZone,
+    referenceAt: nowIso(),
+  };
+  const instruction = bookingInstruction(provider, req.diagnosis!, quote, req.offeredSlots, access, config.companyName,
+    bookingJob.feeTreatment, { requesterRole: req.requesterRole, referenceAt: bookingJob.referenceAt, timeZone: bookingJob.timeZone });
+  req.calls.push({ ...newCall(providerId, "booking", instruction, null), bookingJob });
   setStatus(req, "booking");
   saveRequest(req);
   await pump(req);
@@ -162,10 +177,10 @@ async function pump(req: RepairRequest) {
   let active = req.calls.filter((c) => ACTIVE.has(c.state)).length;
   for (const call of req.calls.filter((c) => c.state === "queued_local" && c.dispatchState === "queued")) {
     if (active >= config.maxConcurrentCalls) break;
-    if (!call.outboundInstruction.trim() || (call.purpose === "quote" && !call.quoteJob)) {
+    if (!call.outboundInstruction.trim() || (call.purpose === "quote" && !call.quoteJob) || (call.purpose === "booking" && !call.bookingJob)) {
       Object.assign(call, {
         dispatchState: "failed", state: "Terminated", terminationType: "failed", transcriptStatus: "unavailable",
-        error: "This queued call lacks its frozen instructions or quote job. Review the repair and start fresh outreach.",
+        error: "This queued call lacks its frozen instructions or quote job/booking approval snapshot. Review the repair before starting a new call.",
         endedAt: nowIso(),
       });
       saveRequest(req);
@@ -290,7 +305,9 @@ async function extract(req: RepairRequest, call: CallRecord) {
         dialCallId: call.dialCallId,
         transcript: call.transcript!,
         transcriptTurns: call.transcriptTurns,
-        diagnosis: req.diagnosis!,
+        diagnosis: call.quoteJob.brief?.diagnosis ?? req.diagnosis!,
+        referenceAt: call.quoteJob.brief?.referenceAt ?? req.createdAt,
+        timeZone: call.quoteJob.brief?.serviceArea.timeZone ?? config.propertyTimeZone,
       });
       call.quoteResult = validateQuoteResult(raw, call.quoteJob, source);
       call.quote = {
@@ -311,7 +328,15 @@ async function extract(req: RepairRequest, call: CallRecord) {
         ]);
       }
     } else {
-      call.booking = await claude.extractBooking({ transcript: call.transcript!, offeredSlots: req.offeredSlots });
+      if (!call.bookingJob || !call.dialCallId) throw new Error("Booking call is missing its approved terms snapshot or Dial ID.");
+      const input: BookingExtractionInput = {
+        ...call.bookingJob,
+        dialCallId: call.dialCallId,
+        transcript: call.transcript!,
+        transcriptTurns: call.transcriptTurns,
+      };
+      const raw = await claude.extractBooking(input);
+      call.booking = validateBookingResult(raw, input, !config.mockDial);
     }
     call.extractionStatus = "validated";
     call.extractionError = null;

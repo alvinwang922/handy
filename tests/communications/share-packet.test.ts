@@ -53,6 +53,29 @@ describe("share repair packet", () => {
     expect(first).toMatchObject({ dispatchState: "send_unknown", deliveryState: "unknown" });
   });
 
+  it("lets a definitely failed send be retried, then never sends again once one is accepted", async () => {
+    const projectRoot = makeProjectRoot();
+    roots.push(projectRoot);
+    const request = makeRequest();
+    const packet = buildRepairPacket(request, { projectRoot });
+    const store = new InMemoryMessageStore();
+    const send = vi
+      .fn<MessageTransport["send"]>()
+      .mockRejectedValueOnce(new MessageTransportError("recipient not allowlisted", false))
+      .mockResolvedValue({ dialMessageId: "mock_2", deliveryState: "delivered", mode: "mock" });
+    const transport: MessageTransport = { mode: "mock", send };
+    const input = { request, provider, packetVersion: packet.packetVersion, callId: "call_demo", projectRoot };
+
+    const failed = await shareRepairPacket({ ...input, idempotencyKey: "try-1" }, { store, transport });
+    const retried = await shareRepairPacket({ ...input, idempotencyKey: "try-2" }, { store, transport });
+    const again = await shareRepairPacket({ ...input, idempotencyKey: "try-3" }, { store, transport });
+
+    expect(failed).toMatchObject({ dispatchState: "failed" });
+    expect(retried).toMatchObject({ dispatchState: "accepted", dialMessageId: "mock_2" });
+    expect(again.id).toBe(retried.id);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects reuse of an idempotency key for a different call association", async () => {
     const projectRoot = makeProjectRoot();
     roots.push(projectRoot);

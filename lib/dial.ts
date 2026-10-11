@@ -8,6 +8,10 @@ import type { CallPurpose, CallState, TerminationType, TranscriptSpeaker, Transc
 
 const API = "https://api.getdial.ai/api/v1";
 
+// Every Dial request runs inside the per-request lock, so none may hang indefinitely.
+const PLACE_TIMEOUT_MS = 15_000;
+const POLL_TIMEOUT_MS = 10_000;
+
 export class DialError extends Error {
   constructor(public status: number, message: string, public uncertain = false) {
     super(message);
@@ -49,7 +53,8 @@ export async function placeCall(input: {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(`${API}/calls`, { method: "POST", headers, body });
+      // A timeout is just another ambiguous outcome: retried once with the same idempotency key.
+      response = await fetch(`${API}/calls`, { method: "POST", headers, body, signal: AbortSignal.timeout(PLACE_TIMEOUT_MS) });
     } catch {
       previouslyAmbiguous = true;
       if (attempt === 0) continue;
@@ -78,6 +83,7 @@ export async function getCall(dialCallId: string): Promise<CallSnapshot> {
   const res = await fetch(`${API}/calls/${encodeURIComponent(dialCallId)}`, {
     headers: { Authorization: `Bearer ${requireEnv("DIAL_API_KEY")}` },
     cache: "no-store",
+    signal: AbortSignal.timeout(POLL_TIMEOUT_MS), // a hung poll must throw, not hold the request lock
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new DialError(res.status, errorText(body) ?? `Dial HTTP ${res.status}`);

@@ -56,8 +56,13 @@ async function shareOnce(
     }
     return keyed;
   }
-  const duplicate = ports.store.findByPacket(request.id, provider.id, packetVersion);
-  if (duplicate) return duplicate;
+  // Any earlier attempt that may have reached the provider (accepted, or send_unknown) wins: never
+  // send twice. Only when every earlier attempt definitely failed may this packet be sent again.
+  const earlier = ports.store
+    .listByRequest(request.id)
+    .filter((record) => record.providerId === provider.id && record.packetVersion === packetVersion);
+  const live = earlier.filter((record) => record.dispatchState !== "failed").at(-1);
+  if (live) return live;
 
   const packet = requireSendablePacket(request, provider, packetVersion, { projectRoot: input.projectRoot });
   if (input.callId) {

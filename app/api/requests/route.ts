@@ -38,6 +38,10 @@ export async function POST(request: Request) {
   const propertyId = str("propertyId") || "p1";
   const property = getProperty(propertyId);
   if (!description) return NextResponse.json({ error: "description is required" }, { status: 400 });
+  // User text reaches the model and (fenced) the voice agent's prompt: keep it bounded.
+  if (description.length > 2000 || str("title").length > 200) {
+    return NextResponse.json({ error: "Please keep the title under 200 and the description under 2,000 characters" }, { status: 400 });
+  }
   if (requesterRole !== "homeowner" && requesterRole !== "property_manager") {
     return NextResponse.json({ error: "requesterRole must be homeowner or property_manager" }, { status: 400 });
   }

@@ -51,6 +51,8 @@ export function createDialMessageTransport(): MessageTransport {
       try {
         response = await fetch(`${API}/messages`, {
           method: "POST",
+          // Timeouts are reported as uncertain (send_unknown), so an MMS is never sent twice.
+          signal: AbortSignal.timeout(30_000),
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "User-Agent": "handy/0.1.0",

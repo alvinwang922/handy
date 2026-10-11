@@ -51,4 +51,4 @@ If the `alike` MCP server is connected: at session start, link the session to yo
 
 ## Partner prizes (status)
 Dial and Keewano are core and must stay load-bearing; the Keewano event registry lives in `EVENTS` in `lib/keewano.ts` and is append-only.
-Alike: team coordination (above). Sparta is an isolated experiment outside this repo (go/no-go 2:05 PM). Darwin is skipped unless its "Act" access is granted.
+Alike: team coordination (above). Sparta: `sparta/` (deposit settlement agent graded in Sparta Worlds; GO; its own package.json, run from that folder). Darwin is skipped unless its "Act" access is granted.

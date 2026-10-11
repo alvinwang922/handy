@@ -1,0 +1,13 @@
+customer-desk / provider-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25) — The record-field assertion is satisfied.
+PASS Exactly one refund record is created — The changed-count assertion is satisfied.
+PASS No new charges are created — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS Only the refund and the 4B deposit charge change — The change-scope assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:48.274Z","world":"w_km8n1rrjnsrb","agent":"settlement-v1","jobId":"J-4B-17","decision":"refund_deposit","job_still_happening":false,"new_slot":"","evidence_quote":"No, we won't be able to do it at all. Please book somebody else. Sorry for the trouble.","reason":"AquaFix explicitly cancelled the whole job (\"we have to cancel that job\"). When Handy asked about a later date, they declined and said they can't do it at all. This is a full cancellation, not a reschedule, so the deposit gets one full refund.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0030508}
+[settle J-4B-17] GET /v1/charges/ch_handy_4b_deposit: HTTP 500; retry 1/3
+[settle J-4B-17] refund re_oKYFUNkrP1E3Tie0 created for $96.25.
+[settle J-4B-17] verified: $96.25 refunded on ch_handy_4b_deposit. Resident can be told the deposit is refunded.
+exit=0

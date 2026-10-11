@@ -1,0 +1,308 @@
+[
+  {
+    "file": "00-gonogo-builtin-duplicate-charge.json",
+    "run": 1,
+    "mission": "duplicate-charge",
+    "scenario": "none",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "b3d6ef89765c",
+    "inputDigest": "8c3711608dc2",
+    "checks": {
+      "builtin:correct-refund": "PASS",
+      "builtin:ticket-outcome": "PASS",
+      "builtin:useful-comments": "PASS",
+      "builtin:comment-privacy": "PASS",
+      "builtin:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 1,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "PASS",
+      "assertion:exactly-one-refund": "PASS",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 2,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "PASS",
+      "assertion:exactly-one-refund": "PASS",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 3,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "PASS",
+      "assertion:exactly-one-refund": "PASS",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 4,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 5,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "after/all.interruption.runs3.json",
+    "run": 6,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "after/m2-provider-cancelled.interruption.json",
+    "run": 1,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "PASS",
+      "assertion:exactly-one-refund": "PASS",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "after/m3-rescheduled.interruption.json",
+    "run": 1,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 1,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": false,
+    "execution": "failed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "FAIL",
+      "assertion:exactly-one-refund": "FAIL",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 2,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": false,
+    "execution": "failed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "FAIL",
+      "assertion:exactly-one-refund": "FAIL",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 3,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": false,
+    "execution": "failed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "FAIL",
+      "assertion:exactly-one-refund": "FAIL",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 4,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 5,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "before/all.interruption.runs3.json",
+    "run": 6,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  },
+  {
+    "file": "before/m2-provider-cancelled.interruption.json",
+    "run": 1,
+    "mission": "provider-cancelled",
+    "scenario": "interruption",
+    "passed": false,
+    "execution": "failed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "FAIL",
+      "assertion:exactly-one-refund": "FAIL",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "before/m2-provider-cancelled.normal.json",
+    "run": 1,
+    "mission": "provider-cancelled",
+    "scenario": "none",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-refunded-in-full": "PASS",
+      "assertion:exactly-one-refund": "PASS",
+      "assertion:no-new-charges": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:change-scope": "PASS"
+    }
+  },
+  {
+    "file": "before/m3-rescheduled.interruption.json",
+    "run": 1,
+    "mission": "rescheduled-not-cancelled",
+    "scenario": "interruption",
+    "passed": true,
+    "execution": "passed",
+    "seedHash": "359fc3ed093b",
+    "inputDigest": "4c5916597f63",
+    "checks": {
+      "assertion:deposit-kept": "PASS",
+      "assertion:no-refund-attempted": "PASS",
+      "assertion:no-refund-records": "PASS",
+      "assertion:other-unit-untouched": "PASS",
+      "assertion:no-charge-changes": "PASS"
+    }
+  }
+]

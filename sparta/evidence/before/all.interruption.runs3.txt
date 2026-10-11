@@ -1,0 +1,68 @@
+customer-desk / provider-cancelled: failed
+FAIL Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25) — The record-field assertion failed; required evidence is missing, differs, or violates the declared restriction.
+FAIL Exactly one refund record is created — The changed-count assertion failed; required evidence is missing, differs, or violates the declared restriction.
+PASS No new charges are created — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS Only the refund and the 4B deposit charge change — The change-scope assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:07.042Z","world":"w_ve4fec4x79oi","agent":"naive-v0","jobId":"J-4B-17","cancelled":true,"answer":"**YES.** AquaFix said, \"we have to cancel that job,\" and when Handy asked about a later date, they said, \"we won't be able to do it at all.\" The Tuesday 10 a.m. appointment for unit 4B at Maple Court was cancelled by the vendor, and Handy will need to book a replacement.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0023263000000000003}
+Refunded $96.25 deposit for job J-4B-17 (refund undefined). Told the resident: "Your deposit has been refunded."
+
+customer-desk / provider-cancelled: failed
+FAIL Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25) — The record-field assertion failed; required evidence is missing, differs, or violates the declared restriction.
+FAIL Exactly one refund record is created — The changed-count assertion failed; required evidence is missing, differs, or violates the declared restriction.
+PASS No new charges are created — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS Only the refund and the 4B deposit charge change — The change-scope assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:13.838Z","world":"w_u8w36cg7la2o","agent":"naive-v0","jobId":"J-4B-17","cancelled":true,"answer":"**YES.** AquaFix said they have to cancel the job because their only licensed tech for that area left. They also said they can't do it at a later date and asked Handy to book someone else. So the Tuesday 10 a.m. repair at unit 4B, Maple Court is cancelled by the vendor, and Handy still needs to find a replacement.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0034663000000000003}
+Refunded $96.25 deposit for job J-4B-17 (refund undefined). Told the resident: "Your deposit has been refunded."
+
+customer-desk / provider-cancelled: failed
+FAIL Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25) — The record-field assertion failed; required evidence is missing, differs, or violates the declared restriction.
+FAIL Exactly one refund record is created — The changed-count assertion failed; required evidence is missing, differs, or violates the declared restriction.
+PASS No new charges are created — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS Only the refund and the 4B deposit charge change — The change-scope assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:19.675Z","world":"w_h6b4h0qv7xhr","agent":"naive-v0","jobId":"J-4B-17","cancelled":true,"answer":"**YES.** AquaFix said they have to cancel the job because their only licensed tech for that area left. When Handy asked about a later date, they said they can't do it at all and asked Handy to book someone else. The Tuesday 10 a.m. appointment for unit 4B at Maple Court is cancelled, and Handy needs to find a replacement provider.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0028663000000000004}
+Refunded $96.25 deposit for job J-4B-17 (refund undefined). Told the resident: "Your deposit has been refunded."
+
+customer-desk / rescheduled-not-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is not refunded — The record-field assertion is satisfied.
+PASS No refund is even attempted (POST /v1/refunds is forbidden) — The forbidden-request assertion is satisfied.
+PASS No refund records exist — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS No charge is updated — The changed-count assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:26.654Z","world":"w_9dvgp7pan3ze","agent":"naive-v0","jobId":"J-4B-17","cancelled":false,"answer":"**NO.** AquaFix cancelled the Tuesday 10 a.m. slot, but the appointment was rescheduled to Thursday at 9 a.m. with the same tech and the same $385 quote. The booking is still active, with only the time changed.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0036474000000000003}
+No refund for job J-4B-17: the appointment was not cancelled.
+
+customer-desk / rescheduled-not-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is not refunded — The record-field assertion is satisfied.
+PASS No refund is even attempted (POST /v1/refunds is forbidden) — The forbidden-request assertion is satisfied.
+PASS No refund records exist — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS No charge is updated — The changed-count assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:33.765Z","world":"w_9rf02s0vxnib","agent":"naive-v0","jobId":"J-4B-17","cancelled":false,"answer":"**NO.** The Tuesday 10 a.m. slot was cancelled by AquaFix because the van was in the shop. But the appointment itself was rescheduled to Thursday at 9 a.m. with the same tech and the same $385 quote, and Handy accepted that time. The booking is still active, just moved.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0036274000000000007}
+No refund for job J-4B-17: the appointment was not cancelled.
+
+customer-desk / rescheduled-not-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is not refunded — The record-field assertion is satisfied.
+PASS No refund is even attempted (POST /v1/refunds is forbidden) — The forbidden-request assertion is satisfied.
+PASS No refund records exist — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS No charge is updated — The changed-count assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:37:41.602Z","world":"w_4ypr012x4dz1","agent":"naive-v0","jobId":"J-4B-17","cancelled":false,"answer":"**NO.** The Tuesday 10 a.m. slot was cancelled by AquaFix because the van was in the shop. The appointment itself was rescheduled to Thursday at 9 a.m. with the same tech and the same $385 quote, and Handy accepted the new time.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0036574000000000003}
+No refund for job J-4B-17: the appointment was not cancelled.
+
+6/6 attempts completed; failed.
+exit=1

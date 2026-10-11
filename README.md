@@ -34,3 +34,7 @@ npm test
 - Proposed Alike development workflow: [`eng-design/alike-development-workflow.md`](eng-design/alike-development-workflow.md)
 
 Demo honesty: providers are teammates and our own AI-receptionist number, and Keewano history is seeded. Both are labeled in the app. We never call real businesses with fake jobs.
+
+## Partner tool: Sparta Worlds (deposit settlement agent)
+
+[`sparta/`](sparta/README.md) holds the next money step after booking. Claude reads the booking-call transcript, and a settlement agent refunds a held deposit **exactly once** when the provider cancels, and never when the visit is only rescheduled. It is graded in Sparta's local Stripe copy under an injected HTTP 500. The naive agent passes **3/6** runs; the fixed agent (retries, a stable idempotency key, verify-after-write) passes **6/6**. It is not yet wired into the app.

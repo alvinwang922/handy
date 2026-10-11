@@ -1,0 +1,11 @@
+customer-desk / provider-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25) — The record-field assertion is satisfied.
+PASS Exactly one refund record is created — The changed-count assertion is satisfied.
+PASS No new charges are created — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS Only the refund and the 4B deposit charge change — The change-scope assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:36:41.213Z","world":"w_m849h8bzfyzs","agent":"naive-v0","jobId":"J-4B-17","cancelled":true,"answer":"**YES.** AquaFix said, \"we have to cancel that job,\" and \"we won't be able to do it at all.\" They offered no reschedule, so the Tuesday 10 a.m. appointment for unit 4B at Maple Court is cancelled by the vendor. Handy acknowledged it, and the customer will need a replacement vendor.\n\n`★ Insight ─────────────────────────────────────`\n- The call only shows the vendor's statement that the job is cancelled. It doesn't show that the booking record was updated.\n- Per the project's AGENTS.md, an agent should check the final connector state rather than rely on a conversation as proof.\n`─────────────────────────────────────────────────`","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0043763}
+Refunded $96.25 deposit for job J-4B-17 (refund re_oKYFUNkrP1E3Tie0). Told the resident: "Your deposit has been refunded."
+exit=0

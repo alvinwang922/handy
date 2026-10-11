@@ -23,3 +23,7 @@ npm-debug.log*
 CLAUDE.local.md
 .claude/settings.local.json
 data/db.json.tmp
+# Sparta lab (see sparta/README.md)
+sparta/node_modules/
+sparta/**/.env
+sparta/.worlds-dashboard/

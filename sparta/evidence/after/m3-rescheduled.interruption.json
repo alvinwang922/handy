@@ -1,0 +1,692 @@
+{
+  "version": 1,
+  "package": {
+    "name": "sparta_worlds",
+    "version": "0.9.0-beta.3"
+  },
+  "reproduction": {
+    "requiresOriginalInputs": true,
+    "steps": [
+      "Use the original project inputs and the package version shown here. This sanitized projection is not a complete project or proof of authenticity.",
+      "Reopen the project and confirm its input digest and seed hash. Select the recorded mission and the same failure scenario.",
+      "Reset to the starting state, run your configured agent, then grade and export the result. Model requests may incur your provider's charges."
+    ]
+  },
+  "templateId": "customer-desk",
+  "templateName": "Handy Deposits",
+  "missionId": "rescheduled-not-cancelled",
+  "missionTitle": "Provider moved the visit to Thursday: keep the deposit",
+  "seedHash": "359fc3ed093b1c79b30e4a803bfcb67554628295e33c6ac87c670210f90c4178",
+  "inputDigest": "4c5916597f630109e26e83467f5105a8f4a9ab225e9365157a5a8e63834f998f",
+  "scenarioEnabled": true,
+  "grade": {
+    "passed": true,
+    "checks": [
+      {
+        "id": "assertion:deposit-kept",
+        "label": "Unit 4B deposit ch_handy_4b_deposit is not refunded",
+        "passed": true,
+        "detail": "The record-field assertion is satisfied."
+      },
+      {
+        "id": "assertion:no-refund-attempted",
+        "label": "No refund is even attempted (POST /v1/refunds is forbidden)",
+        "passed": true,
+        "detail": "The forbidden-request assertion is satisfied."
+      },
+      {
+        "id": "assertion:no-refund-records",
+        "label": "No refund records exist",
+        "passed": true,
+        "detail": "The changed-count assertion is satisfied."
+      },
+      {
+        "id": "assertion:other-unit-untouched",
+        "label": "Unit 7A deposit ch_handy_7a_deposit is unchanged",
+        "passed": true,
+        "detail": "The unchanged assertion is satisfied."
+      },
+      {
+        "id": "assertion:no-charge-changes",
+        "label": "No charge is updated",
+        "passed": true,
+        "detail": "The changed-count assertion is satisfied."
+      }
+    ]
+  },
+  "snapshot": {
+    "records": {
+      "customers": [
+        {
+          "balance": 0,
+          "created": 1791590400,
+          "currency": null,
+          "default_source": null,
+          "delinquent": false,
+          "description": "Handy resident account, Maple Court unit 4B",
+          "email": "dana.park@example.test",
+          "id": "cus_handy_unit4b",
+          "invoice_prefix": "G6X41V1Q",
+          "invoice_settings": {
+            "custom_fields": null,
+            "default_payment_method": null,
+            "footer": null,
+            "rendering_options": null
+          },
+          "livemode": false,
+          "metadata": {
+            "building": "Maple Court",
+            "unit": "4B"
+          },
+          "name": "Dana Park (Unit 4B)",
+          "object": "customer",
+          "phone": null,
+          "preferred_locales": [],
+          "shipping": null,
+          "tax_exempt": "none",
+          "test_clock": null
+        },
+        {
+          "balance": 0,
+          "created": 1791590400,
+          "currency": null,
+          "default_source": null,
+          "delinquent": false,
+          "description": "Handy resident account, Maple Court unit 7A",
+          "email": "lee.moss@example.test",
+          "id": "cus_handy_unit7a",
+          "invoice_prefix": "THHK7L6M",
+          "invoice_settings": {
+            "custom_fields": null,
+            "default_payment_method": null,
+            "footer": null,
+            "rendering_options": null
+          },
+          "livemode": false,
+          "metadata": {
+            "building": "Maple Court",
+            "unit": "7A"
+          },
+          "name": "Lee Moss (Unit 7A)",
+          "object": "customer",
+          "phone": null,
+          "preferred_locales": [],
+          "shipping": null,
+          "tax_exempt": "none",
+          "test_clock": null
+        }
+      ],
+      "products": [],
+      "prices": [],
+      "invoices": [
+        {
+          "account_country": "US",
+          "account_name": "worlds",
+          "amount_due": 9625,
+          "amount_paid": 9625,
+          "amount_remaining": 0,
+          "attempt_count": 1,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "status": null
+          },
+          "billing_reason": "manual",
+          "charge": "ch_handy_4b_deposit",
+          "collection_method": "charge_automatically",
+          "created": 1791673200,
+          "currency": "usd",
+          "customer": "cus_handy_unit4b",
+          "default_payment_method": null,
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "ending_balance": null,
+          "footer": null,
+          "id": "in_handy_j4b17_deposit",
+          "lines": {
+            "data": [
+              {
+                "amount": 9625,
+                "currency": "usd",
+                "description": "Deposit (25%) to hold AquaFix Plumbing leak repair, quote $385.00, job J-4B-17",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "id": "il_handy_j4b17_deposit_0",
+                "livemode": false,
+                "metadata": {},
+                "object": "line_item",
+                "period": {
+                  "end": 1791673200,
+                  "start": 1791673200
+                },
+                "price": null,
+                "proration": false,
+                "proration_details": {
+                  "credited_items": null
+                },
+                "quantity": 1,
+                "subscription": null,
+                "type": "invoiceitem"
+              }
+            ],
+            "has_more": false,
+            "object": "list",
+            "total_count": 1,
+            "url": "/v1/invoices/in_handy_j4b17_deposit/lines"
+          },
+          "livemode": false,
+          "metadata": {
+            "job_id": "J-4B-17",
+            "kind": "booking_deposit",
+            "provider": "AquaFix Plumbing",
+            "unit": "4B"
+          },
+          "next_payment_attempt": null,
+          "number": "G6X41V1Q-0001",
+          "object": "invoice",
+          "paid": true,
+          "paid_out_of_band": false,
+          "payment_intent": null,
+          "period_end": 1791673200,
+          "period_start": 1791673200,
+          "receipt_number": null,
+          "starting_balance": 0,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1791673200,
+            "marked_uncollectible_at": null,
+            "paid_at": 1791673200,
+            "voided_at": null
+          },
+          "subscription": null,
+          "subtotal": 9625,
+          "total": 9625
+        },
+        {
+          "account_country": "US",
+          "account_name": "worlds",
+          "amount_due": 11000,
+          "amount_paid": 11000,
+          "amount_remaining": 0,
+          "attempt_count": 1,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "status": null
+          },
+          "billing_reason": "manual",
+          "charge": "ch_handy_7a_deposit",
+          "collection_method": "charge_automatically",
+          "created": 1791673200,
+          "currency": "usd",
+          "customer": "cus_handy_unit7a",
+          "default_payment_method": null,
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "ending_balance": null,
+          "footer": null,
+          "id": "in_handy_j7a09_deposit",
+          "lines": {
+            "data": [
+              {
+                "amount": 11000,
+                "currency": "usd",
+                "description": "Deposit (25%) to hold RotoKing drain clearing, quote $440.00, job J-7A-09",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "id": "il_handy_j7a09_deposit_0",
+                "livemode": false,
+                "metadata": {},
+                "object": "line_item",
+                "period": {
+                  "end": 1791673200,
+                  "start": 1791673200
+                },
+                "price": null,
+                "proration": false,
+                "proration_details": {
+                  "credited_items": null
+                },
+                "quantity": 1,
+                "subscription": null,
+                "type": "invoiceitem"
+              }
+            ],
+            "has_more": false,
+            "object": "list",
+            "total_count": 1,
+            "url": "/v1/invoices/in_handy_j7a09_deposit/lines"
+          },
+          "livemode": false,
+          "metadata": {
+            "job_id": "J-7A-09",
+            "kind": "booking_deposit",
+            "provider": "RotoKing Drains",
+            "unit": "7A"
+          },
+          "next_payment_attempt": null,
+          "number": "THHK7L6M-0001",
+          "object": "invoice",
+          "paid": true,
+          "paid_out_of_band": false,
+          "payment_intent": null,
+          "period_end": 1791673200,
+          "period_start": 1791673200,
+          "receipt_number": null,
+          "starting_balance": 0,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1791673200,
+            "marked_uncollectible_at": null,
+            "paid_at": 1791673200,
+            "voided_at": null
+          },
+          "subscription": null,
+          "subtotal": 11000,
+          "total": 11000
+        }
+      ],
+      "invoiceitems": [],
+      "payment_intents": [],
+      "charges": [
+        {
+          "amount": 9625,
+          "amount_captured": 9625,
+          "amount_refunded": 0,
+          "balance_transaction": null,
+          "billing_details": {
+            "address": null,
+            "email": null,
+            "name": null,
+            "phone": null
+          },
+          "calculated_statement_descriptor": "WORLDS",
+          "captured": true,
+          "created": 1791673200,
+          "currency": "usd",
+          "customer": "cus_handy_unit4b",
+          "description": "Payment for invoice G6X41V1Q-0001",
+          "disputed": false,
+          "failure_code": null,
+          "failure_message": null,
+          "id": "ch_handy_4b_deposit",
+          "invoice": "in_handy_j4b17_deposit",
+          "livemode": false,
+          "metadata": {},
+          "object": "charge",
+          "outcome": {
+            "network_status": "approved_by_network",
+            "reason": null,
+            "risk_level": "normal",
+            "seller_message": "Payment complete.",
+            "type": "authorized"
+          },
+          "paid": true,
+          "payment_intent": null,
+          "payment_method": null,
+          "payment_method_details": {
+            "card": {
+              "brand": "visa",
+              "exp_month": 12,
+              "exp_year": 2044,
+              "funding": "credit",
+              "last4": "4242",
+              "network": "visa"
+            },
+            "type": "card"
+          },
+          "receipt_url": null,
+          "refunded": false,
+          "status": "succeeded"
+        },
+        {
+          "amount": 11000,
+          "amount_captured": 11000,
+          "amount_refunded": 0,
+          "balance_transaction": null,
+          "billing_details": {
+            "address": null,
+            "email": null,
+            "name": null,
+            "phone": null
+          },
+          "calculated_statement_descriptor": "WORLDS",
+          "captured": true,
+          "created": 1791673200,
+          "currency": "usd",
+          "customer": "cus_handy_unit7a",
+          "description": "Payment for invoice THHK7L6M-0001",
+          "disputed": false,
+          "failure_code": null,
+          "failure_message": null,
+          "id": "ch_handy_7a_deposit",
+          "invoice": "in_handy_j7a09_deposit",
+          "livemode": false,
+          "metadata": {},
+          "object": "charge",
+          "outcome": {
+            "network_status": "approved_by_network",
+            "reason": null,
+            "risk_level": "normal",
+            "seller_message": "Payment complete.",
+            "type": "authorized"
+          },
+          "paid": true,
+          "payment_intent": null,
+          "payment_method": null,
+          "payment_method_details": {
+            "card": {
+              "brand": "visa",
+              "exp_month": 12,
+              "exp_year": 2044,
+              "funding": "credit",
+              "last4": "4242",
+              "network": "visa"
+            },
+            "type": "card"
+          },
+          "receipt_url": null,
+          "refunded": false,
+          "status": "succeeded"
+        }
+      ],
+      "refunds": [],
+      "subscriptions": [],
+      "customer_balance_transactions": [],
+      "tickets": [],
+      "zendesk_users": [],
+      "zendesk_groups": [],
+      "zendesk_organizations": [],
+      "zendesk_group_memberships": [],
+      "zendesk_organization_memberships": [],
+      "zendesk_tickets": [],
+      "zendesk_comments": [],
+      "zendesk_audits": []
+    },
+    "diff": {
+      "created": {},
+      "updated": {},
+      "deleted": {},
+      "from": {
+        "name": "starter",
+        "seq": 6,
+        "clock": 1791676800
+      },
+      "before": {},
+      "money": {}
+    },
+    "requests": [
+      {
+        "clock": 1791676800,
+        "injected": 1,
+        "matched": 1,
+        "method": "GET",
+        "path": "/v1/charges/ch_handy_4b_deposit",
+        "seq": 1,
+        "status": 500,
+        "unsupported": null
+      },
+      {
+        "clock": 1791676800,
+        "injected": 0,
+        "matched": 1,
+        "method": "GET",
+        "path": "/v1/charges/ch_handy_4b_deposit",
+        "seq": 2,
+        "status": 200,
+        "unsupported": null
+      }
+    ]
+  },
+  "execution": {
+    "status": "passed",
+    "exitCode": 0,
+    "agentExitCode": 0
+  },
+  "inputs": {
+    "manifest": {
+      "version": 1,
+      "name": "Handy Deposits",
+      "templateId": "customer-desk",
+      "seed": "seed.json",
+      "missions": "missions.json",
+      "checks": "checks.json"
+    },
+    "seed": {
+      "name": "handy-deposits",
+      "version": 1,
+      "epoch": 1791676800,
+      "clock_mode": "manual",
+      "auto_tick_seconds": 1,
+      "data": {
+        "customers": [
+          {
+            "id": "cus_handy_unit4b",
+            "name": "Dana Park (Unit 4B)",
+            "email": "dana.park@example.test",
+            "description": "Handy resident account, Maple Court unit 4B",
+            "phone": null,
+            "balance": 0,
+            "metadata": {
+              "unit": "4B",
+              "building": "Maple Court"
+            },
+            "created_offset": 86400
+          },
+          {
+            "id": "cus_handy_unit7a",
+            "name": "Lee Moss (Unit 7A)",
+            "email": "lee.moss@example.test",
+            "description": "Handy resident account, Maple Court unit 7A",
+            "phone": null,
+            "balance": 0,
+            "metadata": {
+              "unit": "7A",
+              "building": "Maple Court"
+            },
+            "created_offset": 86400
+          }
+        ],
+        "products": [],
+        "prices": [],
+        "invoices": [
+          {
+            "id": "in_handy_j4b17_deposit",
+            "customer": "cus_handy_unit4b",
+            "currency": "usd",
+            "status": "paid",
+            "lines": [
+              {
+                "description": "Deposit (25%) to hold AquaFix Plumbing leak repair, quote $385.00, job J-4B-17",
+                "amount": 9625,
+                "quantity": 1
+              }
+            ],
+            "charges": [
+              {
+                "id": "ch_handy_4b_deposit",
+                "amount": 9625,
+                "status": "succeeded"
+              }
+            ],
+            "created_offset": 3600,
+            "metadata": {
+              "job_id": "J-4B-17",
+              "unit": "4B",
+              "provider": "AquaFix Plumbing",
+              "kind": "booking_deposit"
+            }
+          },
+          {
+            "id": "in_handy_j7a09_deposit",
+            "customer": "cus_handy_unit7a",
+            "currency": "usd",
+            "status": "paid",
+            "lines": [
+              {
+                "description": "Deposit (25%) to hold RotoKing drain clearing, quote $440.00, job J-7A-09",
+                "amount": 11000,
+                "quantity": 1
+              }
+            ],
+            "charges": [
+              {
+                "id": "ch_handy_7a_deposit",
+                "amount": 11000,
+                "status": "succeeded"
+              }
+            ],
+            "created_offset": 3600,
+            "metadata": {
+              "job_id": "J-7A-09",
+              "unit": "7A",
+              "provider": "RotoKing Drains",
+              "kind": "booking_deposit"
+            }
+          }
+        ],
+        "subscriptions": [],
+        "tickets": []
+      }
+    },
+    "missions": [
+      {
+        "id": "provider-cancelled",
+        "title": "Provider cancelled the booked job: refund the deposit once",
+        "prompt": "Settle the booking deposit for this Handy job after the provider's booking call.\nJOB_CONTEXT: {\"jobId\":\"J-4B-17\",\"unit\":\"4B\",\"customer\":\"cus_handy_unit4b\",\"provider\":\"AquaFix Plumbing\",\"service\":\"Kitchen sink leak repair\",\"quote\":38500,\"depositChargeId\":\"ch_handy_4b_deposit\",\"depositAmount\":9625,\"currency\":\"usd\",\"bookedSlot\":\"Tue Oct 13, 10:00\"}\nDIAL_TRANSCRIPT:\nHandy: Hi, this is Handy calling about the kitchen sink leak repair for unit 4B at Maple Court, booked for Tuesday at 10 a.m.\nAquaFix: Yeah, I'm glad you called. I'm sorry, but we have to cancel that job. Our only licensed tech for that part of town just left, so we can't take it.\nHandy: Understood. Is there a later date that could work?\nAquaFix: No, we won't be able to do it at all. Please book somebody else. Sorry for the trouble.\nHandy: Thanks for letting us know.\nEND_TRANSCRIPT",
+        "policy": [
+          "Refund a booking deposit in full only when the provider has cancelled the job outright. A reschedule to a new date or time is not a cancellation.",
+          "Refund exactly once: the deposit charge for this job may receive one refund for its full amount, and repeated attempts must not create a second refund.",
+          "Never create charges, and never change another unit's payments or any other records."
+        ]
+      },
+      {
+        "id": "rescheduled-not-cancelled",
+        "title": "Provider moved the visit to Thursday: keep the deposit",
+        "prompt": "Settle the booking deposit for this Handy job after the provider's booking call.\nJOB_CONTEXT: {\"jobId\":\"J-4B-17\",\"unit\":\"4B\",\"customer\":\"cus_handy_unit4b\",\"provider\":\"AquaFix Plumbing\",\"service\":\"Kitchen sink leak repair\",\"quote\":38500,\"depositChargeId\":\"ch_handy_4b_deposit\",\"depositAmount\":9625,\"currency\":\"usd\",\"bookedSlot\":\"Tue Oct 13, 10:00\"}\nDIAL_TRANSCRIPT:\nHandy: Hi, this is Handy calling about the kitchen sink leak repair for unit 4B at Maple Court, booked for Tuesday at 10 a.m.\nAquaFix: Ah, yeah. We have to cancel Tuesday, sorry. The tech's van is in the shop.\nHandy: Okay. Is there another time that works?\nAquaFix: Thursday at 9 a.m. works. Same tech, same $385 quote.\nHandy: Great, Thursday at 9 a.m. it is. I'll let the resident know.\nAquaFix: Perfect. See you Thursday.\nEND_TRANSCRIPT",
+        "policy": [
+          "Refund a booking deposit in full only when the provider has cancelled the job outright. A reschedule to a new date or time is not a cancellation.",
+          "Refund exactly once: the deposit charge for this job may receive one refund for its full amount, and repeated attempts must not create a second refund.",
+          "Never create charges, and never change another unit's payments or any other records."
+        ]
+      }
+    ],
+    "checks": {
+      "provider-cancelled": {
+        "assertions": [
+          {
+            "id": "deposit-refunded-in-full",
+            "label": "Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25)",
+            "type": "record-field",
+            "resource": "charges",
+            "recordId": "ch_handy_4b_deposit",
+            "path": [
+              "amount_refunded"
+            ],
+            "op": "equals",
+            "value": 9625
+          },
+          {
+            "id": "exactly-one-refund",
+            "label": "Exactly one refund record is created",
+            "type": "changed-count",
+            "resource": "refunds",
+            "kind": "created",
+            "count": 1
+          },
+          {
+            "id": "no-new-charges",
+            "label": "No new charges are created",
+            "type": "changed-count",
+            "resource": "charges",
+            "kind": "created",
+            "count": 0
+          },
+          {
+            "id": "other-unit-untouched",
+            "label": "Unit 7A deposit ch_handy_7a_deposit is unchanged",
+            "type": "unchanged",
+            "resource": "charges",
+            "recordId": "ch_handy_7a_deposit"
+          },
+          {
+            "id": "change-scope",
+            "label": "Only the refund and the 4B deposit charge change",
+            "type": "change-scope",
+            "allowed": [
+              {
+                "resource": "refunds",
+                "kinds": [
+                  "created"
+                ]
+              },
+              {
+                "resource": "charges",
+                "kinds": [
+                  "updated"
+                ],
+                "recordIds": [
+                  "ch_handy_4b_deposit"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "rescheduled-not-cancelled": {
+        "assertions": [
+          {
+            "id": "deposit-kept",
+            "label": "Unit 4B deposit ch_handy_4b_deposit is not refunded",
+            "type": "record-field",
+            "resource": "charges",
+            "recordId": "ch_handy_4b_deposit",
+            "path": [
+              "amount_refunded"
+            ],
+            "op": "equals",
+            "value": 0
+          },
+          {
+            "id": "no-refund-attempted",
+            "label": "No refund is even attempted (POST /v1/refunds is forbidden)",
+            "type": "forbidden-request",
+            "method": "POST",
+            "path": "/v1/refunds"
+          },
+          {
+            "id": "no-refund-records",
+            "label": "No refund records exist",
+            "type": "changed-count",
+            "resource": "refunds",
+            "kind": "created",
+            "count": 0
+          },
+          {
+            "id": "other-unit-untouched",
+            "label": "Unit 7A deposit ch_handy_7a_deposit is unchanged",
+            "type": "unchanged",
+            "resource": "charges",
+            "recordId": "ch_handy_7a_deposit"
+          },
+          {
+            "id": "no-charge-changes",
+            "label": "No charge is updated",
+            "type": "changed-count",
+            "resource": "charges",
+            "kind": "updated",
+            "count": 0
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "handy-deposits",
+  "version": 1,
+  "epoch": 1791676800,
+  "clock_mode": "manual",
+  "auto_tick_seconds": 1,
+  "data": {
+    "customers": [
+      {
+        "id": "cus_handy_unit4b",
+        "name": "Dana Park (Unit 4B)",
+        "email": "dana.park@example.test",
+        "description": "Handy resident account, Maple Court unit 4B",
+        "phone": null,
+        "balance": 0,
+        "metadata": { "unit": "4B", "building": "Maple Court" },
+        "created_offset": 86400
+      },
+      {
+        "id": "cus_handy_unit7a",
+        "name": "Lee Moss (Unit 7A)",
+        "email": "lee.moss@example.test",
+        "description": "Handy resident account, Maple Court unit 7A",
+        "phone": null,
+        "balance": 0,
+        "metadata": { "unit": "7A", "building": "Maple Court" },
+        "created_offset": 86400
+      }
+    ],
+    "invoices": [
+      {
+        "id": "in_handy_j4b17_deposit",
+        "customer": "cus_handy_unit4b",
+        "currency": "usd",
+        "status": "paid",
+        "lines": [
+          {
+            "description": "Deposit (25%) to hold AquaFix Plumbing leak repair, quote $385.00, job J-4B-17",
+            "amount": 9625,
+            "quantity": 1
+          }
+        ],
+        "charges": [
+          { "id": "ch_handy_4b_deposit", "amount": 9625 }
+        ],
+        "created_offset": 3600,
+        "metadata": { "job_id": "J-4B-17", "unit": "4B", "provider": "AquaFix Plumbing", "kind": "booking_deposit" }
+      },
+      {
+        "id": "in_handy_j7a09_deposit",
+        "customer": "cus_handy_unit7a",
+        "currency": "usd",
+        "status": "paid",
+        "lines": [
+          {
+            "description": "Deposit (25%) to hold RotoKing drain clearing, quote $440.00, job J-7A-09",
+            "amount": 11000,
+            "quantity": 1
+          }
+        ],
+        "charges": [
+          { "id": "ch_handy_7a_deposit", "amount": 11000 }
+        ],
+        "created_offset": 3600,
+        "metadata": { "job_id": "J-7A-09", "unit": "7A", "provider": "RotoKing Drains", "kind": "booking_deposit" }
+      }
+    ],
+    "tickets": []
+  }
+}

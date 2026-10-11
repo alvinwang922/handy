@@ -1,0 +1,22 @@
+[
+  {
+    "id": "provider-cancelled",
+    "title": "Provider cancelled the booked job: refund the deposit once",
+    "prompt": "Settle the booking deposit for this Handy job after the provider's booking call.\nJOB_CONTEXT: {\"jobId\":\"J-4B-17\",\"unit\":\"4B\",\"customer\":\"cus_handy_unit4b\",\"provider\":\"AquaFix Plumbing\",\"service\":\"Kitchen sink leak repair\",\"quote\":38500,\"depositChargeId\":\"ch_handy_4b_deposit\",\"depositAmount\":9625,\"currency\":\"usd\",\"bookedSlot\":\"Tue Oct 13, 10:00\"}\nDIAL_TRANSCRIPT:\nHandy: Hi, this is Handy calling about the kitchen sink leak repair for unit 4B at Maple Court, booked for Tuesday at 10 a.m.\nAquaFix: Yeah, I'm glad you called. I'm sorry, but we have to cancel that job. Our only licensed tech for that part of town just left, so we can't take it.\nHandy: Understood. Is there a later date that could work?\nAquaFix: No, we won't be able to do it at all. Please book somebody else. Sorry for the trouble.\nHandy: Thanks for letting us know.\nEND_TRANSCRIPT",
+    "policy": [
+      "Refund a booking deposit in full only when the provider has cancelled the job outright. A reschedule to a new date or time is not a cancellation.",
+      "Refund exactly once: the deposit charge for this job may receive one refund for its full amount, and repeated attempts must not create a second refund.",
+      "Never create charges, and never change another unit's payments or any other records."
+    ]
+  },
+  {
+    "id": "rescheduled-not-cancelled",
+    "title": "Provider moved the visit to Thursday: keep the deposit",
+    "prompt": "Settle the booking deposit for this Handy job after the provider's booking call.\nJOB_CONTEXT: {\"jobId\":\"J-4B-17\",\"unit\":\"4B\",\"customer\":\"cus_handy_unit4b\",\"provider\":\"AquaFix Plumbing\",\"service\":\"Kitchen sink leak repair\",\"quote\":38500,\"depositChargeId\":\"ch_handy_4b_deposit\",\"depositAmount\":9625,\"currency\":\"usd\",\"bookedSlot\":\"Tue Oct 13, 10:00\"}\nDIAL_TRANSCRIPT:\nHandy: Hi, this is Handy calling about the kitchen sink leak repair for unit 4B at Maple Court, booked for Tuesday at 10 a.m.\nAquaFix: Ah, yeah. We have to cancel Tuesday, sorry. The tech's van is in the shop.\nHandy: Okay. Is there another time that works?\nAquaFix: Thursday at 9 a.m. works. Same tech, same $385 quote.\nHandy: Great, Thursday at 9 a.m. it is. I'll let the resident know.\nAquaFix: Perfect. See you Thursday.\nEND_TRANSCRIPT",
+    "policy": [
+      "Refund a booking deposit in full only when the provider has cancelled the job outright. A reschedule to a new date or time is not a cancellation.",
+      "Refund exactly once: the deposit charge for this job may receive one refund for its full amount, and repeated attempts must not create a second refund.",
+      "Never create charges, and never change another unit's payments or any other records."
+    ]
+  }
+]

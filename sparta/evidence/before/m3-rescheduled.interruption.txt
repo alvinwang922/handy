@@ -1,0 +1,11 @@
+customer-desk / rescheduled-not-cancelled: passed
+PASS Unit 4B deposit ch_handy_4b_deposit is not refunded — The record-field assertion is satisfied.
+PASS No refund is even attempted (POST /v1/refunds is forbidden) — The forbidden-request assertion is satisfied.
+PASS No refund records exist — The changed-count assertion is satisfied.
+PASS Unit 7A deposit ch_handy_7a_deposit is unchanged — The unchanged assertion is satisfied.
+PASS No charge is updated — The changed-count assertion is satisfied.
+
+Agent reply:
+DECISION {"at":"2026-10-11T20:36:59.931Z","world":"w_wh5yxsi9xkvh","agent":"naive-v0","jobId":"J-4B-17","cancelled":false,"answer":"**NO.** The appointment wasn't cancelled, it was rescheduled. AquaFix dropped the Tuesday 10 a.m. slot because the van was in the shop, but both sides then agreed to Thursday at 9 a.m. with the same tech and the same $385 quote. The booking stays active with a new time.","backend":"claude-code-cli","model":"claude-sonnet-5-5","costUsd":0.0119433}
+No refund for job J-4B-17: the appointment was not cancelled.
+exit=0

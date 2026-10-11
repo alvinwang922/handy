@@ -1,0 +1,92 @@
+{
+  "provider-cancelled": {
+    "assertions": [
+      {
+        "id": "deposit-refunded-in-full",
+        "label": "Unit 4B deposit ch_handy_4b_deposit is refunded in full ($96.25)",
+        "type": "record-field",
+        "resource": "charges",
+        "recordId": "ch_handy_4b_deposit",
+        "path": ["amount_refunded"],
+        "op": "equals",
+        "value": 9625
+      },
+      {
+        "id": "exactly-one-refund",
+        "label": "Exactly one refund record is created",
+        "type": "changed-count",
+        "resource": "refunds",
+        "kind": "created",
+        "count": 1
+      },
+      {
+        "id": "no-new-charges",
+        "label": "No new charges are created",
+        "type": "changed-count",
+        "resource": "charges",
+        "kind": "created",
+        "count": 0
+      },
+      {
+        "id": "other-unit-untouched",
+        "label": "Unit 7A deposit ch_handy_7a_deposit is unchanged",
+        "type": "unchanged",
+        "resource": "charges",
+        "recordId": "ch_handy_7a_deposit"
+      },
+      {
+        "id": "change-scope",
+        "label": "Only the refund and the 4B deposit charge change",
+        "type": "change-scope",
+        "allowed": [
+          { "resource": "refunds", "kinds": ["created"] },
+          { "resource": "charges", "kinds": ["updated"], "recordIds": ["ch_handy_4b_deposit"] }
+        ]
+      }
+    ]
+  },
+  "rescheduled-not-cancelled": {
+    "assertions": [
+      {
+        "id": "deposit-kept",
+        "label": "Unit 4B deposit ch_handy_4b_deposit is not refunded",
+        "type": "record-field",
+        "resource": "charges",
+        "recordId": "ch_handy_4b_deposit",
+        "path": ["amount_refunded"],
+        "op": "equals",
+        "value": 0
+      },
+      {
+        "id": "no-refund-attempted",
+        "label": "No refund is even attempted (POST /v1/refunds is forbidden)",
+        "type": "forbidden-request",
+        "method": "POST",
+        "path": "/v1/refunds"
+      },
+      {
+        "id": "no-refund-records",
+        "label": "No refund records exist",
+        "type": "changed-count",
+        "resource": "refunds",
+        "kind": "created",
+        "count": 0
+      },
+      {
+        "id": "other-unit-untouched",
+        "label": "Unit 7A deposit ch_handy_7a_deposit is unchanged",
+        "type": "unchanged",
+        "resource": "charges",
+        "recordId": "ch_handy_7a_deposit"
+      },
+      {
+        "id": "no-charge-changes",
+        "label": "No charge is updated",
+        "type": "changed-count",
+        "resource": "charges",
+        "kind": "updated",
+        "count": 0
+      }
+    ]
+  }
+}

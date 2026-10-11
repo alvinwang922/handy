@@ -1,0 +1,21 @@
+{
+  "name": "sparta-lab",
+  "version": "1.0.0",
+  "description": "Handy deposit settlement agent tested in Sparta Worlds (local Stripe copy)",
+  "scripts": {
+    "before": "npx --no-install worlds starters run --project ./projects/handy-deposits --mission provider-cancelled --scenario interruption -- node naive-agent.mjs",
+    "after": "npx --no-install worlds starters run --project ./projects/handy-deposits --mission provider-cancelled --scenario interruption -- node settlement-agent.mjs",
+    "all": "npx --no-install worlds starters run --project ./projects/handy-deposits --all --runs 3 --scenario interruption -- node settlement-agent.mjs",
+    "evidence": "./scripts/run-evidence.sh",
+    "html": "node scripts/evidence-html.mjs ./evidence",
+    "open": "npx --no-install worlds starters open --project ./projects/handy-deposits"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "sparta_worlds": "0.9.0-beta.3"
+  }
+}

@@ -1,0 +1,16 @@
+# Never upload secrets, teammates' numbers, local data or personal files to Vercel
+.env*
+!.env.example
+data/providers.local.json
+data/db.json
+data/db.json.tmp
+data/uploads
+data/handy.sqlite*
+.claude
+.superpowers
+.impeccable
+.gstack
+docs/UI-UX review.pdf
+node_modules
+.next
+sparta

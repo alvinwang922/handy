@@ -33,7 +33,7 @@ The [return-contract proposal](../../eng-design/dial-call-results-contract.md) a
 
 Conversation control also needs another iteration: the agents sometimes spoke over each other, lengthy readbacks displaced unanswered questions, and the first caller's opening disclosure was interrupted. Prefer a short opening, targeted questions for missing terms, one concise readback and an explicit completion checklist before ending. These improvements are recommendations, not a second live-tested prompt version.
 
-This run did not test Darwin discovery, SMS/MMS, photo-review confirmation, human recipients, automatic model extraction, scheduling, parallel dialing, dispatch-crash recovery or production authentication. No contractors were contacted and no appointments or purchases were made.
+This run did not test automatic provider discovery, SMS/MMS, photo-review confirmation, human recipients, automatic model extraction, scheduling, parallel dialing, dispatch-crash recovery or production authentication. No contractors were contacted and no appointments or purchases were made.
 
 ## Verification and private artifacts
 

@@ -124,19 +124,6 @@ Sometimes a service visit is unnecessary: the issue only needs an inexpensive re
 
 **Why it fits:** Dial documents voice calls, SMS, inbound events, phone-number provisioning, transcripts, and MCP/SDK/REST access for agents. See [Dial introduction](https://docs.getdial.ai/documentation/get-started/introduction) and [agent integration options](https://docs.getdial.ai/documentation/get-started/using-dial-from-an-agent).
 
-### Darwin — agentic web discovery track
-
-**Product role:** Find service capabilities and initiate provider-agent interactions.
-
-- Search Darwin for agents or services that match a repair capability such as plumbing, HVAC, or general handyman work.
-- Preserve the selected capability ID and revision so the choice is reproducible.
-- Start a protected thread only when a selected service requires an authenticated interaction.
-- Fall back to a seeded provider directory when no suitable live capability exists, while labeling the fallback clearly.
-
-**Demo moment:** Show the exact request—“find plumbing services that can quote a leaking sink in this service area”—and the selected result feeding the outreach queue.
-
-**Why it fits:** Darwin exposes public capability search plus protected thread tools through MCP, skills, REST, TypeScript, Python, and CLI surfaces. See [Darwin for agents](https://darwin.so/agents).
-
 ### Keewano — event data and agent analytics track
 
 **Product role:** The ordered, queryable history of every repair.
@@ -168,11 +155,11 @@ Sometimes a service visit is unnecessary: the issue only needs an inexpensive re
 
 ## 8. Recommended track strategy
 
-Use all four sponsors in one connected product flow, while concentrating the live demo on this chain:
+Concentrate the live product demo on this chain:
 
-**Darwin discovers → Dial contacts → Keewano records → user approves → Dial schedules**
+**Seeded provider directory → Keewano ranks → Dial contacts → user approves → Dial schedules**
 
-Use **Alike** to demonstrate the repair handoff and the team’s own human-agent coordination. This gives every sponsor a clear role without making the customer journey feel like four disconnected demos.
+Use **Alike** to demonstrate the team’s own human-agent coordination and development handoffs. Provider names and history in the demo are seeded and must be labeled; automatic local-business discovery remains future work.
 
 ## 9. System outline
 
@@ -183,7 +170,7 @@ Repair orchestrator
     ├─ assessment model: issue summary, DIY suitability, and trade classification
     ├─ parts workflow: compatibility, purchase options, approval, and order status
     ├─ installation guide: part-specific steps and completion checks
-    ├─ Darwin: provider/agent discovery
+    ├─ provider directory: seeded demo contacts, trade and service-area filtering
     ├─ Dial: calls, SMS, transcripts, confirmations
     ├─ KeewanoDB: ordered repair events and analytics
     └─ Alike: human/agent repair briefs and handoffs
@@ -222,7 +209,7 @@ The pilot target is a **50% reduction in active coordination time**. This is a p
 
 - A user can complete the full demo from issue submission to appointment confirmation.
 - At least one provider interaction uses Dial and returns a usable transcript.
-- At least one discovery request uses Darwin or clearly displays the seeded fallback.
+- Provider selection uses trade/service-area filtering and Keewano ranking, with seeded demo providers clearly labeled.
 - Keewano stores and retrieves the ordered repair event sequence.
 - Alike produces or maintains a repair/development handoff if its hackathon API is available.
 - Every simulated or seeded element is labeled as demo data.
@@ -256,7 +243,7 @@ The pilot target is a **50% reduction in active coordination time**. This is a p
 
 1. Switch between homeowner and property-manager workspaces.
 2. Report a leaking sink and attach a photo.
-3. Show the assessment and Darwin provider discovery result.
+3. Show the assessment and relevant seeded providers ranked by Keewano.
 4. Trigger Dial outreach and open the returned call transcript.
 5. Compare quotes and approve one provider.
 6. Select two available windows and use Dial to confirm the appointment.

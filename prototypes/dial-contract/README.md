@@ -21,7 +21,7 @@ Run outputs live in ignored `.local/<run-id>/`. The runner records an attempt be
 ## Proposed shared handoff
 
 - `RepairBrief`: schema and brief versions, observed symptoms, existing `Diagnosis`, recommended path, requester role, city/ZIP/timezone, reference time, photo references and unresolved user questions.
-- `ProviderTarget`: stable provider ID, trade, service-area match and verified contact. The prototype resolves the actual phone from an authorized account number, not model output. Discovery is seeded for this experiment; Darwin is not called.
+- `ProviderTarget`: stable provider ID, trade, service-area match and verified contact. The prototype resolves the actual phone from an authorized account number, not model output. Discovery is seeded for this experiment.
 - `QuoteJob`: immutable prompt/snapshot hash, request/brief/provider IDs, attempt and idempotency IDs, quote-only purpose and call duration cap.
 - `Transcript`: Dial call ID, direction, termination status, raw transcript and speaker-separated turns. For an outbound call, `user` is the provider side, even if it is another AI.
 - `ExtractedQuote`: existing `Quote` plus outcome, collection completeness, uncollected fields, fee treatment, provider requests for missing information, quote basis, photo-review state and field-level provider evidence. `collectionStatus` is independent of Dial's transport status: a completed call can leave availability uncollected.
@@ -38,7 +38,7 @@ That validates reviews against recorded provider turns and saves `validated-quot
 
 ## Boundaries
 
-Photo/media delivery, Darwin discovery, actual homeowner jobs, booking, payments, and the UI are outside this experiment. A description-only call cannot establish photo review. Fixture price ranges are not an approved spending budget. DIY, emergency, unresolved clarification, wrong trade, or unverified service area/contact all block dispatch.
+Photo/media delivery, automatic provider discovery, actual homeowner jobs, booking, payments, and the UI are outside this experiment. A description-only call cannot establish photo review. Fixture price ranges are not an approved spending budget. DIY, emergency, unresolved clarification, wrong trade, or unverified service area/contact all block dispatch.
 
 One caller plus one answering agent allows sequential scenario coverage, not three simultaneous independent provider calls. Do not use this single-process prototype as a production job queue. Keep existing app API shapes and USD field units when integrating; add new fields and matching Zod validators in coordination with the shared-contract owners.
 

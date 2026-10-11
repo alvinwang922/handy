@@ -76,5 +76,5 @@ npm run smoke:booking -- --approve --request-id=<controlled quote request id>
 - The same request passed a separate real booking call through the actual `/book` and request-polling endpoints at **21:59:22 UTC**. From two submitted windows, the controlled provider confirmed **October 13, 2026, 9–11 AM Pacific**, with unchanged approved terms and two supporting evidence entries. The call lasted 120 seconds; an initial extraction failure recovered on the automatic extraction retry without another call. This confirms a fictional test appointment only.
 - The receiver persona and private provider mappings were restored and verified after acceptance.
 - The full simulated journey returns three quotes and confirms the selected provider's second offered window; it also rejects changed terms and outside-window confirmations.
-- Darwin prototype live searches did not yield a usable contractor route. Keep the labeled seeded directory for the deadline.
+- Provider outreach uses the labeled seeded directory and Keewano ranking. Automatic local-business discovery remains future work.
 - Automatic SMS summaries, active-agent photo review, rescheduling, exact calendar export and public deployment hardening remain separate gaps in the [PRD coverage audit](dial-prd-coverage.md).

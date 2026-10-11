@@ -8,11 +8,11 @@ Built in one day at SpeedHacks (a16z speedrun × SF Tech Week, 2026-10-11).
 
 When something breaks at home, the repair itself is rarely the slow part. Finding and coordinating the pro is:
 
-- Homeowners research for **1–5 hours** before they even request a quote, and most collect **3 or more quotes** ([Modernize 2021](https://www.jlconline.com/business/modernize-homeowners-need-help-budgeting-and-rely-heavily-on-online-research_o/), [ArcSite 2022](https://www.arcsite.com/blog/2022-homeowner-survey-report)).
-- Property managers report spending **8–22 hours a week** coordinating maintenance ([software-vendor estimates](https://oxmaint.com/industries/property-management/case-study-small-portfolio-manager-saved-20-hours-week-cmms), so treat them as directional).
+- **56% of respondents** in Modernize's **2021 home-improvement survey** spent **1–5 hours** researching before requesting a quote. ArcSite's **2022 report** found **95% seek multiple bids**, with a majority often seeking **3 or more**. These are historical survey findings, not measurements of every small repair ([Modernize / QuinStreet](https://investor.quinstreet.com/node/16861/pdf), [ArcSite](https://www.arcsite.com/blog/2022-homeowner-survey-report)).
+- Property managers repeat that coordination across units and may also travel to inspect reported issues. We have not established a research-backed weekly workload or commuting-hours benchmark for this group.
 - Every quote means calling, waiting, repeating the same description, phone tag, then calling back to schedule.
 
-**Our time-saved model (an estimate, not a measurement):** about 30 min of research, plus 3 providers × (3 min to find the number + 8 min on the call + 10 min of phone tag), plus 15 min of scheduling ≈ **108 minutes** of hands-on time per repair. With Handy, the user's hands-on time is a photo, a review and one approval. The backend stores each request's active time (`userActiveSec`) and Keewano tracks minutes-to-book. The UI timer that feeds them is still to come, so the 108-minute figure stays an estimate until we've timed real runs.
+**Our manual-coordination model (an estimate, not a measurement):** about 30 min of research, plus 3 providers × (3 min to find the number + 8 min on the call + 10 min of phone tag), plus 15 min of scheduling = **108 minutes** of hands-on time per repair. These are assumed inputs, separate from the surveys above. Handy aims to reduce the user's hands-on work to a photo, a review and one approval. The backend stores each request's active time (`userActiveSec`) and Keewano tracks minutes-to-book. The UI timer that feeds them is still to come; actual Handy time savings have not yet been measured.
 
 ## How it works
 
@@ -47,6 +47,7 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
 | Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **Diagnosis and part search use the live API.** The outreach, quote and booking *screens* are still the original prototype and are labeled simulated in the app. The live backend behind them (Dial calls, Keewano ranking, extraction, approval, booking) is verified by API tests, an end-to-end script, and a live Dial acceptance run |
+| Calendar export | An `.ics` route exists, but explicit dates, time zones, and duration are not reliably preserved. Show the stored booking window until export is corrected; see [`docs/submission.md`](docs/submission.md) |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
 
@@ -57,7 +58,7 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 | **Dial** | Outbound AI quote calls with AI disclosure, booking calls only after approval, an inbound AI-receptionist persona, idempotent call placement, speaker-separated transcripts, and repair photo packets to Dial-to-Dial recipients | It is the core action: Handy makes the phone calls so you don't have to |
 | **Keewano** | Typed, append-only event registry (`lib/keewano.ts`); SQL over the Postgres protocol decides **who gets called** and **what to ask**; before/after metrics; live Q&A over MCP | **Load-bearing:** a 4.4★ provider who answers only 59% of calls gets skipped; a unit's repair history adds a replacement-quote question. Example questions: [`docs/keewano-qa.md`](docs/keewano-qa.md) |
 | **Sparta Worlds** | [`sparta/`](sparta/README.md): a deposit-settlement agent that refunds a held deposit **exactly once** when a provider cancels, graded in Sparta's local Stripe copy under an injected HTTP 500 | The naive agent passes **3/6** runs; the fixed one (retry, stable idempotency key, verify after write) passes **6/6**. It runs after booking and isn't wired into the app yet |
-| **Alike** | Team coordination for our 4 engineers' coding agents: shared decisions anchored to contract files, briefings at session start | Contract changes (for example the call-result schema) reach every teammate's agent before it edits those files |
+| **Alike** | Team coordination for our 4 engineers' coding agents: shared decisions anchored to contract files, briefings at session start | Shared decisions and context support work across sessions |
 
 ## Safety and trust
 
@@ -116,7 +117,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 ## What's next
 
-- Finish the model-based quote extraction and wire the outreach, quote and booking screens to the live API.
+- Wire the outreach, quote and booking screens to the live API; production quote and booking extraction have passed controlled live backend tests.
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
 - Quote revisions and normalized availability windows (start/end plus time zone), so bookings never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.

@@ -24,6 +24,9 @@ No webhook or public callback is required for this polling path. The UI must pol
 | Submit assessment input | `POST /api/requests` multipart intake | Request and diagnosis; image/description work remains P2/P3. |
 | Request quotes | `POST /api/requests/:id/outreach` | Ranked eligible seeded providers and persisted quote attempts. |
 | Progress and quotes | `GET /api/requests/:id` about every 3 seconds | Call status, `calls[].quoteResult`, compatible `quote`, and `quoteRevision`. |
+| Preview photo packet | `GET /api/requests/:id/packet?providerId=<id>` | `packetVersion`, summary, photos, warnings and `canSend`; provider must already belong to this request's quote outreach to send. |
+| Send approved photo packet | `POST /api/requests/:id/share-packet` | Requires `Idempotency-Key` header and JSON `{providerId, packetVersion}`; optional `callId` is the app's quote-call ID. Returns a persisted message record. |
+| Message history | `GET /api/requests/:id/messages` | `{messages: [...]}` with `dispatchState`, `deliveryState`, `photoReviewState` and `dialMessageId`. |
 | Approve and schedule | `POST /api/requests/:id/book` with the JSON below | Persisted approval and booking attempt. |
 | Booking outcome | Continue polling the request | `scheduled` only after provider evidence confirms an allowed window and unchanged terms; otherwise notice/reconciliation. |
 
@@ -40,9 +43,22 @@ No webhook or public callback is required for this polling path. The UI must pol
 
 The sample dates illustrate the contract; use actual future windows for the user's request. An inspection-only quote approves only its visit fee. Hourly rates without a total cap are rejected. Changed quote revisions require renewed approval. An uncertain call placement or unreadable booking must be reconciled before a second call.
 
+Photo packets support one JPEG/PNG at most **1,000,000 bytes**. Send the latest preview's `packetVersion`; changed packets require a new preview. Live messaging is restricted to exact `DIAL_ALLOWED_RECIPIENTS` entries and currently validated only between owned Dial numbers, not arbitrary contractors' phones. A `202` response is not proof of delivery: inspect `dispatchState`, including `send_unknown`. Delivery and provider photo review are independent; history reports saved state and does not yet automatically reconcile incoming delivery events.
+
 ## Controlled live acceptance
 
-First run the quote harness against the two owned Dial numbers (`npm run smoke:dial`). Then use its persisted `req_live_...` request. The booking harness requires a real saved transcript and re-extracts it with the production model; it has no fixture fallback. Start the local backend with matching live flags, then:
+First run the quote harness against the two owned Dial numbers with production extraction. For an approved synthetic photo, use the local app's existing packet endpoints during the call. The server's private `DIAL_ALLOWED_RECIPIENTS` must contain the exact controlled receiver number. Both processes must use the same checkout and live flags.
+
+```bash
+HANDY_LIVE_DEMO=1 HANDY_APP_URL=http://127.0.0.1:3000 \
+MOCK_DIAL=0 MOCK_CLAUDE=0 MOCK_CLAUDE_EXTRACT=0 \
+npm run smoke:dial -- --live-extraction \
+  --photo=data/uploads/controlled-sink-test.png --send-photo
+```
+
+Supply your approved JPEG/PNG image within `data/uploads` (at most 1 MB); the synthetic test image is private local test data, not a committed production fixture. Omit both photo flags for voice-only acceptance. Sending uses a stable idempotency key and occurs once in an observed `In-Progress` interval. Accepted, delivered and reviewed are separate outcomes; MMS delivery does not establish that the voice agent can see the image.
+
+Then use the persisted `req_live_...` request for booking. The booking harness requires a real saved transcript and re-extracts it with the production model; it has no fixture fallback. Start the local backend with matching live flags, then:
 
 ```bash
 HANDY_LIVE_DEMO=1 HANDY_APP_URL=http://127.0.0.1:3000 \
@@ -54,8 +70,11 @@ npm run smoke:booking -- --approve --request-id=<controlled quote request id>
 
 ## Current evidence and limits
 
-- Dial transport has controlled live quote evidence. The integrated call stored $220 with no visit fee and incomplete availability.
-- Production extractors are implemented and tested with mocked Anthropic responses, including refusal/truncation, bad evidence, stale IDs and ambiguous booking outcomes. Production model execution and live booking acceptance still need an environment with the Anthropic secret.
+- On October 11, 2026, controlled request `req_live_543e2483` completed a real quote call and production model extraction: **$220, no visit fee, five supporting evidence entries**. This is a fictional provider persona for integration testing, not a market quote.
+- Its outbound image MMS was delivered, and receipt of that exact image by the controlled destination was independently verified. `photoReviewState` remains `unknown`: **there is no evidence that the active voice agent viewed the image**. A tool/context bridge is still needed to test visual review inside the conversation.
+- Production extractors are also tested with mocked Anthropic responses, including refusal/truncation, bad evidence, stale IDs and ambiguous booking outcomes.
+- The same request passed a separate real booking call through the actual `/book` and request-polling endpoints at **21:59:22 UTC**. From two submitted windows, the controlled provider confirmed **October 13, 2026, 9–11 AM Pacific**, with unchanged approved terms and two supporting evidence entries. The call lasted 120 seconds; an initial extraction failure recovered on the automatic extraction retry without another call. This confirms a fictional test appointment only.
+- The receiver persona and private provider mappings were restored and verified after acceptance.
 - The full simulated journey returns three quotes and confirms the selected provider's second offered window; it also rejects changed terms and outside-window confirmations.
 - Darwin prototype live searches did not yield a usable contractor route. Keep the labeled seeded directory for the deadline.
-- SMS summaries/photo review, rescheduling, exact calendar export and public deployment hardening remain separate gaps in the [PRD coverage audit](dial-prd-coverage.md).
+- Automatic SMS summaries, active-agent photo review, rescheduling, exact calendar export and public deployment hardening remain separate gaps in the [PRD coverage audit](dial-prd-coverage.md).

@@ -10,6 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke:dial": "tsx --env-file=.env.local scripts/smoke-live-quote.ts",
+    "prototype:darwin": "tsx prototypes/darwin-discovery/run.ts",
+    "test:darwin": "vitest run --config prototypes/darwin-discovery/vitest.config.ts",
     "seed:keewano": "tsx --env-file=.env.local scripts/seed-keewano.ts",
     "try:diagnose": "tsx --env-file=.env.local scripts/try-diagnose.ts",
     "setup:receptionist": "tsx --env-file=.env.local scripts/setup-receptionist.ts"

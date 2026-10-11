@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { after, NextResponse } from "next/server";
 import * as claude from "@/lib/claude";
+import { config } from "@/lib/config";
 import * as keewano from "@/lib/keewano";
 import { searchPartsForRequest } from "@/lib/orchestrator";
 import { searchingPartSearch } from "@/lib/parts";
@@ -99,9 +100,10 @@ export async function POST(request: Request) {
   req.status = req.diagnosis.urgency === "emergency" ? "emergency" : "diagnosed";
   req.timeline.push({ status: req.status, at: nowIso() });
 
+  // Mock-call runs must not count as real bookings in the before/after metric.
   void keewano.track({ kind: "request", id }, [
-    { name: "DataSource", value: "live" },
-    { name: "Channel", value: "handled" },
+    { name: "DataSource", value: config.mockDial ? "mock" : "live" },
+    { name: "Channel", value: config.mockDial ? "handled_mock" : "handled" },
   ]);
   void keewano.track({ kind: "unit", id: `${propertyId}/${unit}` }, [{ name: "IssueReported", value: req.diagnosis.trade }]);
   // DIY: search for the part after responding (web search takes ~20–60 s); the UI's 3 s poll picks it up.

@@ -195,10 +195,13 @@ export async function unitInsight(propertyId: string, unit: string, trade?: Trad
   }
   if (!trade) return { priorIssuesSameTrade180d: 0, recommendReplaceQuote: false, note: "Trade unknown" };
   const uid = entityUuid({ kind: "unit", id: unitEntityId(propertyId, unit) });
+  // Interval semantics: each IssueReported(trade) event opens a stretch where the column equals that
+  // trade, so counting IssueReported inside those stretches counts exactly the matching reports.
+  // (count(...) FILTER (...) is rejected by Keewano here: "unsupported aggregate in the SELECT list".)
   const [row] = await sql<{ n: string }>(`
-    SELECT count("IssueReported") FILTER (WHERE "IssueReported" = ${lit(trade)}) AS n
+    SELECT count("IssueReported") AS n
     FROM events
-    WHERE user_id = ${lit(uid)} AND event_datetime >= now() - INTERVAL '180 days'`);
+    WHERE user_id = ${lit(uid)} AND "IssueReported" = ${lit(trade)} AND event_datetime >= now() - INTERVAL '180 days'`);
   const prior = Number(row?.n ?? 0);
   const recommend = prior >= 2;
   return {

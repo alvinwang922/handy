@@ -66,6 +66,7 @@ export const unitEntityId = (propertyId: string, unit: string) => `${propertyId}
 async function post(path: "custom" | "in", body: unknown) {
   const res = await fetch(`${INGEST}/${path}`, {
     method: "POST",
+    signal: AbortSignal.timeout(5_000),
     headers: { "k-token": requireEnv("KEEWANO_API_KEY"), "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -132,6 +133,9 @@ function db(): Pool {
     max: 2,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 10_000,
+    // A stalled query must throw so callers fall back (e.g. rating order) instead of hanging outreach.
+    query_timeout: 8_000,
+    statement_timeout: 8_000,
   });
   return g.__keewanoPool;
 }
@@ -214,8 +218,8 @@ export async function unitInsight(propertyId: string, unit: string, trade?: Trad
   };
 }
 
-export async function metrics(): Promise<{ medianMinutesToBook: { manual: number | null; handled: number | null } }> {
-  if (config.mockKeewano) return { medianMinutesToBook: { manual: 2160, handled: 9 } };
+export async function metrics(): Promise<{ medianMinutesToBook: { manual: number | null; handled: number | null }; source: "keewano" | "mock" }> {
+  if (config.mockKeewano) return { medianMinutesToBook: { manual: 2160, handled: 9 }, source: "mock" };
   const rows = await sql<{ channel: string; median_min: number | string | null }>(`
     SELECT "Channel" AS channel,
            percentile_cont(0.5) WITHIN GROUP (ORDER BY "MinutesToBook") AS median_min
@@ -226,7 +230,7 @@ export async function metrics(): Promise<{ medianMinutesToBook: { manual: number
     const v = rows.find((r) => r.channel === c)?.median_min;
     return v == null ? null : Math.round(Number(v));
   };
-  return { medianMinutesToBook: { manual: pick("manual"), handled: pick("handled") } };
+  return { medianMinutesToBook: { manual: pick("manual"), handled: pick("handled") }, source: "keewano" };
 }
 
 function mockRank(trade: Trade): ProviderScore[] {

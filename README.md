@@ -9,10 +9,10 @@ Built in one day at SpeedHacks (a16z speedrun × SF Tech Week, 2026-10-11).
 When something breaks at home, the repair itself is rarely the slow part. Finding and coordinating the pro is:
 
 - Homeowners research for **1–5 hours** before they even request a quote, and most collect **3 or more quotes** ([Modernize 2021](https://www.jlconline.com/business/modernize-homeowners-need-help-budgeting-and-rely-heavily-on-online-research_o/), [ArcSite 2022](https://www.arcsite.com/blog/2022-homeowner-survey-report)).
-- Property managers spend **8–22 hours a week** coordinating maintenance (software-vendor estimates, so treat them as directional).
+- Property managers report spending **8–22 hours a week** coordinating maintenance ([software-vendor estimates](https://oxmaint.com/industries/property-management/case-study-small-portfolio-manager-saved-20-hours-week-cmms), so treat them as directional).
 - Every quote means calling, waiting, repeating the same description, phone tag, then calling back to schedule.
 
-**Our time-saved model (labeled estimate):** about 30 min of research, plus 3 providers × (3 min to find the number + 8 min on the call + 10 min of phone tag), plus 15 min of scheduling ≈ **108 minutes** per repair. With Handy, the user's active time is entering the photo, then reviewing and approving. We measure it in the app (`userActiveSec`) rather than assume it.
+**Our time-saved model (an estimate, not a measurement):** about 30 min of research, plus 3 providers × (3 min to find the number + 8 min on the call + 10 min of phone tag), plus 15 min of scheduling ≈ **108 minutes** of hands-on time per repair. With Handy, the user's hands-on time is a photo, a review and one approval. The backend stores each request's active time (`userActiveSec`) and Keewano tracks minutes-to-book. The UI timer that feeds them is still to come, so the 108-minute figure stays an estimate until we've timed real runs.
 
 ## How it works
 
@@ -42,10 +42,11 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Photo diagnosis + DIY plan | **Real.** Claude Opus 5.5 vision with schema-validated structured output (`lib/claude.ts`) |
 | DIY part search | **Real.** Claude web search returns the 3 best purchase options (`lib/parts.ts`) |
 | Provider ranking + unit history | **Real queries** against Keewano. The provider/unit history behind them is **seeded and labeled** (`DataSource=seed`) |
-| Dial voice calls | **Real** backend adapter (idempotency keys, speaker-separated transcripts) with a controlled live smoke test (`npm run smoke:dial`). The call-result contract was verified on 3 live Dial-to-Dial calls in the prototype: [`prototypes/dial-contract/RESULTS.md`](prototypes/dial-contract/RESULTS.md) |
-| Transcript → quote extraction | Contract, validation and evidence checks are real (`lib/evidence.ts`). The model extractor is in progress; mock mode uses fixtures |
-| Providers | **Simulated:** teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. Diagnosis is live; outreach, quote and booking screens may still show sample data |
+| Dial voice calls | **Real, verified live end to end on the backend:** a quote call (with the photo delivered by MMS), then a booking call through the real `/book` and polling endpoints, confirmed by a controlled provider ([`eng-design/dial-endpoint-handoff.md`](eng-design/dial-endpoint-handoff.md)). Idempotency keys, speaker-separated transcripts, and smoke tests (`npm run smoke:dial`, `npm run smoke:booking`). Parallel live calls are untested, so the live demo uses `QUOTE_FANOUT=1` |
+| Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
+| Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
+| Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
+| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **Diagnosis calls the live API.** The outreach, quote and booking screens still show labeled sample data; the backend behind them is covered by API tests and an end-to-end script |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
 
@@ -53,11 +54,11 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 
 | Partner | How Handy uses it | Why it matters |
 |---|---|---|
-| **Dial** | Outbound AI quote calls, AI disclosure, booking calls after approval, an inbound AI receptionist persona, idempotent call placement, speaker-separated transcripts | It is the core action: Handy makes the phone calls so you don't have to |
+| **Dial** | Outbound AI quote calls with AI disclosure, booking calls only after approval, an inbound AI-receptionist persona, idempotent call placement, speaker-separated transcripts, and repair photo packets to Dial-to-Dial recipients | It is the core action: Handy makes the phone calls so you don't have to |
 | **Keewano** | Typed, append-only event registry (`lib/keewano.ts`); SQL over the Postgres protocol decides **who gets called** and **what to ask**; before/after metrics; live Q&A over MCP | **Load-bearing:** a 4.4★ provider who answers only 59% of calls gets skipped; a unit's repair history adds a replacement-quote question. Example questions: [`docs/keewano-qa.md`](docs/keewano-qa.md) |
 | **Sparta Worlds** | [`sparta/`](sparta/README.md): a deposit-settlement agent that refunds a held deposit **exactly once** when a provider cancels, graded in Sparta's local Stripe copy under an injected HTTP 500 | The naive agent passes **3/6** runs; the fixed one (retry, stable idempotency key, verify after write) passes **6/6**. It runs after booking and isn't wired into the app yet |
 | **Alike** | Team coordination for our 4 engineers' coding agents: shared decisions anchored to contract files, briefings at session start | Contract changes (for example the call-result schema) reach every teammate's agent before it edits those files |
-| Darwin | Not used | Live search on 2026-10-11 found no reachable home-repair agents (8 queries; every result `canStartThread=false`). With agent coverage, Handy would route agent-native providers through Darwin and phone the rest |
+| Darwin | Prototype only ([`prototypes/darwin-discovery`](prototypes/darwin-discovery/RESULTS.md), `npm run prototype:darwin`); not in the app flow | Two live searches returned no callable home-repair capability: one `no_match`, one directory with `canStartThread=false`. Handy uses its labeled seeded directory until an executable provider-discovery capability exists |
 
 ## Safety and trust
 
@@ -74,6 +75,7 @@ Production quote and booking extraction are implemented behind the mock flags. S
 ```bash
 npm install
 # npm run dev creates .env.local from .env.example on first run: every MOCK_* = 1, no keys needed (fake calls finish in ~16 s)
+# for real Claude diagnosis: set ANTHROPIC_API_KEY and MOCK_CLAUDE=0 in .env.local
 npm run dev                  # http://127.0.0.1:3000
 npm test                     # vitest
 npm run typecheck
@@ -101,9 +103,17 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 | `lib/keewano.ts`, `scripts/seed-keewano.ts` | Event registry, queries, seed |
 | `lib/types.ts`, `lib/schemas.ts`, `lib/evidence.ts` | Shared contracts and evidence checks |
 | `sparta/` | Sparta Worlds deposit-settlement agent and evidence |
-| `prototypes/dial-contract/` | Live Dial contract experiment |
+| `prototypes/dial-contract/`, `prototypes/darwin-discovery/` | Live Dial contract experiment; Darwin provider-discovery prototype |
 | `docs/`, `eng-design/`, `PRD.md` | Spec, engineering designs, product requirements |
 | `CLAUDE.md` | Shared conventions for every teammate's coding agent |
+
+## Market and path forward
+
+- **Who we start with:** property managers with 50–500 units. They coordinate repairs every day, repeat the same calls for every unit, and already pay for software.
+- **Revenue:** a per-unit SaaS fee for managers, plus a small fee on each booked job.
+- **Supply side:** pros get a free AI receptionist (Dial inbound) that answers Handy's quote calls and their own missed calls. That gives them a reason to join, and it turns the business into a two-sided marketplace.
+- **Moat:** every call, quote and visit becomes Keewano history (who answers, who shows up on time, who bills what they quoted), so each repair makes the next match better.
+- **Then:** homeowners, with the same flow and a consumer price.
 
 ## What's next
 

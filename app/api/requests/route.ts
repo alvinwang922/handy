@@ -23,7 +23,8 @@ const EXT: Record<string, string> = {
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 // Deterministic backstop (CLAUDE.md rule 4): these exit the flow no matter what the model says.
-const EMERGENCY = /\bgas\b[^.]{0,40}\b(leak|smell)|smell\w*\s+(of\s+|like\s+)?gas\b|\bspark|\bsmoke\b|\bfire\b|\bflood|\bburst\b|sewage backup|carbon monoxide/i;
+const EMERGENCY =
+  /\bgas\b[^.]{0,40}\b(leak|smell|odou?r)|smell\w*\s+(of\s+|like\s+)?gas\b|rotten egg|\bspark|\bsmoke\b(?!\s+(detector|alarm))|\bfire\b|\bburn(ing|t)\b|scorch|melt(ed|ing)?\b|\bflood|\bburst\b|sewage backup|carbon monoxide|\bco\s+(alarm|detector)/i;
 const SAFETY_NOTICE =
   "Possible emergency (gas, fire, smoke, sparks or flooding). If anyone is in danger, leave and call 911; for gas or power, call your utility's emergency line. Handy does not dispatch emergency repairs.";
 
@@ -89,13 +90,33 @@ export async function POST(request: Request) {
     createdAt: nowIso(),
   };
 
+  // The deterministic gate must hold even when the model call fails (CLAUDE.md rule 4).
+  const keywordEmergency = EMERGENCY.test(`${title} ${description}`);
   try {
     req.diagnosis = await claude.diagnose({ photo, mediaType, description: `${title}. ${description}`, unitInsight: null });
   } catch (e) {
-    return NextResponse.json({ error: `Diagnosis failed: ${(e as Error).message}` }, { status: 502 });
+    if (!keywordEmergency) {
+      return NextResponse.json({ error: `Diagnosis failed: ${(e as Error).message}` }, { status: 502 });
+    }
+    req.diagnosis = {
+      title: "Possible emergency",
+      likelyCause: "Reported gas, fire, smoke, sparks or flooding",
+      trade: "other",
+      urgency: "emergency",
+      needsOnsiteInspection: true,
+      costRangeUsd: [0, 0],
+      jobBrief: "",
+      questionsForProviders: [],
+      confidence: 0,
+      summary: "The automatic assessment is unavailable, but the safety check flagged this as a possible emergency.",
+      safetyGuidance: claude.EMERGENCY_GUIDANCE,
+      fixPath: "pro",
+      diyPlan: null,
+      source: "mock",
+    };
   }
   // Recurring-issue check needs the trade, so it runs after diagnosis; it shapes the quote-call script.
-  if (EMERGENCY.test(`${title} ${description}`)) req.diagnosis.urgency = "emergency";
+  if (keywordEmergency) req.diagnosis.urgency = "emergency";
   if (req.diagnosis.urgency === "emergency") {
     req.notice = SAFETY_NOTICE;
     // An emergency never gets a DIY suggestion, whatever the model said.

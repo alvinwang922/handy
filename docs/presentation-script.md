@@ -22,6 +22,8 @@ To connect these steps, we used Alike to share engineering decisions across our 
 
 We propose starting with property managers, where repairs repeat across units, with per-unit subscriptions and booking fees. Then we expand to homeowners.
 
+We estimate Handy could save about a hundred minutes of hands-on coordination per repair. For a property with ten repairs a year, that's roughly seventeen hours back annually.
+
 Whether it's your own home or a property you manage, a repair shouldn't take over your day.
 
 Handy. A photo, an approval, and your time back.

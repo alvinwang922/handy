@@ -34,7 +34,7 @@ export const DiagnosisSchema = z.object({
 });
 
 export const QuoteEvidenceSchema = z.object({
-  field: z.enum(["price", "fee", "availability", "scope", "warranty", "conditions", "missingInformation"]),
+  field: z.enum(["price", "fee", "availability", "scope", "warranty", "conditions", "missingInformation", "photo_review"]),
   providerText: z.string().min(1),
   turnIndex: z.number().int().nonnegative().nullable().optional(),
 });
@@ -89,6 +89,8 @@ export const QuoteSchema = z.object({
   missingInformation: z.array(z.string()).optional(),
   feeTreatment: z.enum(["none", "additional", "included", "waived_if_hired", "unknown"]).optional(),
   evidence: z.array(QuoteEvidenceSchema).optional(),
+  quoteBasis: z.enum(["description_only", "inspection_required", "photos_and_call"]).optional(),
+  photoReviewState: z.enum(["unknown", "not_reviewed", "reviewed"]).optional(),
 });
 
 export const TranscriptTurnSchema = z.object({

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { config } from "./config";
+import { getQuoteRevision } from "./communications/approval";
 import type { Approval, CallRecord, Property, Provider, RepairRequest, RequestStatus } from "./types";
 
 // JSON-file store: good enough for a single-machine demo. All writes go through save().
@@ -36,13 +37,13 @@ function normalizeApproval(approval: RepairRequest["approval"], calls: CallRecor
   return {
     ...legacy,
     quoteCallId: legacy.quoteCallId ?? quoteCall?.id ?? "legacy_unknown",
-    quoteRevision: legacy.quoteRevision ?? quoteCall?.transcriptHash ?? quoteCall?.quoteJob?.briefHash ?? quoteCall?.id ?? "legacy_unknown",
+    quoteRevision: legacy.quoteRevision ?? "legacy_unknown",
   };
 }
 
 function normalizeCall(call: CallRecord): CallRecord {
   const transcriptStatus = call.transcript ? "ready" : call.state === "Terminated" ? "unavailable" : "pending";
-  return {
+  const normalized: CallRecord = {
     ...call,
     dispatchState: call.dispatchState ?? (call.dialCallId ? "accepted" : call.state === "queued_local" ? "queued" : "failed"),
     idempotencyKey: call.idempotencyKey ?? `handy:${call.purpose}:${call.id}`,
@@ -56,6 +57,8 @@ function normalizeCall(call: CallRecord): CallRecord {
     extractionError: call.extractionError ?? null,
     extractAttempts: call.extractAttempts ?? 0,
   };
+  normalized.quoteRevision = normalized.quote ? getQuoteRevision(normalized) : null;
+  return normalized;
 }
 
 function writeDb(db: Db) {

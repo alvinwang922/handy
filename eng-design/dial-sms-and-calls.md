@@ -265,6 +265,14 @@ All three reviewed results validated; after rebasing onto the latest main, all 4
 
 See the [detailed backend/DB handoff and JSON example](dial-call-results-contract.md), [prototype instructions](../prototypes/dial-contract/README.md) and [observed results](../prototypes/dial-contract/RESULTS.md). The shared types, Zod schemas and orchestrator now implement the minimum call handoff. Photo-backed agreement, production model extraction and user-approved booking still require the acceptance flow in section 9.
 
+## 12. Integrated backend acceptance and remaining handoffs
+
+The app's orchestrator placed a controlled Dial-to-Dial quote call, persisted the call ID and transcript turns, and stored a validated result: $220 repair estimate, no visit fee, and partial collection because the 180-second call ended before availability. This used the deterministic development extractor, not P2's production model. The receiver's original instructions were restored and verified. A parser regression exposed by “not hourly” was fixed with a regression test. `npm run smoke:dial` provides a repeatable controlled acceptance harness; `--observe` retrieves a dispatched test and `--recover` restores saved private state after an interruption.
+
+The existing request API exposes the result both through `call.quoteResult` and the compatible `call.quote` fields. `call.quoteRevision` hashes the extracted terms and evidence, so changing terms on the same transcript invalidates approval. Live booking requires the displayed `quoteCallId` and `quoteRevision`. Unknown dispatches and unread booking outcomes require reconciliation; they cannot silently authorize another booking attempt. Inspection-only approval uses the visit fee. Hourly offers require a separately implemented total-cap approval.
+
+Remaining integration work: P2 production quote and booking extraction, P3 rendering and approval submission, and automatic provider discovery. Discovery currently uses verified seeded contacts plus Keewano ranking; Darwin is not wired. Live booking is gated while the configured extractor is simulated. The test did not send MMS, establish photo review, or schedule a live appointment.
+
 ## Section review outcome
 
 | Section | Review result |

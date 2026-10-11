@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import * as claude from "./claude";
 import { config } from "./config";
-import { buildQuoteJob, validateQuoteResult } from "./communications/call-contract";
+import { bookingNeedsReconciliation, getQuoteRevision, isActionableQuote } from "./communications/approval";
+import { buildProviderTarget, buildQuoteJob, validateQuoteResult } from "./communications/call-contract";
 import * as dial from "./dial";
 import { bookingInstruction } from "./instructions";
 import * as keewano from "./keewano";
@@ -39,7 +40,10 @@ export const isLocked = (id: string) => locks.has(id);
 // Ranks the trade's providers (Keewano history, falling back to ratings) and picks the top ones
 // that this request hasn't called yet, so a retry after "nobody answered" reaches new providers.
 export async function rankForRequest(req: RepairRequest): Promise<{ ranked: ProviderScore[]; providers: Provider[] }> {
-  const pool = providersFor(req.diagnosis!.trade);
+  const pool = providersFor(req.diagnosis!.trade).filter((provider) => {
+    const target = buildProviderTarget(provider);
+    return target.serviceAreaMatch && target.contactVerified && target.trade === req.diagnosis!.trade;
+  });
   const poolTrade = pool[0]?.trade ?? req.diagnosis!.trade;
   let ranked: ProviderScore[];
   try {
@@ -125,13 +129,23 @@ export async function startBookingCall(
 ): Promise<RepairRequest> {
   // Defense in depth for PRD principle 1: never place a booking call without a matching approval.
   if (req.approval?.providerId !== providerId) throw new Error("No approval recorded for this provider");
+  if (bookingNeedsReconciliation(req)) throw new Error("Reconcile the previous booking call before calling again.");
+  if (req.calls.some((call) => call.purpose === "booking" && (ACTIVE.has(call.state) || call.state === "queued_local"))) {
+    throw new Error("A booking call is already pending.");
+  }
+  const approvedQuoteCall = req.calls.find((call) => call.id === req.approval?.quoteCallId);
+  if (!approvedQuoteCall || approvedQuoteCall.providerId !== providerId || !isActionableQuote(approvedQuoteCall)) {
+    throw new Error("Approval does not identify an actionable quote for this provider.");
+  }
+  if (req.approval.quoteRevision !== getQuoteRevision(approvedQuoteCall)) {
+    throw new Error("The approved quote changed; review it again before booking.");
+  }
   req.selectedProviderId = providerId;
   req.offeredSlots = slots;
   req.accessNote = accessNote;
   req.notice = null;
   const provider = getProvider(providerId);
   if (!provider) throw new Error("Unknown provider");
-  const approvedQuoteCall = req.calls.find((call) => call.id === req.approval?.quoteCallId);
   const quote = approvedQuoteCall?.quote ?? null;
   const property = getProperty(req.propertyId);
   const access = `${property?.address ?? "address on file"}, ${req.unit}. ${req.accessNote || "Contact the property manager on arrival."}`;
@@ -148,6 +162,15 @@ async function pump(req: RepairRequest) {
   let active = req.calls.filter((c) => ACTIVE.has(c.state)).length;
   for (const call of req.calls.filter((c) => c.state === "queued_local" && c.dispatchState === "queued")) {
     if (active >= config.maxConcurrentCalls) break;
+    if (!call.outboundInstruction.trim() || (call.purpose === "quote" && !call.quoteJob)) {
+      Object.assign(call, {
+        dispatchState: "failed", state: "Terminated", terminationType: "failed", transcriptStatus: "unavailable",
+        error: "This queued call lacks its frozen instructions or quote job. Review the repair and start fresh outreach.",
+        endedAt: nowIso(),
+      });
+      saveRequest(req);
+      continue;
+    }
     const provider = getProvider(call.providerId);
     if (!provider) {
       Object.assign(call, { dispatchState: "failed", state: "Terminated", terminationType: "failed", transcriptStatus: "unavailable", error: "Unknown provider", endedAt: nowIso() });
@@ -192,7 +215,7 @@ const hasResult = (c: CallRecord) => (c.purpose === "quote" ? c.quoteResult !== 
 
 // A transcript is waiting to be read and we still have extraction attempts left.
 const extractionPending = (c: CallRecord) =>
-  c.transcriptStatus === "ready" && c.transcript !== null && !hasResult(c) && c.extractAttempts < MAX_EXTRACT_ATTEMPTS;
+  c.state === "Terminated" && c.transcriptStatus === "ready" && c.transcript !== null && !hasResult(c) && c.extractAttempts < MAX_EXTRACT_ATTEMPTS;
 
 // Polls Dial for every unsettled call, extracts (and retries extracting) quotes/bookings once
 // transcripts land, places queued calls as capacity frees up, then advances the request status.
@@ -248,6 +271,8 @@ async function extract(req: RepairRequest, call: CallRecord) {
   call.extractAttempts += 1;
   call.extractionStatus = "pending";
   call.extractionError = null;
+  // The source and attempt survive a model failure or process interruption independently of extraction.
+  saveRequest(req);
   try {
     if (call.purpose === "quote") {
       if (!call.quoteJob || !call.dialCallId) throw new Error("Quote call is missing its frozen job or Dial call ID.");
@@ -268,7 +293,18 @@ async function extract(req: RepairRequest, call: CallRecord) {
         diagnosis: req.diagnosis!,
       });
       call.quoteResult = validateQuoteResult(raw, call.quoteJob, source);
-      call.quote = call.quoteResult.quote;
+      call.quote = {
+        ...call.quoteResult.quote,
+        outcome: call.quoteResult.outcome,
+        collectionStatus: call.quoteResult.collectionStatus,
+        uncollectedFields: call.quoteResult.uncollectedFields,
+        feeTreatment: call.quoteResult.feeTreatment,
+        missingInformation: call.quoteResult.missingInformation,
+        quoteBasis: call.quoteResult.quoteBasis,
+        photoReviewState: call.quoteResult.photoReviewState,
+        evidence: call.quoteResult.evidence,
+      };
+      call.quoteRevision = getQuoteRevision(call);
       if (call.quote.priceLowUsd != null) {
         void keewano.track({ kind: "provider", id: call.providerId }, [
           { name: "QuotePriceCents", value: Math.round(call.quote.priceLowUsd * 100) },
@@ -290,10 +326,12 @@ function advanceStatus(req: RepairRequest) {
   if (req.status === "quoting") {
     const quoteCalls = req.calls.filter((c) => c.purpose === "quote");
     if (!quoteCalls.every((c) => settled(c) && !extractionPending(c))) return;
-    if (quoteCalls.some((c) => c.quote !== null)) {
+    if (quoteCalls.some(isActionableQuote)) {
       setStatus(req, "quotes_ready");
     } else {
-      req.notice = "No provider gave a quote. Start outreach again to try the next providers.";
+      req.notice = quoteCalls.some((call) => call.dispatchState === "send_unknown")
+        ? "A call's placement is unknown. Reconcile it in Dial before retrying; no actionable quote is available yet."
+        : "No provider gave an actionable quote. Review any requested information or start outreach again to try the next providers.";
       setStatus(req, "failed");
     }
     return;
@@ -308,8 +346,16 @@ function advanceStatus(req: RepairRequest) {
       req.notice = "Booking call ended; reading the result…";
       return;
     }
-    if (booking.booking?.confirmed) {
-      req.scheduledSlot = booking.booking.slot ?? req.offeredSlots[0] ?? null;
+    if (bookingNeedsReconciliation(req)) {
+      req.notice = "The booking outcome is unverified. Reconcile the call and transcript before making another booking call.";
+      return;
+    }
+    if (booking.booking?.confirmed && booking.extractionStatus === "validated") {
+      if (!booking.booking.slot) {
+        req.notice = "The provider's confirmed time is missing. Reconcile the booking transcript before calling again.";
+        return;
+      }
+      req.scheduledSlot = booking.booking.slot;
       req.notice = null;
       setStatus(req, "scheduled");
       const minutesToBook = Math.round((Date.now() - Date.parse(req.createdAt)) / 60000);

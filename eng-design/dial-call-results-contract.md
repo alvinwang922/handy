@@ -65,14 +65,14 @@ Reuse `Quote` from `lib/types.ts` and the executable [prototype schema](../proto
 | Field | Meaning |
 | --- | --- |
 | `requestId`, `providerId`, `briefVersion`, `dialCallId` | Correlate the quote to the exact repair, provider and conversation. |
-| `extractionMethod` | `model`, `assistant_review`, or `human_review`; do not represent reviewed prototype output as autonomous extraction. |
+| `extractionMethod` | `model`, `deterministic_mock`, `assistant_review`, or `human_review`; do not represent mock or reviewed output as autonomous model extraction. |
 | `outcome` | `quote_received`, `inspection_only`, `needs_information`, or `declined`. |
 | `collectionStatus`, `uncollectedFields[]` | `complete` or `partial`, and what the conversation did not establish, such as availability. |
 | `quote` | Existing price low/high, pricing type, visit fee, availability, inspection flag, scope, warranty, conditions, notes and confidence. |
 | `feeTreatment` | `none`, `additional`, `included`, `waived_if_hired`, or `unknown`. A conditional waiver is not an extra charge. |
 | `missingInformation[]` | Information the provider requested, such as pipe material or a close-up photo. Distinct from fields our agent failed to collect. |
-| `quoteBasis` | Prototype: `description_only` or `inspection_required`; add `photos_and_call` only with actual photo-review evidence. |
-| `photoReviewState` | Prototype always `not_reviewed`; the app's packet/message work can support the richer review states in the main design. |
+| `quoteBasis` | `description_only`, `inspection_required` or `photos_and_call`; the last requires reviewed photos and provider evidence. |
+| `photoReviewState` | Shared `unknown`, `not_reviewed`, `reviewed` enum. A reviewed result needs `photo_review` evidence. |
 | `evidence[]` | `{field, turnIndex, providerText}` where `turnIndex` must identify a provider turn. Validation replaces model-normalized text with the canonical stored turn text. Caller suggestions cannot establish a price. |
 
 The DB owner should add **`quoteId`, `revision`, `createdAt`, `extractorVersion`, and source references** when moving beyond the embedded store. The current approval binds to `quoteCallId` and a revision derived from the transcript/job hash. Source references identify the call/transcript version and provider turn; later SMS evidence can identify a message ID. These references establish provenance but do not replace semantic review.
@@ -119,7 +119,7 @@ Keep the existing `availability: string[]` for compatibility. Before scheduling,
 }
 ```
 
-IDs are illustrative; terms and excerpts came from a real call with a fictional provider persona. This is a provisional $180–$280 repair estimate, not $269–$369 and not a scheduled appointment.
+IDs and turn indexes are illustrative; terms and excerpts came from a real call with a fictional provider persona. Actual indexes must refer to the stored source turns. This is a provisional $180–$280 repair estimate, not $269–$369 and not a scheduled appointment.
 
 ## 3. Suggested database relationships and update rules
 

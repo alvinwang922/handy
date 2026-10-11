@@ -126,6 +126,9 @@ export function validateQuoteResult(raw: unknown, job: QuoteJob, rawSource: unkn
     throw new Error("A fee waiver needs the stated fee and conditions.");
   }
   if (result.missingInformation.length && !hasEvidence("missingInformation")) throw new Error("Missing-information requests need evidence.");
+  if (result.outcome === "inspection_only" && quote.pricingType !== "inspection_only") throw new Error("Inspection-only offers must use inspection_only pricing.");
+  if (result.quoteBasis === "photos_and_call" && result.photoReviewState !== "reviewed") throw new Error("A photo-based quote requires confirmed photo review.");
+  if (result.photoReviewState === "reviewed" && !hasEvidence("photo_review")) throw new Error("Photo review requires provider evidence.");
   return {
     ...result,
     // Store canonical speech-to-text, not the extractor's punctuation or number normalization.

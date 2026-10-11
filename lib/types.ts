@@ -104,7 +104,7 @@ export type FeeTreatment = "none" | "additional" | "included" | "waived_if_hired
 export type QuoteField = "repair_price" | "fee" | "fee_treatment" | "scope" | "availability" | "warranty" | "conditions";
 
 export interface QuoteEvidence {
-  field: "price" | "fee" | "availability" | "scope" | "warranty" | "conditions" | "missingInformation";
+  field: QuoteEvidenceField;
   providerText: string;            // provider's words; matched against provider turns after normalization
   turnIndex?: number | null;       // index into CallRecord.transcriptTurns when known
 }
@@ -128,6 +128,8 @@ export interface Quote {
   missingInformation?: string[];   // what the PROVIDER asked for (e.g. pipe material, close-up photo)
   feeTreatment?: FeeTreatment;     // "waived_if_hired" is not an extra charge
   evidence?: QuoteEvidence[];
+  quoteBasis?: "description_only" | "inspection_required" | "photos_and_call";
+  photoReviewState?: PhotoReviewState;
 }
 
 export type TranscriptSpeaker = "agent" | "user" | "transfer_target";
@@ -140,7 +142,7 @@ export interface TranscriptTurn {
 }
 
 export type QuoteCollectionField = QuoteField;
-export type QuoteEvidenceField = "price" | "fee" | "availability" | "scope" | "warranty" | "conditions" | "missingInformation";
+export type QuoteEvidenceField = "price" | "fee" | "availability" | "scope" | "warranty" | "conditions" | "missingInformation" | "photo_review";
 export type PhotoReviewState = "unknown" | "not_reviewed" | "reviewed";
 
 export interface ReferencedQuoteEvidence extends QuoteEvidence {
@@ -242,6 +244,7 @@ export interface CallRecord {
   transcriptHash: string | null;
   quote: Quote | null;
   quoteResult: QuoteResult | null;
+  quoteRevision?: string | null;   // hash of terms + evidence, submitted with booking approval
   booking: BookingResult | null;
   startedAt: string | null;
   endedAt: string | null;

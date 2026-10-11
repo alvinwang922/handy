@@ -39,7 +39,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 2. Every voice call discloses it is an AI. Quote calls never book, commit or give the exact address. No booking call without the approval record the book route writes.
 3. Never call real businesses with fake jobs. Demo providers are teammates plus our AI-receptionist number. Label simulated or seeded data in the UI and the video.
 4. Emergencies (gas, fire, sparks, flooding) exit the flow with safety guidance.
-5. Dial: the free tier allows 5-min calls and 2 concurrent calls. SMS only works Dial-to-Dial, so don't build SMS to real phones. `POST /calls` is not idempotent: never auto-retry it.
+5. Dial: the free tier allows 5-min calls and 2 concurrent calls. SMS is limited to controlled Dial-to-Dial recipients in this demo. Persist the call attempt and send its `Idempotency-Key`; the current SDK supports this header. Retry an ambiguous POST at most once with exactly the same key and body. Unresolved attempts stay `send_unknown` and require reconciliation before another booking.
 6. Next.js 16: route-handler `params` is a Promise (`const { id } = await ctx.params`). Don't enable `cacheComponents`. Check `node_modules/next/dist/docs/` before using unfamiliar APIs.
 7. Claude: use `claude-opus-5-5` for photo diagnosis and `claude-sonnet-5-5` for transcript extraction. Load the `claude-api` skill before writing SDK code, and downscale large photos first.
 

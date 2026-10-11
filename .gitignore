@@ -14,6 +14,7 @@ data/db.json
 data/communications.json
 data/uploads/
 data/providers.local.json
+data/live-smoke-restore.local.json
 # misc
 .DS_Store
 *.pem

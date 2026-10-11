@@ -27,15 +27,19 @@ const EMERGENCY = /\bgas\b[^.]{0,40}\b(leak|smell)|smell\w*\s+(of\s+|like\s+)?ga
 const SAFETY_NOTICE =
   "Possible emergency (gas, fire, smoke, sparks or flooding). If anyone is in danger, leave and call 911; for gas or power, call your utility's emergency line. Handy does not dispatch emergency repairs.";
 
-// multipart: photo?, title?, description, propertyId, unit?, room?, userActiveSec?
+// multipart: photo?, title?, description, requesterRole?, propertyId, unit?, room?, userActiveSec?
 export async function POST(request: Request) {
   const form = await request.formData();
   const str = (k: string) => String(form.get(k) ?? "").trim();
 
   const description = str("description");
+  const requesterRole = str("requesterRole") || "property_manager";
   const propertyId = str("propertyId") || "p1";
   const property = getProperty(propertyId);
   if (!description) return NextResponse.json({ error: "description is required" }, { status: 400 });
+  if (requesterRole !== "homeowner" && requesterRole !== "property_manager") {
+    return NextResponse.json({ error: "requesterRole must be homeowner or property_manager" }, { status: 400 });
+  }
   if (!property) return NextResponse.json({ error: `unknown propertyId ${propertyId}` }, { status: 400 });
 
   const id = newId("req");
@@ -64,6 +68,7 @@ export async function POST(request: Request) {
     id,
     title,
     description,
+    requesterRole,
     propertyId,
     unit,
     room: str("room"),

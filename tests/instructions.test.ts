@@ -11,7 +11,7 @@ const diagnosis: Diagnosis = {
   costRangeUsd: [150, 300], jobBrief: "Slow leak under a kitchen sink.", questionsForProviders: [], confidence: 0.8,
 };
 const quote: Quote = {
-  priceLowUsd: 180, priceHighUsd: 250, pricingType: "visit_fee_plus", visitFeeUsd: 89, availability: [],
+  priceLowUsd: 180, priceHighUsd: 250, pricingType: "flat", visitFeeUsd: 89, availability: [],
   needsInspection: true, scope: null, warranty: null, conditions: null, notes: "", confidence: 0.9,
 };
 
@@ -34,7 +34,7 @@ describe("quoteInstruction", () => {
 describe("bookingInstruction", () => {
   it("includes the approved quote, the offered windows and the access details", () => {
     const text = bookingInstruction(provider, diagnosis, quote, ["Tue 9–11am", "Wed 1–3pm"], "124 Maple Avenue, Main home.", "Maple PM");
-    expect(text).toContain("$180–$250 (visit fee plus) plus a $89 visit fee");
+    expect(text).toContain("$180–$250 (flat); $89 visit fee (whether it is credited is unconfirmed)");
     expect(text).toContain("Tue 9–11am; Wed 1–3pm");
     expect(text).toContain("124 Maple Avenue");
   });

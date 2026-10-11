@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-// The UI is the static prototype at public/index.html (served at "/"); this layout only exists
+// The UI is the static Look B app at public/app/ (served at "/"); this layout only exists
 // because the App Router requires one.
 export const metadata: Metadata = { title: "Handy" };
 

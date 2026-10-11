@@ -76,7 +76,8 @@ export function createApp(options = {}) {
       requireCondition(['GET', 'HEAD'].includes(req.method), 'Method not allowed.', 405);
       let decoded;
       try { decoded = decodeURIComponent(path); } catch { throw new AppError(400, 'Invalid URL.'); }
-      const file = resolve(publicRoot, decoded === '/' ? 'index.html' : `.${decoded.endsWith('/') ? decoded + 'index.html' : decoded}`);
+      if (decoded === '/') { res.writeHead(302, { Location: '/app/' }); return res.end(); }
+      const file = resolve(publicRoot, `.${decoded.endsWith('/') ? decoded + 'index.html' : decoded}`);
       requireCondition(file.startsWith(publicRoot + sep) && !decoded.split('/').some(part => part.startsWith('.')), 'File not found.', 404);
       let content;
       try { content = await readFile(file); } catch { throw new AppError(404, 'File not found.'); }

@@ -46,7 +46,7 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. The wiring commit (`28a9bbe`) records a browser check in mock mode. The backend has separately passed controlled live Dial acceptance; a fresh live browser journey still needs verification |
+| Web UI | Look B app (`public/app/`): an app chooser, a homeowner app and a property-manager app, served at `/` by Next.js. It reads its data from the local demo server (`node server/index.js`, simulated calls and bookings, labeled Demo), not yet from the Next.js `app/api/**` routes. The previous API-backed page (`public/index.html`, wiring commit `28a9bbe`) was removed |
 | Calendar export | An `.ics` route exists, but explicit dates, time zones, and duration are not reliably preserved. Show the stored booking window until export is corrected; see [`docs/submission.md`](docs/submission.md) |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
@@ -95,7 +95,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 | Path | What's there |
 |---|---|
-| `public/index.html` | Web UI |
+| `public/app/` | Web UI (Look B) |
 | `app/api/` | Next.js 16 route handlers |
 | `lib/orchestrator.ts` | Call lifecycle: concurrency cap, per-request locking, extraction retries, status machine |
 | `lib/claude.ts`, `lib/parts.ts` | Diagnosis and DIY part search |

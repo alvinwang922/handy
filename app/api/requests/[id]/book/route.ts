@@ -8,6 +8,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 interface BookBody {
   providerId?: string;
+  quoteCallId?: string;
+  quoteRevision?: string;
   slots?: string[];
   accessNote?: string;
   userActiveSec?: number;
@@ -30,7 +32,10 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       return { status: 409, body: { error: `Booking needs 'quotes_ready' (currently '${req.status}')` } };
     }
     const provider = getProvider(body.providerId!);
-    const quoteCall = req.calls.find((c) => c.purpose === "quote" && c.providerId === body.providerId);
+    const providerQuoteCalls = req.calls.filter((c) => c.purpose === "quote" && c.providerId === body.providerId && c.quote !== null);
+    const quoteCall = body.quoteCallId
+      ? providerQuoteCalls.find((call) => call.id === body.quoteCallId)
+      : providerQuoteCalls.at(-1);
     if (!provider || !quoteCall) return { status: 400, body: { error: "provider was not part of this request's outreach" } };
     // Only a provider who actually quoted can be approved and booked (no "callback" to someone who never answered).
     const quote = quoteCall.quote;
@@ -42,13 +47,21 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     }
     // An inspection-only offer approves the visit fee, never an invented repair total.
     const inspectionOnly = quote.outcome === "inspection_only" || (quote.priceLowUsd == null && quote.priceHighUsd == null);
+    if (quoteCall.quoteResult && !["quote_received", "inspection_only"].includes(quoteCall.quoteResult.outcome)) {
+      return { status: 409, body: { error: "This provider needs more information before there is a quote to approve" } };
+    }
+    const quoteRevision = quoteCall.transcriptHash ?? quoteCall.quoteJob?.briefHash ?? quoteCall.id;
+    if (body.quoteRevision && body.quoteRevision !== quoteRevision) {
+      return { status: 409, body: { error: "This quote changed; review the latest version before booking" } };
+    }
     req.approval = {
       providerId: provider.id,
-      amountUsd: inspectionOnly ? quote.visitFeeUsd : (quote.priceHighUsd ?? quote.priceLowUsd),
-      approvedAt: nowIso(),
-      consentText: body.consentText ?? `Approved ${provider.name} at ${formatQuote(quote)}; book one of: ${slots.join("; ")}`,
       quoteCallId: quoteCall.id,
+      quoteRevision,
+      amountUsd: inspectionOnly ? quote.visitFeeUsd : (quote.priceHighUsd ?? quote.priceLowUsd),
       basis: inspectionOnly ? "inspection_visit" : "repair_quote",
+      approvedAt: nowIso(),
+      consentText: body.consentText ?? `Approved ${provider.name} at ${formatQuote(quote, quoteCall.quoteResult?.feeTreatment)}; book one of: ${slots.join("; ")}`,
     };
     req.userActiveSec += Number(body.userActiveSec) || 0;
     if (req.approval.amountUsd != null) {

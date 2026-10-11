@@ -3,7 +3,8 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { config } from "./config";
 import { DiagnosisSchema, TradeSchema } from "./schemas";
-import type { BookingResult, Diagnosis, Quote, Trade, UnitInsight } from "./types";
+import { mockExtractQuote, type QuoteExtractionInput } from "./communications/mock-quote-extractor";
+import type { BookingResult, Diagnosis, QuoteResult, Trade, UnitInsight } from "./types";
 
 // Owner: P2. Every Claude result is validated with lib/schemas.ts before it leaves this file.
 export const MODEL_DIAGNOSE = "claude-opus-5-5";
@@ -163,13 +164,14 @@ export function toDiagnosis(m: DiagnosisModelOutput, ctx: { photoAnalyzed: boole
 
 // ---- Transcript extraction --------------------------------------------------------------
 
-export async function extractQuote(input: { transcript: string; diagnosis: Diagnosis }): Promise<Quote> {
-  if (config.mockClaudeExtract) return mockExtractQuote(input.transcript);
-  throw new Error("TODO(P2): extractQuote() — transcript → QuoteSchema. Set MOCK_CLAUDE_EXTRACT=1 meanwhile.");
+export async function extractQuote(input: QuoteExtractionInput): Promise<QuoteResult> {
+  if (config.mockClaudeExtract) return mockExtractQuote(input);
+  throw new Error("TODO(P2): extractQuote() — transcript evidence → QuoteResultSchema. Set MOCK_CLAUDE_EXTRACT=1 meanwhile.");
 }
 
 export async function extractBooking(input: { transcript: string; offeredSlots: string[] }): Promise<BookingResult> {
-  if (config.mockClaudeExtract) return { confirmed: true, slot: input.offeredSlots[0] ?? null, notes: "Mock: provider accepted the first window." };
+  if (config.mockClaudeExtract && config.mockDial) return { confirmed: true, slot: input.offeredSlots[0] ?? null, notes: "Mock: provider accepted the first window." };
+  if (config.mockClaudeExtract) throw new Error("Live booking requires provider-evidence extraction; the simulated booking extractor cannot confirm a real call.");
   throw new Error("TODO(P2): extractBooking() — transcript → BookingResultSchema. Set MOCK_CLAUDE_EXTRACT=1 meanwhile.");
 }
 
@@ -253,32 +255,5 @@ function mockDiagnose(description: string): Diagnosis {
       : `Inspect the reported ${trade} issue and quote the repair.`,
     fixPath: "pro",
     diyPlan: null,
-  };
-}
-
-function mockExtractQuote(transcript: string): Quote {
-  const providerLines = transcript
-    .split("\n")
-    .filter((l) => !/^agent:/i.test(l.trim()))
-    .join("\n");
-  const amounts = [...providerLines.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
-  const fee = providerLines.match(/\$(\d+)[^.\n]{0,40}(fee|diagnostic|visit)/i);
-  const visitFeeUsd = fee ? Number(fee[1]) : null;
-  const prices = amounts.filter((a) => a !== visitFeeUsd);
-  const windows = [...providerLines.matchAll(/\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day[^.,;\n]*/gi)]
-    .flatMap((m) => m[0].split(/\s+or\s+/))
-    .map((w) => w.trim());
-  return {
-    priceLowUsd: prices.length ? Math.min(...prices) : null,
-    priceHighUsd: prices.length ? Math.max(...prices) : null,
-    pricingType: /hour/i.test(providerLines) ? "hourly" : visitFeeUsd != null ? "visit_fee_plus" : "flat",
-    visitFeeUsd,
-    availability: windows.slice(0, 2),
-    needsInspection: /inspect|take a look first/i.test(providerLines),
-    scope: null,
-    warranty: null,
-    conditions: null,
-    notes: "Mock extraction (regex) — real extraction comes from Claude.",
-    confidence: prices.length ? 0.8 : 0.3,
   };
 }

@@ -1,6 +1,6 @@
 # Dial call results: shared backend and database proposal
 
-**Status:** Proposed contract, October 11, 2026. Validated in part by the [isolated live-call prototype](../prototypes/dial-contract/README.md); not a database migration or app integration.
+**Status:** Minimum contract integrated in the app, October 11, 2026. Validated by the [isolated live-call prototype](../prototypes/dial-contract/README.md) and app tests; durable database migration remains future work.
 
 The Dial integration returns results to **Handy's backend/orchestrator**. The backend stores the call evidence, invokes the AI teammate's extractor, validates its answer, and stores a structured quote. The UI reads the saved request. The assessment agent does not need to stay running while providers answer, and the voice agent does not write directly to the database.
 
@@ -48,7 +48,7 @@ Extend the existing `CallRecord`; preserve its current names and state values. T
 | `briefVersion`, `briefHash` | Immutable input actually used for this call. The prototype hash includes the provider and purpose as well as the brief. Map `briefVersion` to the team's repair-packet version rather than inventing two competing versions. |
 | `purpose: "quote" \| "booking"` | Keep quote collection and approved scheduling separate. |
 | `dialCallId: string \| null` | External ID; null until acknowledged. |
-| `dispatchState` | `queued`, `dispatching`, `accepted`, `send_unknown`, or `failed`. An uncertain POST response must not automatically cause another call. |
+| `dispatchState` | `queued`, `dispatching`, `accepted`, `send_unknown`, or `failed`. The adapter may retry once with the same persisted idempotency key; ambiguity after that becomes `send_unknown` and does not redial. |
 | `state`, `terminationType` | Existing Dial transport fields. A completed call is not proof of a quote or booking. |
 | `startedAt`, `endedAt`, `durationSec` | Known timestamps/duration, otherwise null. |
 | `transcriptStatus` | `pending`, `ready`, or `unavailable`; may become ready after the call ends. |
@@ -73,9 +73,9 @@ Reuse `Quote` from `lib/types.ts` and the executable [prototype schema](../proto
 | `missingInformation[]` | Information the provider requested, such as pipe material or a close-up photo. Distinct from fields our agent failed to collect. |
 | `quoteBasis` | Prototype: `description_only` or `inspection_required`; add `photos_and_call` only with actual photo-review evidence. |
 | `photoReviewState` | Prototype always `not_reviewed`; the app's packet/message work can support the richer review states in the main design. |
-| `evidence[]` | `{field, providerText}` exact provider excerpts supporting the extracted terms. Caller suggestions cannot establish a price. |
+| `evidence[]` | `{field, turnIndex, providerText}` where `turnIndex` must identify a provider turn. Validation replaces model-normalized text with the canonical stored turn text. Caller suggestions cannot establish a price. |
 
-The DB owner should add **`quoteId`, `revision`, `createdAt`, `extractorVersion`, and source references** when persisting. Source references should identify the call/transcript version and evidence turn; later SMS evidence can identify a message ID. The prototype's exact excerpts are a starting point, not a replacement for durable source references or semantic review.
+The DB owner should add **`quoteId`, `revision`, `createdAt`, `extractorVersion`, and source references** when moving beyond the embedded store. The current approval binds to `quoteCallId` and a revision derived from the transcript/job hash. Source references identify the call/transcript version and provider turn; later SMS evidence can identify a message ID. These references establish provenance but do not replace semantic review.
 
 Keep the existing `availability: string[]` for compatibility. Before scheduling, add normalized windows with start/end timestamps and the property's IANA timezone; a string such as “Tuesday afternoon” cannot establish a confirmed booking. The brief must include timezone and a reference date for relative expressions.
 
@@ -109,12 +109,12 @@ Keep the existing `availability: string[]` for compatibility. Before scheduling,
   "quoteBasis": "description_only",
   "photoReviewState": "not_reviewed",
   "evidence": [
-    {"field": "price", "providerText": "flat repair price estimate, one hundred and eighty to two hundred and eighty dollars."},
-    {"field": "fee", "providerText": "Diagnostic visit fee, eighty nine dollars if they decline the repair. Waived if they proceed with the repair."},
-    {"field": "conditions", "providerText": "Diagnostic visit fee, eighty nine dollars if they decline the repair. Waived if they proceed with the repair."},
-    {"field": "scope", "providerText": "Labor plus standard drain fittings included."},
-    {"field": "warranty", "providerText": "Workmanship warranty, thirty days."},
-    {"field": "missingInformation", "providerText": "Do you know if the existing drain piping under the sink is mostly PVC plastic?"}
+    {"field": "price", "turnIndex": 4, "providerText": "flat repair price estimate, one hundred and eighty to two hundred and eighty dollars."},
+    {"field": "fee", "turnIndex": 6, "providerText": "Diagnostic visit fee, eighty nine dollars if they decline the repair. Waived if they proceed with the repair."},
+    {"field": "conditions", "turnIndex": 6, "providerText": "Diagnostic visit fee, eighty nine dollars if they decline the repair. Waived if they proceed with the repair."},
+    {"field": "scope", "turnIndex": 8, "providerText": "Labor plus standard drain fittings included."},
+    {"field": "warranty", "turnIndex": 10, "providerText": "Workmanship warranty, thirty days."},
+    {"field": "missingInformation", "turnIndex": 12, "providerText": "Do you know if the existing drain piping under the sink is mostly PVC plastic?"}
   ]
 }
 ```
@@ -133,4 +133,4 @@ IDs are illustrative; terms and excerpts came from a real call with a fictional 
 - Store transcripts privately and return a suitable UI projection through the existing request API. Keep communication evidence in the app database; Keewano's registered analytics events are a separate concern unless the DB owner explicitly chooses it for operational storage.
 - Scheduling consumes an explicit approval tied to `quoteId`/revision and permitted windows. Quote success alone must never dispatch a booking call.
 
-**Next integration step:** agree on these logical fields with the DB and AI owners, then update `lib/types.ts`, matching Zod schemas and the existing orchestrator together. The prototype deliberately leaves those shared files unchanged.
+**Next integration step:** connect P2's production extractor to the implemented `QuoteResult` contract, then exercise one controlled end-to-end app call. The current embedded store already persists the fields on `RepairRequest.calls[]`; the DB owner can map them to durable tables without changing the handoff.

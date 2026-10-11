@@ -1,6 +1,9 @@
+import type { PhotoReviewState } from "../types";
+
+export type { PhotoReviewState } from "../types";
+
 export type MessageDispatchState = "dispatching" | "accepted" | "failed" | "send_unknown";
 export type MessageDeliveryState = "unknown" | "pending" | "delivered" | "undelivered" | "failed" | "unconfirmed";
-export type PhotoReviewState = "unknown" | "not_reviewed" | "reviewed";
 
 export interface PacketPhoto {
   id: "primary";

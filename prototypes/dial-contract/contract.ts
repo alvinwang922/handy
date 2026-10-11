@@ -80,7 +80,7 @@ export const ExtractedQuoteSchema = z.object({
   missingInformation: z.array(z.string()),
   quoteBasis: z.enum(["description_only", "inspection_required"]),
   photoReviewState: z.literal("not_reviewed"),
-  evidence: z.array(z.object({ field: z.enum(["price", "fee", "availability", "scope", "warranty", "conditions", "missingInformation"]), providerText: z.string().min(1) })).min(1),
+  evidence: z.array(z.object({ field: z.enum(["price", "fee", "availability", "scope", "warranty", "conditions", "missingInformation"]), turnIndex: z.number().int().nonnegative(), providerText: z.string().default("") })).min(1),
 }).strict();
 export type ExtractedQuote = z.infer<typeof ExtractedQuoteSchema>;
 
@@ -91,7 +91,7 @@ export function validateExtractedQuote(raw: unknown, job: ReturnType<typeof buil
   const source = TranscriptSchema.parse(rawTranscript);
   if (result.requestId !== job.requestId || result.briefVersion !== job.briefVersion || result.providerId !== job.providerId || result.dialCallId !== source.dialCallId) throw new Error("Quote is associated with the wrong repair, version, provider or call.");
   for (const span of result.evidence) {
-    if (!source.turns.some(t => t.speaker === "user" && t.text.includes(span.providerText))) throw new Error("Evidence must be an exact excerpt from the provider's outbound-call transcript turns.");
+    if (source.turns[span.turnIndex]?.speaker !== "user") throw new Error("Evidence must reference a provider turn in the outbound-call transcript.");
   }
   const q = result.quote;
   if ([q.priceLowUsd, q.priceHighUsd, q.visitFeeUsd].some(n => n !== null && (!Number.isFinite(n) || n < 0))) throw new Error("Price must be nonnegative or null.");
@@ -108,5 +108,5 @@ export function validateExtractedQuote(raw: unknown, job: ReturnType<typeof buil
   if (result.outcome === "inspection_only" && (q.priceLowUsd !== null || q.priceHighUsd !== null)) throw new Error("An inspection fee is not a repair quote.");
   if (result.feeTreatment === "waived_if_hired" && (q.visitFeeUsd === null || !q.conditions || !hasEvidence("conditions"))) throw new Error("A fee waiver needs the stated fee and conditions.");
   if (result.missingInformation.length && !hasEvidence("missingInformation")) throw new Error("Missing-information requests need evidence.");
-  return result;
+  return { ...result, evidence: result.evidence.map(span => ({ ...span, providerText: source.turns[span.turnIndex].text })) };
 }

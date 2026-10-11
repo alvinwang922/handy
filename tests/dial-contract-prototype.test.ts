@@ -36,25 +36,25 @@ const source = { dialCallId: "test-call", direction: "outbound", terminationType
 const extracted = {
   requestId: brief.requestId, briefVersion: brief.briefVersion, providerId: scenarios[0].provider.id, dialCallId: "test-call", extractionMethod: "human_review", outcome: "inspection_only",
   collectionStatus: "partial", uncollectedFields: ["availability"],
-  quote: { priceLowUsd: null, priceHighUsd: null, pricingType: "visit_fee_plus", visitFeeUsd: 75, availability: [], needsInspection: true, scope: "Inspection only", warranty: null, conditions: "Repair price unknown", notes: "Reviewed evidence", confidence: 0.9 },
+  quote: { priceLowUsd: null, priceHighUsd: null, pricingType: "inspection_only", visitFeeUsd: 75, availability: [], needsInspection: true, scope: "Inspection only", warranty: null, conditions: "Repair price unknown", notes: "Reviewed evidence", confidence: 0.9 },
   feeTreatment: "additional", missingInformation: [], quoteBasis: "inspection_required", photoReviewState: "not_reviewed",
-  evidence: [{ field: "fee", providerText: "Inspection costs $75." }],
+  evidence: [{ field: "fee", turnIndex: 1, providerText: "Inspection costs $75." }],
 };
 describe("quote evidence validation", () => {
   it("accepts a fee-only result without inventing a repair quote", () => {
     expect(validateExtractedQuote(extracted, job, source).quote.priceLowUsd).toBeNull();
   });
   it("rejects the caller's suggested amount as provider evidence", () => {
-    expect(() => validateExtractedQuote({ ...extracted, evidence: [{ field: "price", providerText: "Is the repair $220?" }] }, job, source)).toThrow(/provider/);
+    expect(() => validateExtractedQuote({ ...extracted, evidence: [{ field: "price", turnIndex: 0, providerText: "Is the repair $220?" }] }, job, source)).toThrow(/provider/);
   });
   it("rejects promoting an inspection fee to a repair quote", () => {
-    expect(() => validateExtractedQuote({ ...extracted, quote: { ...extracted.quote, priceLowUsd: 75 }, evidence: [{ field: "fee", providerText: "Inspection costs $75." }, { field: "price", providerText: "Inspection costs $75." }] }, job, source)).toThrow(/inspection fee/);
+    expect(() => validateExtractedQuote({ ...extracted, quote: { ...extracted.quote, priceLowUsd: 75 }, evidence: [{ field: "fee", turnIndex: 1, providerText: "Inspection costs $75." }, { field: "price", turnIndex: 1, providerText: "Inspection costs $75." }] }, job, source)).toThrow(/inspection fee/);
   });
   it("rejects stale quote associations", () => {
     expect(() => validateExtractedQuote({ ...extracted, briefVersion: "older" }, job, source)).toThrow(/wrong repair/);
   });
   it("rejects unsupported monetary values", () => {
-    expect(() => validateExtractedQuote({ ...extracted, evidence: [{ field: "scope", providerText: "Repair price is unknown." }] }, job, source)).toThrow(/fee requires/);
+    expect(() => validateExtractedQuote({ ...extracted, evidence: [{ field: "scope", turnIndex: 1, providerText: "Repair price is unknown." }] }, job, source)).toThrow(/fee requires/);
   });
   it("does not treat a completed voice call as a fully collected quote", () => {
     expect(() => validateExtractedQuote({ ...extracted, collectionStatus: "complete", uncollectedFields: [] }, job, source)).toThrow(/availability/);

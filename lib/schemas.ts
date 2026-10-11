@@ -39,6 +39,35 @@ export const QuoteEvidenceSchema = z.object({
   turnIndex: z.number().int().nonnegative().nullable().optional(),
 });
 
+export const RepairBriefSchema = z.object({
+  schemaVersion: z.literal(1),
+  requestId: z.string().min(1),
+  briefVersion: z.string().min(1),
+  recommendedPath: z.enum(["professional", "emergency"]),
+  requesterRole: z.enum(["homeowner", "property_manager"]),
+  referenceAt: z.iso.datetime({ offset: true }),
+  observedDescription: z.string().min(1),
+  diagnosis: DiagnosisSchema,
+  serviceArea: z.object({
+    city: z.string().min(1),
+    region: z.string().min(1),
+    country: z.literal("US"),
+    postalCode: z.string().nullable(),
+    timeZone: z.string().min(1),
+  }),
+  photoIds: z.array(z.string()),
+  questionsForUser: z.array(z.string()),
+}).strict();
+
+export const ProviderTargetSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  trade: TradeSchema,
+  source: z.literal("seeded"),
+  serviceAreaMatch: z.boolean(),
+  contactVerified: z.boolean(),
+}).strict();
+
 export const QuoteSchema = z.object({
   priceLowUsd: z.number().nonnegative().nullable(),
   priceHighUsd: z.number().nonnegative().nullable(),
@@ -93,6 +122,34 @@ export const PartSearchSchema = z.object({
   source: z.enum(["claude", "mock"]),
   error: z.string().nullable(),
 });
+
+export const CallSourceSchema = z.object({
+  dialCallId: z.string().min(1),
+  direction: z.literal("outbound"),
+  terminationType: z.string().nullable(),
+  transcript: z.string().min(1),
+  turns: z.array(TranscriptTurnSchema),
+});
+
+export const QuoteResultSchema = z.object({
+  requestId: z.string().min(1),
+  briefVersion: z.string().min(1),
+  providerId: z.string().min(1),
+  dialCallId: z.string().min(1),
+  extractionMethod: z.enum(["model", "deterministic_mock", "assistant_review", "human_review"]),
+  outcome: z.enum(["quote_received", "inspection_only", "needs_information", "declined"]),
+  collectionStatus: z.enum(["complete", "partial"]),
+  uncollectedFields: z.array(z.enum(["repair_price", "fee", "fee_treatment", "scope", "availability", "warranty", "conditions"])),
+  quote: QuoteSchema.extend({ pricingType: z.enum(["flat", "hourly", "inspection_only", "unknown"]) }),
+  feeTreatment: z.enum(["none", "additional", "included", "waived_if_hired", "unknown"]),
+  missingInformation: z.array(z.string()),
+  quoteBasis: z.enum(["description_only", "inspection_required", "photos_and_call"]),
+  photoReviewState: z.enum(["unknown", "not_reviewed", "reviewed"]),
+  evidence: z.array(QuoteEvidenceSchema.extend({
+    turnIndex: z.number().int().nonnegative(),
+    providerText: z.string().default(""),
+  })).min(1),
+}).strict();
 
 export const BookingResultSchema = z.object({
   confirmed: z.boolean(),

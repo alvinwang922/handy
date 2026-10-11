@@ -1,6 +1,6 @@
 # Handy Dial engineering design
 
-**Status:** Implementation started; quote contracts tested with controlled live calls · October 11, 2026
+**Status:** Backend call contracts integrated; quote contracts tested with controlled live calls · October 11, 2026
 
 **Scope:** Voice calls plus SMS and image sharing for accurate quotes, followed by user-approved scheduling.
 
@@ -69,7 +69,7 @@ Keep the current routes and return shapes:
 | `POST /api/requests` | Multipart intake; returns `RepairRequest`. |
 | `POST /api/requests/:id/outreach` | Selects ranked providers and starts quoting; returns `RepairRequest`. |
 | `GET /api/requests/:id` | Poll every three seconds; refreshes Dial calls, extracts results, advances the queue and returns `RepairRequest`. |
-| `POST /api/requests/:id/book` | `{providerId, slots[], accessNote, userActiveSec, consentText?}`; records approval and starts booking. |
+| `POST /api/requests/:id/book` | `{providerId, quoteCallId?, quoteRevision?, slots[], accessNote, userActiveSec, consentText?}`; records approval against the selected quote and starts booking. |
 | `GET /api/requests/:id/ics` | Calendar export for a confirmed appointment. |
 
 Retain `RepairRequest`, `CallRecord`, `Quote`, `Approval`, `BookingResult` and their current USD fields. Do not introduce competing `/api/repairs` endpoints, replace status names, or silently change dollars to cents. Mirror additive model fields in `lib/schemas.ts`.
@@ -98,7 +98,7 @@ Keep current `slots: string[]` for compatibility, but add canonical start/end ti
 
 1. **Prepare the repair packet.** Snapshot selected photos, the user's observations, preliminary assessment and proposed scope. Separate observations from guesses. Use the property's neighborhood/service area, not the provider's service-area field as though it were the property location.
 2. **Select providers.** Keep trade filtering, Keewano ranking, the top-three queue and rating fallback. A provider needs a verified controlled destination for the demo. Filter actual service-area compatibility when real discovery is introduced.
-3. **Persist before contact.** Save a queued attempt and immutable prompt/packet before calling Dial. Save its returned call ID immediately. The current orchestrator dispatches before saving; that ordering must change.
+3. **Persist before contact.** Save a queued attempt and immutable prompt/packet before calling Dial. Save its returned call ID immediately. The orchestrator now uses this ordering and retains `send_unknown` when a response remains ambiguous after one retry with the same idempotency key.
 4. **Open the call.** Disclose that Handy is an AI assistant acting for the homeowner or manager. Describe the issue, ask whether this is a suitable number for photos, and send the approved packet through the tool in section 6. Pre-sending is allowed when messaging suitability is already known.
 5. **Confirm understanding.** Ask whether the provider can open the images and what area/problem they show. Read back the proposed repair scope and ask for agreement or a correction. A voice agent must not infer that the provider saw a photo from a delivery receipt.
 6. **Collect the estimate.** Ask total/range versus hourly price, parts/labor inclusions, visit fee and waiver, inspection needs, warranty, exclusions and availability. Replacement options remain separate from the original repair estimate. No hiring, appointment commitment or exact address disclosure occurs in this call.
@@ -215,6 +215,8 @@ The first backend slice now supports one reviewed JPEG or PNG photo, capped at 1
 
 Automated tests cover safe packet content, changed versions, emergency blocking, concurrent duplicate requests, uncertain delivery, idempotency conflicts and retries, and mock transport isolation. The API flow has also been exercised locally in mock mode. Production build and static checks pass.
 
+The next backend slice is also integrated in the app. `RepairBrief`, `ProviderTarget`, `QuoteJob`, speaker-separated transcript turns, `QuoteResult`, dispatch state and extraction state now live in the shared types and Zod schemas. The orchestrator persists the frozen job before placing a call, sends the same idempotency key on one ambiguous retry, stores transcript turns and hashes, validates extracted evidence against provider turns, and binds booking approval to a specific quote call and revision. Inspection-only fees remain separate from repair prices, and conditional fee treatment is preserved. The deterministic extractor supports mock development; autonomous production extraction remains P2 work.
+
 The UI action, Context MCP tool, inbound message/event listener, delivery reconciliation, provider photo-review evidence, image metadata removal/compression, multi-image selection, and controlled live acceptance test remain in the next slices. Until those exist, the feature must not imply that a delivered image was reviewed or that a live provider confirmed the scope.
 
 ## 11. Assessment-to-Dial and return contracts: controlled validation
@@ -233,7 +235,7 @@ The AI teammate supplies the assessment and uncertainty. The shared backend supp
 
 DIY, emergency, unresolved required questions, wrong trade or unverified contact/service area block dispatch. Unknown optional details such as pipe material can travel in the brief and qualify the resulting estimate. A discovery candidate is not callable until its contact and service area have been verified. The current app's seeded providers and Keewano ranking remain the baseline; Darwin is a discovery extension.
 
-Map `briefVersion` onto the team's `RepairPacket` version when integrating; do not introduce competing versions of the same input. Keep current request routes and USD field names. The prototype's runnable schema is in [`prototypes/dial-contract/contract.ts`](../prototypes/dial-contract/contract.ts); no shared types were changed during the experiment.
+`briefVersion` is derived from the current repair-packet version so there is one input snapshot. The app integration preserves current request routes and USD field names. The prototype's runnable schema remains in [`prototypes/dial-contract/contract.ts`](../prototypes/dial-contract/contract.ts); the validated subset is now promoted into shared types and schemas.
 
 ### Output: who receives results, and what is stored
 
@@ -257,11 +259,11 @@ Separate four facts: **transport finished**, **transcript ready**, **extraction 
 | Conditional range, 180 sec | $180–$280, $89 diagnostic fee waived if hired, 30-day warranty. Call hit its cap before availability. | `outcome: quote_received` can coexist with `collectionStatus: partial`; `uncollectedFields: [availability]`. Do not automatically add a conditional fee. |
 | Inspection-only, 151 sec | $75 inspection, no repair total. Requested a close-up photo, pipe diameter and leak location. No availability or fee credit/additivity established. | Repair price stays null. `feeTreatment: unknown`; availability and fee treatment remain uncollected. Do not copy facts from the persona script. |
 
-The return schema now distinguishes `feeTreatment` (`none`, `additional`, `included`, `waived_if_hired`, `unknown`), `collectionStatus`, `uncollectedFields` and `missingInformation`. Exact evidence excerpts must come from provider turns. On an outbound Dial call, the `user` speaker is the remote provider. Evidence matching supports provenance; P2/reviewer still must check semantic correctness.
+The return schema now distinguishes `feeTreatment` (`none`, `additional`, `included`, `waived_if_hired`, `unknown`), `collectionStatus`, `uncollectedFields` and `missingInformation`. Evidence identifies a provider `turnIndex`; validation stores the canonical text from that turn, avoiding failures caused by punctuation or speech-to-text normalization. On an outbound Dial call, the `user` speaker is the remote provider. Turn provenance does not replace semantic validation by P2 or a reviewer.
 
 All three reviewed results validated; after rebasing onto the latest main, all 46 repository tests, TypeScript and scoped lint checks passed. Original receptionist instructions were restored and reread. The test measured 7 minutes 11 seconds of conversation, not homeowner time savings. Two partial results also exposed a prompt issue: collect missing terms before lengthy/repeated readbacks and check completeness before ending. Those prompt improvements require another live validation.
 
-See the [detailed backend/DB handoff and JSON example](dial-call-results-contract.md), [prototype instructions](../prototypes/dial-contract/README.md) and [observed results](../prototypes/dial-contract/RESULTS.md). Agree the additions with the AI and DB owners, then update shared types, Zod schemas and the existing orchestrator together. Photo-backed agreement and user-approved booking still require the acceptance flow in section 9.
+See the [detailed backend/DB handoff and JSON example](dial-call-results-contract.md), [prototype instructions](../prototypes/dial-contract/README.md) and [observed results](../prototypes/dial-contract/RESULTS.md). The shared types, Zod schemas and orchestrator now implement the minimum call handoff. Photo-backed agreement, production model extraction and user-approved booking still require the acceptance flow in section 9.
 
 ## Section review outcome
 

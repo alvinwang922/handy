@@ -86,7 +86,9 @@ function enforceAllowedRecipient(to: string) {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
-  if (!allowed.includes(to)) throw new MessageTransportError("Recipient is not on the live Dial allowlist.", false);
+  if (!allowed.includes(to)) {
+    throw new MessageTransportError("Recipient is not on the controlled Dial-to-Dial messaging allowlist.", false);
+  }
 }
 
 function requireTransportEnv(name: string): string {

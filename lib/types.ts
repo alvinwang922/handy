@@ -19,6 +19,7 @@ export interface Provider {
   rating: number;
   reviewCount: number;
   serviceArea: string;
+  contactVerified?: boolean; // true only for a server-side local override; mocks are trusted separately
 }
 
 export interface Diagnosis {
@@ -108,13 +109,6 @@ export interface QuoteEvidence {
   turnIndex?: number | null;       // index into CallRecord.transcriptTurns when known
 }
 
-export interface TranscriptTurn {
-  speaker: "agent" | "user" | "transfer_target"; // on an outbound call, "user" is the provider
-  text: string;
-  startMs: number;
-  endMs: number;
-}
-
 export interface Quote {
   priceLowUsd: number | null;      // repair price only; null for inspection-only offers
   priceHighUsd: number | null;
@@ -136,6 +130,76 @@ export interface Quote {
   evidence?: QuoteEvidence[];
 }
 
+export type TranscriptSpeaker = "agent" | "user" | "transfer_target";
+
+export interface TranscriptTurn {
+  speaker: TranscriptSpeaker;
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+export type QuoteCollectionField = QuoteField;
+export type QuoteEvidenceField = "price" | "fee" | "availability" | "scope" | "warranty" | "conditions" | "missingInformation";
+export type PhotoReviewState = "unknown" | "not_reviewed" | "reviewed";
+
+export interface ReferencedQuoteEvidence extends QuoteEvidence {
+  turnIndex: number;
+}
+
+export interface QuoteResult {
+  requestId: string;
+  briefVersion: string;
+  providerId: string;
+  dialCallId: string;
+  extractionMethod: "model" | "deterministic_mock" | "assistant_review" | "human_review";
+  outcome: QuoteOutcome;
+  collectionStatus: "complete" | "partial";
+  uncollectedFields: QuoteCollectionField[];
+  quote: Quote;
+  feeTreatment: FeeTreatment;
+  missingInformation: string[];
+  quoteBasis: "description_only" | "inspection_required" | "photos_and_call";
+  photoReviewState: PhotoReviewState;
+  evidence: ReferencedQuoteEvidence[];
+}
+
+export interface RepairBrief {
+  schemaVersion: 1;
+  requestId: string;
+  briefVersion: string;
+  recommendedPath: "professional" | "emergency";
+  requesterRole: "homeowner" | "property_manager";
+  referenceAt: string;
+  observedDescription: string;
+  diagnosis: Diagnosis;
+  serviceArea: { city: string; region: string; country: "US"; postalCode: string | null; timeZone: string };
+  photoIds: string[];
+  questionsForUser: string[];
+}
+
+export interface ProviderTarget {
+  id: string;
+  name: string;
+  trade: Trade;
+  source: "seeded";
+  serviceAreaMatch: boolean;
+  contactVerified: boolean;
+}
+
+export interface QuoteJob {
+  schemaVersion: 1;
+  attemptId: string;
+  requestId: string;
+  briefVersion: string;
+  briefHash: string;
+  providerId: string;
+  purpose: "quote";
+  idempotencyKey: string;
+  maxCallDurationSeconds: number;
+  outboundInstruction: string;
+}
+
 // PRD principle 1: no booking call without an explicit, recorded approval.
 export interface Approval {
   providerId: string;
@@ -143,6 +207,7 @@ export interface Approval {
   approvedAt: string;
   consentText: string;
   quoteCallId?: string;            // the exact quote call (and its quote) the user approved
+  quoteRevision?: string;          // hash of the approved terms and their evidence
   basis?: "repair_quote" | "inspection_visit";
 }
 
@@ -155,23 +220,35 @@ export interface BookingResult {
 export type CallPurpose = "quote" | "booking";
 export type CallState = "queued_local" | "Queued" | "Ringing" | "In-Progress" | "Terminated";
 export type TerminationType = "completed" | "busy" | "no-answer" | "failed" | "canceled";
+export type CallDispatchState = "queued" | "dispatching" | "accepted" | "send_unknown" | "failed";
+export type TranscriptStatus = "pending" | "ready" | "unavailable";
+export type ExtractionStatus = "not_started" | "pending" | "validated" | "failed";
 
 export interface CallRecord {
   id: string;
   dialCallId: string | null;
   providerId: string;
   purpose: CallPurpose;
+  dispatchState: CallDispatchState;
+  idempotencyKey: string;
+  outboundInstruction: string;
+  quoteJob: QuoteJob | null;
   state: CallState;
   terminationType: TerminationType | null;
   durationSec: number | null;
   transcript: string | null;
-  transcriptTurns?: TranscriptTurn[] | null; // speaker-separated; needed for evidence checks and talk-time metrics
+  transcriptStatus: TranscriptStatus;
+  transcriptTurns: TranscriptTurn[];
+  transcriptHash: string | null;
   quote: Quote | null;
+  quoteResult: QuoteResult | null;
   booking: BookingResult | null;
   startedAt: string | null;
   endedAt: string | null;
   error: string | null;            // last placement error (e.g. Dial 402/429), shown in UI
-  extractAttempts?: number;        // transcript → quote/booking extraction tries (capped at 3)
+  extractionStatus: ExtractionStatus;
+  extractionError: string | null;
+  extractAttempts: number;         // transcript → quote/booking extraction tries (capped at 3)
 }
 
 export type RequestStatus =
@@ -181,6 +258,7 @@ export interface RepairRequest {
   id: string;
   title: string;                   // user-entered title
   description: string;
+  requesterRole: "homeowner" | "property_manager";
   propertyId: string;
   unit: string;
   room: string;

@@ -119,13 +119,23 @@ export function bookingInstruction(
   ].filter(Boolean).join("\n\n");
 }
 
+// Next given weekday (0 = Sunday) after `from`, spelled out with its calendar date, e.g. "Tuesday, October 13".
+function nextWeekday(day: number, from: Date): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + (((day - d.getDay() + 7) % 7) || 7));
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/Los_Angeles" });
+}
+
 // Persona for the second Dial number that plays an AI receptionist in the demo (labeled simulated).
-export function receptionistInstruction(persona: { name: string; trade: Trade }): string {
+// Quote calls are capped (QUOTE_CALL_MAX_SEC), so the persona gives every quote fact in one short answer.
+export function receptionistInstruction(persona: { name: string; trade: Trade }, now = new Date()): string {
+  const tue = nextWeekday(2, now);
+  const wed = nextWeekday(3, now);
   return [
     `You are the receptionist at ${persona.name}, a ${persona.trade} company in San Francisco. Some callers are AI assistants requesting quotes for property managers; treat them like any customer.`,
-    `For a leak or drain repair, quote $180–250 flat. There is an $89 diagnostic visit fee, waived if they hire us. Earliest openings: Tuesday 9–11am or Wednesday 1–3pm.`,
-    `Ask one short clarifying question about the issue (for example, whether the leak is at the drain trap or the supply line).`,
-    `If they call to book one of those windows, accept it, take the address and access instructions, and confirm the booking.`,
-    `Keep every answer short and natural.`,
+    `For a leak or drain repair, the answer is: $180–250 flat for parts and labor, plus an $89 diagnostic visit fee that is waived if they hire us; a 90-day workmanship warranty; earliest openings ${tue}, 9 to 11 a.m., or ${wed}, 1 to 3 p.m., Pacific time.`,
+    `As soon as they describe the job, give that whole answer in one or two short sentences, with the full calendar dates. Don't wait to be asked for each item, and don't ask clarifying questions.`,
+    `Let the caller finish speaking before you answer. Keep every answer short and natural.`,
+    `If they call to book, accept the first weekday window they offer between 8 a.m. and 6 p.m. (or one of your openings), take the address and access instructions, read back the confirmed date and time, and confirm the booking.`,
   ].join("\n\n");
 }

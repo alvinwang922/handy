@@ -2,11 +2,11 @@
 
 **Target:** About 4:45 including a short call excerpt. Rehearse and adjust to the organizer's confirmed limit. Timings are pacing goals, not measured recording length.
 
-**Story:** A new homeowner has several small problems, but coordinating the repairs becomes another job. Follow one leaking-sink request through Handy. The property-manager opening below can replace the first scene.
+**Story:** Open with both users: a new homeowner facing unfamiliar repairs and a property manager coordinating those same problems across units. Follow one leaking-sink request through Handy, then show how the workflow scales to the manager's portfolio.
 
-## 0:00–0:45 · Moving in is enough work already
+## 0:00–1:00 · Two users, the same coordination problem
 
-**Show:** A moving box, a leaking faucet or sink photo, and a toilet issue. Pick one sink request for the rest of the demo.
+**Show:** A new homeowner's moving boxes, leaky faucet, and broken toilet. Then a property manager's tenant reports across several units. Pick one sink request for the shared demo flow.
 
 **Say:**
 
@@ -16,51 +16,51 @@
 >
 > Research shows that 56 percent of surveyed homeowners spent one to five hours researching their home-improvement project before even requesting a quote. [Modernize, 2021](https://investor.quinstreet.com/node/16861/pdf)
 >
-> Then I still have to compare the quotes and find a time for someone to come over.
+> Or imagine I'm a property manager. Tenants report those same problems across multiple properties. I may need to commute to a property to check the issue, research prices, contact handymen, and coordinate the tenant, the provider, and access to the unit.
 >
-> With Handy, I start with a photo, review the options, and approve the next step.
+> Handy helps both users: start with a photo, review the options, and approve the next step.
 
-**On screen:** Keep the source citation visible beside the statistic. Citations in the script are not spoken aloud.
+**On screen:** Keep the source citation visible beside the statistic. Citations in the script are not spoken aloud. The survey measures homeowner project research; no property-manager commuting-hours benchmark is claimed.
 
-## 0:45–1:20 · One photo becomes a repair brief
+## 1:00–1:30 · One photo becomes a repair brief
 
 **Show:** Upload the sink photo and add a short description. Display the actual API diagnosis. Show the professional and DIY choices.
 
 **Say:**
 
-> Here's the leak under my sink. I add a photo and a sentence about what's happening.
+> I add a photo of the leak and a short description.
 >
-> Claude gives a preliminary assessment: the likely issue, the trade we need, any safety concern, and a brief to share with providers. It isn't a guaranteed diagnosis.
+> Claude returns a preliminary assessment, safety guidance, and a repair brief.
 >
-> Sometimes a simple fix may only need a part. Handy can search for purchase options and offer DIY guidance, with compatibility checks before buying. For this repair, I'm choosing professional help.
+> For a simple fix, Handy offers DIY guidance and part options, with compatibility checks before buying. For this repair, I'm choosing professional help.
 
-## 1:20–2:00 · Choose whom to contact
+## 1:30–2:05 · Choose whom to contact
 
 **Show:** Keewano query output with a visible **Seeded demo history** label. Show provider ranking and the unit's repeat issues.
 
 **Say:**
 
-> A star rating doesn't tell me who will answer or whether the final bill will match the quote. We use Keewano's repair and provider event history to rank providers by response rate, punctuality, and quote accuracy. It also flags recurring issues so the call agent can ask about replacement as well as repair.
+> Keewano stores repair and provider events. We query that history to rank providers by response rate, punctuality, and quote accuracy, and flag recurring issues that may need replacement.
 >
-> In our seeded demo data, Mission Pipe Pros answers 59 percent of calls and bills about 18 percent above its quotes. Handy skips it despite a 4.4-star rating. These are fictional providers, not claims about real businesses.
+> In our seeded demo data, fictional Mission Pipe Pros answers 59 percent of calls and bills about 18 percent above its quotes, so Handy skips it despite a 4.4-star rating. [Seeded results](keewano-qa.md)
 >
 > The intended flow collects multiple quotes. Today's controlled live demonstration contacts one provider.
 
-## 2:00–2:45 · Make the quote call
+## 2:05–2:50 · Make the quote call
 
-**Show:** Switch from sample UI to the live backend harness and its saved transcript/quote. Play roughly 8–10 seconds of the AI disclosure and provider response. If using recorded acceptance, label it **Recorded controlled live test · October 11, 2026**.
+**Show:** On a newly created API-backed request, use **Get quotes** and show the returned transcript/quote. Verify live flags first; built-in sample requests and mock-mode calls are not live-call evidence. For the verified backend acceptance, play an 8–10 second recorded excerpt labeled **Recorded controlled live test · October 11, 2026**.
 
 **Say:**
 
-> We use Dial for AI voice calls to request quotes, then a separate scheduling call after user approval. The agent introduces itself as an AI and asks about scope, price, fees, and availability without booking or sharing the exact address during quoting.
+> Dial makes the AI quote calls and a separate scheduling call after approval. The agent discloses it's an AI and asks about price, fees, and availability without committing during quoting.
 >
-> Claude then extracts a quote with evidence from the provider's words. In our completed live test, the controlled provider quoted 220 dollars with no visit fee.
+> Claude extracts a quote backed by the provider's words. Our controlled live test returned 220 dollars with no visit fee. [Acceptance record](../eng-design/dial-endpoint-handoff.md#current-evidence-and-limits)
 >
-> Dial's messaging API also delivered a repair photo to our controlled test number. The voice agent's ability to view that image is a separate step still to implement.
+> Dial's messaging API delivered a repair photo to our test number; automatic visual review by the voice agent remains next.
 
 **Presenter cue:** If a new run returns different terms, read those terms. Do not narrate $220 over a different quote. A sample comparison table must remain labeled **Sample quotes**; it is not evidence of multiple live responses.
 
-## 2:45–3:30 · I approve; Handy schedules
+## 2:50–3:30 · I approve; Handy schedules
 
 **Show:** The exact quote approval request, two submitted windows, the scheduling call, and the persisted booking confirmation. Use future dates for a new run. Show the confirmed text rather than the current calendar export.
 
@@ -70,7 +70,7 @@
 >
 > It only marks the request scheduled when the provider confirms an allowed window and the approved terms still hold. A changed price needs another approval.
 >
-> Our live test confirmed the first of two submitted windows through the actual booking endpoint. It was a fictional test appointment with our own AI receptionist, not a visit from a real contractor.
+> Our controlled live test confirmed one of two submitted windows. That is a fictional appointment with our AI receptionist. For a property manager, the same approval stays attached to the correct property and unit. [Acceptance record](../eng-design/dial-endpoint-handoff.md#current-evidence-and-limits)
 
 ## 3:30–4:00 · What time are we trying to save?
 
@@ -84,11 +84,11 @@
 
 ## 4:00–4:45 · What works, and where we go next
 
-**Show:** A compact status card: live diagnosis/parts and controlled quote/booking backend; sample UI outreach/booking; seeded history. Finish on the confirmed repair record.
+**Show:** The homeowner's confirmed repair, then switch to the property-manager view and its property/unit queue. Finish with the four sponsor credits and current validation status.
 
 **Say:**
 
-> Diagnosis and part search are live, and quote and scheduling calls passed controlled backend tests. We're still connecting the sample UI.
+> Diagnosis and part search are live. The UI now connects API-backed requests to outreach and booking; the backend has passed controlled live calls. Built-in sample requests remain simulated.
 >
 > We used Alike to share engineering decisions and carry context between our coding agents' sessions.
 >
@@ -97,24 +97,6 @@
 > We propose starting with property managers, then homeowners. Next are verified provider discovery, accurate calendar export, and measuring actual savings.
 >
 > Handy: report the problem, review the options, approve the repair.
-
-## Alternative opening · A property manager's morning
-
-**Replace the first scene; do not add this on top. Show:** Three tenant reports attached to different units: a leak, a broken toilet, and a malfunctioning appliance.
-
-**Say:**
-
-> Imagine I'm a property manager. One tenant reports a leak, another says the toilet won't flush, and a third sends an appliance photo.
->
-> I may need to travel to the property to check the issue. Then I research prices, contact handymen, explain the problem, and coordinate the visit with the tenant.
->
-> Research shows most surveyed homeowners spend one or two hours researching contractors, and 95 percent seek multiple bids. As a manager, I repeat that process across units. [ArcSite, 2022](https://www.arcsite.com/blog/2022-homeowner-survey-report)
->
-> With Handy, the tenant starts with a photo. I review the options and approve the next step.
-
-**On screen:** Cite ArcSite beside the statistic and label it as a homeowner survey. It does not measure property-manager travel time.
-
-**Transition:** “Let's follow one leaking-sink report.” Continue with the photo scene. Do not invent a commuting-hours benchmark; use a manager's documented travel logs if we later obtain them.
 
 ## Sponsor sentences and repo evidence
 
@@ -130,7 +112,7 @@ These lines are incorporated into the scenes above. Use this as a reference for 
 ## Recording notes
 
 - A recorded live test is acceptable evidence when visibly labeled; call it a recording, not a call happening now. Keep the test provider fictional and controlled.
-- Show live backend evidence separately from the sample web UI until the teammate's integration is verified. Recheck current `main` before recording and update these cues when it changes.
+- The UI was wired to the backend in `28a9bbe`: new API-backed requests call outreach/book and poll results; built-in samples retain simulated behavior. The commit records a browser check in mock mode. A fresh live UI journey has not been independently verified in this presentation review; use the recorded live backend evidence if needed.
 - For a demo timing measurement, sum the user's actual interaction intervals separately from call/model waiting. Report the method and sample size; do not treat a five-minute video as five minutes of user work.
 - Automatic ordering, arrival tracking, and part-specific installation are part of the product direction. Do not demonstrate a simulated purchase as a real order.
 - If asked about pricing, say: “Our proposed model is a per-unit subscription for property managers, with a fee per booked job. Pricing and willingness to pay still need validation.”

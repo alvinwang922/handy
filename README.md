@@ -46,7 +46,7 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **Diagnosis and part search use the live API.** The outreach, quote and booking *screens* are still the original prototype and are labeled simulated in the app. The live backend behind them (Dial calls, Keewano ranking, extraction, approval, booking) is verified by API tests, an end-to-end script, and a live Dial acceptance run |
+| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. The wiring commit (`28a9bbe`) records a browser check in mock mode. The backend has separately passed controlled live Dial acceptance; a fresh live browser journey still needs verification |
 | Calendar export | An `.ics` route exists, but explicit dates, time zones, and duration are not reliably preserved. Show the stored booking window until export is corrected; see [`docs/submission.md`](docs/submission.md) |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
@@ -117,7 +117,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 ## What's next
 
-- Wire the outreach, quote and booking screens to the live API; production quote and booking extraction have passed controlled live backend tests.
+- Verify the newly connected UI with a controlled live journey; production quote and booking extraction have already passed controlled live backend tests.
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
 - Quote revisions and normalized availability windows (start/end plus time zone), so bookings never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.

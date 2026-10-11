@@ -11,6 +11,7 @@ next-env.d.ts
 !.env.example
 # local runtime data (personal phone numbers, uploads, db)
 data/db.json
+data/communications.json
 data/uploads/
 data/providers.local.json
 # misc

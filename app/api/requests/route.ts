@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     photo = Buffer.from(await file.arrayBuffer());
     const name = `${id}.${EXT[mediaType]}`;
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    fs.writeFileSync(path.join(UPLOAD_DIR, name), photo);
+    fs.writeFileSync(path.join(/* turbopackIgnore: true */ UPLOAD_DIR, name), photo);
     photoPath = `data/uploads/${name}`;
   }
 

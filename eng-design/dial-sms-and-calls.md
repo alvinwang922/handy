@@ -1,10 +1,10 @@
 # Handy Dial engineering design
 
-**Status:** Reviewed; implementation started · October 11, 2026
+**Status:** Implementation started; quote contracts tested with controlled live calls · October 11, 2026
 
 **Scope:** Voice calls plus SMS and image sharing for accurate quotes, followed by user-approved scheduling.
 
-**Baseline:** [PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md), current Next.js scaffold, shared types and team ownership. This revision distinguishes the first implemented packet-sharing slice from the remaining work in section 10. No live message or call is claimed without a controlled acceptance test.
+**Baseline:** [PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md), current Next.js scaffold, shared types and team ownership. Section 10 distinguishes the first implemented packet-sharing slice from its remaining work. Section 11 records the narrower input/output contracts exercised in three real calls between controlled agents; it does not establish complete app integration or live message/photo-review acceptance.
 
 Handy should call a provider, share the relevant repair photos and description, establish that both parties are discussing the same issue, and collect a qualified estimate. The user then approves a provider and terms, supplies time windows, and authorizes a separate scheduling conversation. Photos sent, photos reviewed, scope agreed, and appointment confirmed are separate facts.
 
@@ -74,7 +74,7 @@ Keep the current routes and return shapes:
 
 Retain `RepairRequest`, `CallRecord`, `Quote`, `Approval`, `BookingResult` and their current USD fields. Do not introduce competing `/api/repairs` endpoints, replace status names, or silently change dollars to cents. Mirror additive model fields in `lib/schemas.ts`.
 
-Proposed additions, not fields already present:
+Target contract additions; section 10 describes the packet/message subset already implemented:
 
 | Record or extension | Purpose |
 | --- | --- |
@@ -217,6 +217,52 @@ Automated tests cover safe packet content, changed versions, emergency blocking,
 
 The UI action, Context MCP tool, inbound message/event listener, delivery reconciliation, provider photo-review evidence, image metadata removal/compression, multi-image selection, and controlled live acceptance test remain in the next slices. Until those exist, the feature must not imply that a delivered image was reviewed or that a live provider confirmed the scope.
 
+## 11. Assessment-to-Dial and return contracts: controlled validation
+
+Both directions were exercised on October 11, 2026: a structured repair brief drove three actual Dial calls, and assistant-reviewed results from their transcripts passed schema and provider-evidence validation. The caller and receiver were two user-owned agents; the receiver played three fictional providers sequentially. Automatic P2 extraction, discovery, SMS, photo review and booking were not part of this test.
+
+### Input: the AI assessment and app context handed to outreach
+
+The AI teammate supplies the assessment and uncertainty. The shared backend supplies request identity, requester role, property service area and photo/packet references. Our discovery/outreach side resolves suitable providers and verified contact; the diagnosis agent does not need to search or phone plumbers.
+
+| Contract | Required contents |
+| --- | --- |
+| `RepairBrief` | Schema version; `requestId`; immutable `briefVersion`; recommended path; requester role; reference timestamp; observed description; existing `Diagnosis`; city/region/postal code/country and property timezone; photo IDs; unresolved required user questions. |
+| `ProviderTarget` | Stable provider ID, name and trade; discovery source; verified service-area match and contact. Actual phone is resolved from a server-controlled provider record. The test used seeded targets, not Darwin results. |
+| `QuoteJob` | Local attempt ID, request/brief/provider association, immutable prompt and snapshot hash, `purpose: quote`, dispatch/idempotency key and duration cap. Save before contacting Dial. |
+
+DIY, emergency, unresolved required questions, wrong trade or unverified contact/service area block dispatch. Unknown optional details such as pipe material can travel in the brief and qualify the resulting estimate. A discovery candidate is not callable until its contact and service area have been verified. The current app's seeded providers and Keewano ranking remain the baseline; Darwin is a discovery extension.
+
+Map `briefVersion` onto the team's `RepairPacket` version when integrating; do not introduce competing versions of the same input. Keep current request routes and USD field names. The prototype's runnable schema is in [`prototypes/dial-contract/contract.ts`](../prototypes/dial-contract/contract.ts); no shared types were changed during the experiment.
+
+### Output: who receives results, and what is stored
+
+**The shared backend/orchestrator receives the result and owns persistence.** Our Dial adapter returns transport status and evidence. The backend saves that evidence, invokes P2's extractor, validates its output, and stores a quote revision for the UI. The assessment agent need not wait synchronously through the calls. No voice agent writes directly to the DB.
+
+| Record | Producer → receiver | Fields to retain |
+| --- | --- | --- |
+| `CallResult` / additive `CallRecord` fields | Our Dial adapter → backend | Local call/request/provider IDs, Dial ID, purpose and brief version/hash; dispatch state; call state and termination; timestamps/duration; transcript readiness; raw transcript and speaker turns; evidence hash and safe errors. |
+| `QuoteResult` | P2 extractor → backend | Existing `Quote`, request/provider/brief/call IDs, extraction method, outcome, collection completeness, uncollected fields, fee treatment, provider requests for information, quote basis, photo-review state and provider-side evidence. |
+| Stored quote revision | Backend → app DB → existing request API | `quoteId`, revision, timestamps, extractor version and durable call/transcript/message evidence references. UI reads stored comparisons; approval refers to an exact revision. |
+
+Suggested logical relationships: one repair has many call attempts; one provider has many attempts; an attempt can produce multiple quote revisions. The DB teammate chooses the physical schema and implements storage. For the hackathon these can remain additive fields on existing request/call records. Keewano analytics events remain separate from the operational call/quote records unless the DB owner explicitly chooses otherwise.
+
+Separate four facts: **transport finished**, **transcript ready**, **extraction validated**, and **required quote terms collected**. Retry extraction against saved evidence without redialing. Keep unknown as null, confirmed free as zero, and an inspection fee separate from a repair price. Deduplicate by call ID and evidence/extractor version; preserve revisions so changed terms cannot silently replace an approved quote.
+
+### What the live test established
+
+| Scenario | Transcript-supported result | Contract implication |
+| --- | --- | --- |
+| Fixed estimate, 100 sec | $220 including labor/standard parts, no visit fee, 90-day workmanship warranty and two dated Pacific-time openings. Provisional until arrival; extra work needs approval. | Complete comparison fields can be represented with scope, conditions, evidence and timezone. |
+| Conditional range, 180 sec | $180–$280, $89 diagnostic fee waived if hired, 30-day warranty. Call hit its cap before availability. | `outcome: quote_received` can coexist with `collectionStatus: partial`; `uncollectedFields: [availability]`. Do not automatically add a conditional fee. |
+| Inspection-only, 151 sec | $75 inspection, no repair total. Requested a close-up photo, pipe diameter and leak location. No availability or fee credit/additivity established. | Repair price stays null. `feeTreatment: unknown`; availability and fee treatment remain uncollected. Do not copy facts from the persona script. |
+
+The return schema now distinguishes `feeTreatment` (`none`, `additional`, `included`, `waived_if_hired`, `unknown`), `collectionStatus`, `uncollectedFields` and `missingInformation`. Exact evidence excerpts must come from provider turns. On an outbound Dial call, the `user` speaker is the remote provider. Evidence matching supports provenance; P2/reviewer still must check semantic correctness.
+
+All three reviewed results validated; after rebasing onto the latest main, all 46 repository tests, TypeScript and scoped lint checks passed. Original receptionist instructions were restored and reread. The test measured 7 minutes 11 seconds of conversation, not homeowner time savings. Two partial results also exposed a prompt issue: collect missing terms before lengthy/repeated readbacks and check completeness before ending. Those prompt improvements require another live validation.
+
+See the [detailed backend/DB handoff and JSON example](dial-call-results-contract.md), [prototype instructions](../prototypes/dial-contract/README.md) and [observed results](../prototypes/dial-contract/RESULTS.md). Agree the additions with the AI and DB owners, then update shared types, Zod schemas and the existing orchestrator together. Photo-backed agreement and user-approved booking still require the acceptance flow in section 9.
+
 ## Section review outcome
 
 | Section | Review result |
@@ -230,3 +276,5 @@ The UI action, Context MCP tool, inbound message/event listener, delivery reconc
 | 7 | Distinguished local-demo behavior from durable delivery; documented retry conflicts and current implementation gaps. |
 | 8 | Kept controlled destinations and truthful demo labels; added a human photo-review test. |
 | 9 | Reordered work around the current app and the newly clarified image-sharing journey. |
+| 10 | Preserved the implemented packet-sharing slice and its remaining acceptance work. |
+| 11 | Added both handoff directions, explicit ownership/storage, and evidence from three controlled live calls, including incomplete results and remaining integration work. |

@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handy look directions A, B, C (first pass)</title>
+<style>body{margin:0;padding:32px;background:#F1EEE6;font-family:"Atkinson Hyperlegible Next",system-ui,sans-serif;color:#1E2B24}</style>
+</head>
+<body>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&family=Zilla+Slab:wght@500;600;700&display=swap');
+
+/* ---------- page chrome ---------- */
+.hx-lede{max-width:72ch}
+.hx-keep{margin:.25rem 0 0;color:var(--text-secondary);font-size:.95rem;max-width:80ch}
+.hx-dir{margin:2.75rem 0 3.5rem}
+.hx-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding-bottom:16px;margin-bottom:26px;border-bottom:1px solid var(--border)}
+.hx-head .t{font-size:1.3rem;font-weight:650;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hx-head .l{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--text-primary);color:var(--bg-secondary);font-size:.95rem;font-weight:700}
+.hx-head .rec{font-size:.8rem;font-weight:600;color:var(--accent);border:1px solid currentColor;border-radius:999px;padding:2px 10px}
+.hx-head p{margin:6px 0 0;max-width:68ch;color:var(--text-secondary)}
+.hx-head p b{color:var(--text-primary);font-weight:600}
+.hx-pick{flex-shrink:0;font:inherit;font-weight:600;font-size:.95rem;padding:10px 20px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer}
+.hx-pick:hover{border-color:var(--accent)}
+.hx-pick.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.hx-row{display:grid;grid-template-columns:repeat(3,356px);gap:30px;overflow-x:auto;padding:4px 6px 10px}
+.hx-cap{margin:14px 4px 0;font-size:.92rem;line-height:1.45;color:var(--text-secondary);max-width:340px}
+.hx-cap b{color:var(--text-primary);font-weight:600}
+
+/* ---------- phone shell ---------- */
+.ph{width:356px;height:720px;border:8px solid #16171a;border-radius:46px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(0,0,0,.08),0 22px 46px rgba(0,0,0,.16)}
+.ph .sc{height:100%;display:flex;flex-direction:column;overflow:hidden;line-height:1.35;-webkit-font-smoothing:antialiased}
+.ph .sb{flex:none;height:34px;padding:12px 26px 0;font:600 14px/1 -apple-system,system-ui,sans-serif;display:flex;justify-content:space-between}
+.ph .sb i{display:flex;gap:2px;align-items:flex-end;height:11px}
+.ph .sb i b{display:block;width:3px;background:currentColor;border-radius:1px}
+.ph .ic{width:20px;height:20px;flex:none}
+.ph .grow{flex:1;min-height:0}
+.ph .talk{display:inline-flex;gap:3px;align-items:center;height:18px}
+.ph .talk b{display:block;width:3px;height:100%;border-radius:2px;background:currentColor;animation:hx-talk 1s ease-in-out infinite;transform-origin:center}
+.ph .talk b:nth-child(2){animation-delay:-.25s}.ph .talk b:nth-child(3){animation-delay:-.5s}.ph .talk b:nth-child(4){animation-delay:-.75s}
+@keyframes hx-talk{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){.ph .talk b{animation:none;transform:scaleY(.7)}}
+
+/* ---------- A · estimate slip ---------- */
+.a{--bg:#F3EDE1;--slip:#FFFDF7;--ink:#1E2B24;--ink2:#4A554E;--line:#D8CDB8;--green:#24533F;--tint:#E3EDE1;--amber:#9A6412;background:var(--bg);color:var(--ink);font-family:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',system-ui,sans-serif;font-size:17px}
+.a .bar{flex:none;display:flex;align-items:center;gap:6px;padding:10px 18px 4px;font-size:15px;color:var(--ink2)}
+.a .bar .sp{flex:1}
+.a .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:6px 18px 20px}
+.a .h{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:29px;line-height:1.08;letter-spacing:-.01em;margin:4px 0 0;text-wrap:balance}
+.a .p{margin:-4px 0 0;color:var(--ink2);font-size:17px;text-wrap:pretty}
+.a .slip{position:relative;background:var(--slip);border-radius:3px 3px 10px 10px;padding:16px 16px 14px;box-shadow:0 1px 1px rgba(60,40,10,.05),0 8px 22px rgba(60,40,10,.09)}
+.a .perf{margin-top:6px}
+.a .perf::before{content:"";position:absolute;left:0;right:0;top:-6px;height:12px;background:radial-gradient(circle at 8px 6px,var(--bg) 4.5px,transparent 5px) 0 0/16px 12px repeat-x}
+.a .price{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:36px;line-height:1;font-variant-numeric:tabular-nums}
+.a .calls{padding-top:6px;padding-bottom:6px}
+.a .calls .rw{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0 14px;border-bottom:1.5px dashed var(--line)}
+.a .calls .rw:last-child{border-bottom:0}
+.a .nm{font-weight:700;font-size:18px}
+.a .st{display:flex;align-items:center;gap:8px;font-size:16px;color:var(--ink2);margin-top:3px}
+.a .st.done{color:var(--green);font-weight:700}
+.a .rt{text-align:right}
+.a .rt .price{font-size:24px}
+.a .lk{display:block;margin-top:4px;font-size:15px;color:var(--green);text-decoration:underline;text-underline-offset:3px}
+.a .trk{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px}
+.a .trk b{height:6px;border-radius:3px;background:#E8DFCC}
+.a .trk b.on{background:var(--green)}
+.a .note{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;color:var(--ink2);padding:12px 14px;border-radius:12px;border:1.5px solid var(--line)}
+.a .note .ic{color:var(--green)}
+.a .pick .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.a .pick .nm{font-family:'Zilla Slab',Georgia,serif;font-size:23px;line-height:1.05}
+.a .meta{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:15.5px;color:var(--ink2);margin-top:6px}
+.a .meta span{display:inline-flex;align-items:center;gap:4px}
+.a .star{color:var(--amber);width:17px;height:17px}
+.a .items{margin-top:12px;padding-top:10px;border-top:1.5px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:3px 8px;font-size:16px;font-variant-numeric:tabular-nums}
+.a .items span:nth-child(even){text-align:right;font-weight:700}
+.a .why{display:flex;gap:8px;align-items:flex-start;background:var(--tint);color:var(--green);font-weight:700;font-size:15.5px;padding:10px 12px;border-radius:8px;margin-top:12px}
+.a .btn{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;height:54px;border-radius:12px;background:var(--green);color:#fff;font-weight:700;font-size:18px;box-shadow:0 1px 0 rgba(0,0,0,.15),0 4px 12px rgba(36,83,63,.25)}
+.a .pick .btn{margin-top:12px}
+.a .mini{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;padding:12px 10px 12px 14px;border-radius:10px}
+.a .mini .nm{font-size:17px}
+.a .mini .sub{font-size:15px;color:var(--ink2);margin-top:2px}
+.a .mini .price{font-size:25px}
+.a .mini .ic{color:var(--ink2)}
+.a .tag{display:inline-block;vertical-align:2px;margin-left:4px;font-size:15px;font-weight:700;padding:0 8px;border-radius:6px;background:#F4E4C1;color:#6A4708}
+.a .sum{padding:14px 16px}
+.a .sum .nm{font-size:18px}
+.a .sum .sub{font-size:15.5px;color:var(--ink2);margin-top:2px}
+.a .sum .price{font-size:30px;margin-top:8px}
+.a .stamp{position:absolute;right:14px;top:22px;transform:rotate(-9deg);border:3px solid var(--green);outline:1.5px solid var(--green);outline-offset:3px;color:var(--green);font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:21px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px 3px;border-radius:5px;opacity:.9;text-align:center;line-height:1;mix-blend-mode:multiply}
+.a .stamp small{display:block;font-size:14px;letter-spacing:.12em;margin-top:3px}
+.a .dl{font-weight:700;font-size:16px;margin-bottom:6px}
+.a .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.a .chip{position:relative;height:60px;border-radius:12px;border:1.5px solid var(--line);background:var(--slip);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:16.5px;line-height:1.2}
+.a .chip small{font-weight:400;color:var(--ink2);font-size:15px}
+.a .chip.on{background:var(--green);border-color:var(--green);color:#fff}
+.a .chip.on small{color:#D9E7DD}
+.a .chip .ic{position:absolute;top:7px;right:8px;width:16px;height:16px}
+.a .fl{font-weight:700;font-size:16px;margin-bottom:6px}
+.a .fv{border:1.5px solid var(--line);border-radius:12px;background:var(--slip);padding:12px 14px;font-size:16.5px}
+
+/* ---------- B · text from a friend ---------- */
+.b{--ink:#1E2B24;--ink2:#4F5A53;--bub:#EFEBE2;--green:#24533F;--line:#E4DFD4;--amber:#9A6412;background:#fff;color:var(--ink);font-family:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',system-ui,sans-serif;font-size:17px}
+.b .hd{flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px 10px;border-bottom:1px solid var(--line)}
+.b .av{width:40px;height:40px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center}
+.b .hd .n{font-weight:800;font-size:17.5px;line-height:1.1}
+.b .hd .s{font-size:15px;color:var(--ink2)}
+.b .pin{flex:none;margin:10px 12px 0;padding:10px 12px;border-radius:14px;background:#F6F3EB;display:flex;align-items:center;gap:12px}
+.b .pin .t{font-weight:700;font-size:15.5px}
+.b .pin .s{font-size:15px;color:var(--ink2)}
+.b .trk{display:grid;grid-template-columns:repeat(3,18px);gap:3px}
+.b .trk b{height:6px;border-radius:3px;background:#E3DDCF}
+.b .trk b.on{background:var(--green)}
+.b .th{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:12px 12px 10px;overflow:hidden}
+.b .bu{flex:none;max-width:84%;padding:10px 14px;border-radius:20px;font-size:17px;line-height:1.32;text-wrap:pretty}
+.b .bu.h{background:var(--bub);align-self:flex-start;border-bottom-left-radius:6px}
+.b .bu.u{background:var(--green);color:#fff;align-self:flex-end;border-bottom-right-radius:6px}
+.b .bu.photo{padding:4px;width:240px}
+.b .bu.photo svg{display:block;width:100%;height:auto;border-radius:16px 16px 6px 6px}
+.b .bu.photo .cap{padding:7px 10px 5px}
+.b .qc{flex:none;align-self:stretch;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 16px rgba(30,43,36,.08)}
+.b .qc .rw{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;font-size:16px}
+.b .qc .rw + .rw{border-top:1px solid var(--line)}
+.b .qc .rw b{font-weight:700}
+.b .qc .st{display:inline-flex;align-items:center;gap:6px;color:var(--ink2)}
+.b .qc .st.done{color:var(--green);font-weight:700}
+.b .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.b .qn{font-weight:800;font-size:19px;line-height:1.15}
+.b .price{font-weight:800;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.b .meta{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:15.5px;color:var(--ink2);margin-top:6px}
+.b .meta span{display:inline-flex;align-items:center;gap:4px}
+.b .star{color:var(--amber);width:17px;height:17px}
+.b .ln{font-size:15.5px;margin-top:4px;color:var(--ink2)}
+.b .btns{display:grid;grid-template-columns:1.25fr 1fr;gap:8px;margin-top:12px}
+.b .btn{display:flex;align-items:center;justify-content:center;gap:6px;height:48px;border-radius:12px;background:var(--green);color:#fff;font-weight:700;font-size:16.5px}
+.b .btn.ghost{background:#fff;color:var(--green);border:1.5px solid var(--green)}
+.b .qr{flex:none;display:flex;gap:8px;padding:2px 12px 10px;overflow:hidden}
+.b .qr span{flex:none;padding:10px 14px;border-radius:999px;border:1.5px solid var(--green);color:var(--green);font-weight:700;font-size:15.5px;white-space:nowrap}
+.b .cmp{flex:none;display:flex;gap:8px;align-items:center;padding:8px 12px 16px;border-top:1px solid var(--line)}
+.b .cmp .in{flex:1;height:46px;border-radius:23px;background:#F4F2EC;display:flex;align-items:center;padding:0 16px;color:var(--ink2);font-size:16px}
+.b .cmp .go{width:46px;height:46px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center}
+.b .bk{display:flex;gap:10px;align-items:center}
+.b .bk .ci{width:40px;height:40px;border-radius:10px;background:#E3EDE1;color:var(--green);display:grid;place-items:center}
+.b .bk .t{font-weight:800;font-size:18px}
+.b .bk .s{font-size:15px;color:var(--ink2)}
+.b .when{font-weight:800;font-size:21px;margin-top:10px}
+.b .booked .btn{margin-top:12px}
+
+/* ---------- C · aisle sign ---------- */
+.c{--bg:#FFF4D9;--ink:#111;--yel:#FFD23F;--grn:#1B7F45;--grnT:#C9EBD3;background:var(--bg);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;font-size:18px;font-weight:500}
+.c .steps{flex:none;padding:8px 16px 0}
+.c .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.c .seg b{height:12px;border:2.5px solid var(--ink);border-radius:4px;background:#fff}
+.c .seg b.on{background:var(--ink)}
+.c .lb{font-weight:800;font-size:16px;margin-top:8px}
+.c .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:8px 16px 20px}
+.c .h{font-weight:900;font-stretch:115%;font-size:35px;line-height:.98;text-transform:uppercase;letter-spacing:-.01em;margin:4px 0 0;text-wrap:balance}
+.c .p{margin:-4px 0 0;font-size:18px;font-weight:600}
+.c .blk{position:relative;border:3px solid var(--ink);border-radius:14px;background:#fff;box-shadow:4px 4px 0 var(--ink);padding:12px 14px}
+.c .blk.g{background:var(--grnT)}
+.c .blk.y{background:var(--yel)}
+.c .nm{font-weight:800;font-size:16px;text-transform:uppercase;letter-spacing:.02em;font-stretch:105%}
+.c .big{font-weight:900;font-size:25px;font-stretch:110%;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-top:4px}
+.c .big .ic{width:24px;height:24px}
+.c .dot{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;flex:none}
+.c .dot .ic{width:18px;height:18px}
+.c .px{font-weight:900;font-size:58px;line-height:.9;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.c .sub{font-size:16.5px;font-weight:600;margin-top:4px}
+.c .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.c .ch{display:inline-flex;align-items:center;gap:4px;border:2.5px solid var(--ink);border-radius:8px;padding:3px 8px;font-weight:800;font-size:15px;text-transform:uppercase;background:#fff}
+.c .ch .ic{width:16px;height:16px}
+.c .sticker{position:absolute;right:-8px;top:-15px;transform:rotate(6deg);background:var(--yel);border:3px solid var(--ink);border-radius:10px;padding:4px 10px;font-weight:900;font-size:16px;font-stretch:110%;text-transform:uppercase;box-shadow:3px 3px 0 var(--ink)}
+.c .go{flex:none;display:flex;align-items:center;justify-content:center;gap:10px;height:64px;border:3px solid var(--ink);border-radius:14px;background:var(--grn);color:#fff;font-weight:900;font-size:23px;font-stretch:112%;text-transform:uppercase;box-shadow:5px 5px 0 var(--ink)}
+.c .go.sm{height:52px;font-size:19px;margin-top:12px;box-shadow:3px 3px 0 var(--ink)}
+.c .no{flex:none;display:flex;align-items:center;justify-content:center;height:54px;border:3px solid var(--ink);border-radius:14px;background:#fff;font-weight:800;font-size:18px;text-transform:uppercase;font-stretch:108%}
+.c .rowb{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:10px 12px}
+.c .rowb .px{font-size:34px}
+.c .rowb .sub{margin-top:1px}
+.c .warn{display:flex;gap:10px;align-items:flex-start;border:3px dashed var(--ink);border-radius:12px;padding:10px 12px;font-weight:700;font-size:16.5px;background:#fff}
+.c .yband{background:var(--yel);border:3px solid var(--ink);border-radius:12px;padding:12px 14px;font-weight:800;font-size:19px;line-height:1.25}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+</svg>
+
+<h2>Which look fits Handy's everyday users?</h2>
+<p class="subtitle hx-lede">Each direction shows the same three moments: plumbers being called → choosing a price → saying yes. The content is the prototype's sample repair (kitchen sink leak at Maple House).</p>
+<p class="hx-keep">The same in all three: 17–18px text, one main button per screen, plain words, and the AI-disclosure promise on every calling screen.</p>
+
+<!-- ================= A ================= -->
+<section class="hx-dir">
+  <div class="hx-head">
+    <div>
+      <div class="t"><span class="l">A</span>Estimate slip <span class="rec">My pick</span></div>
+      <p><b>Light skeuomorphism on a semi-flat base.</b> Quotes look like the paper estimates people already trust; approving stamps them. It keeps today's calm green. Watch out: needs restraint or the paper turns into a costume.</p>
+    </div>
+    <button class="hx-pick" data-choice="a-estimate-slip" onclick="document.querySelectorAll('.hx-pick').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">Choose A</button>
+  </div>
+  <div class="hx-row">
+    <!-- A1 calling -->
+    <div>
+      <div class="ph"><div class="sc a">
+        <div class="sb"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span>Kitchen sink leak</span><span class="sp"></span><span>Maple House</span></div>
+        <div class="body">
+          <div class="h">We're calling 3 plumbers for you</div>
+          <p class="p">Takes about a minute. Nothing gets booked.</p>
+          <div class="slip perf calls">
+            <div class="rw">
+              <div><div class="nm">Clearwater Plumbing</div><div class="st done"><svg class="ic"><use href="#i-check"/></svg>Got a price</div></div>
+              <div class="rt"><div class="price">$185</div><span class="lk">Read the call</span></div>
+              <div class="trk"><b class="on"></b><b class="on"></b><b class="on"></b></div>
+            </div>
+            <div class="rw">
+              <div><div class="nm">Oak &amp; Pipe Services</div><div class="st"><span class="talk"><b></b><b></b><b></b><b></b></span>Talking to them now</div></div>
+              <div></div>
+              <div class="trk"><b class="on"></b><b class="on"></b><b></b></div>
+            </div>
+            <div class="rw">
+              <div><div class="nm">Neighborhood Fix</div><div class="st"><svg class="ic"><use href="#i-phone"/></svg>Ringing…</div></div>
+              <div></div>
+              <div class="trk"><b class="on"></b><b></b><b></b></div>
+            </div>
+          </div>
+          <div class="grow"></div>
+          <div class="note"><svg class="ic"><use href="#i-shield"/></svg><span>Our assistant tells every plumber it's an AI. It never books anything or gives out your address.</span></div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Calling.</b> Each call moves like a delivery tracker (ringing → talking → price). The assistant's rules are spelled out so nobody fears it will commit them.</p>
+    </div>
+    <!-- A2 pick -->
+    <div>
+      <div class="ph"><div class="sc a">
+        <div class="sb"><span>9:42</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span>Kitchen sink leak</span><span class="sp"></span><span>Maple House</span></div>
+        <div class="body">
+          <div class="h">3 prices for your sink leak</div>
+          <p class="p">Parts and labor included. The plumber confirms once they see it.</p>
+          <div class="slip perf pick">
+            <div class="top"><div class="nm">Clearwater Plumbing</div><div class="price">$185</div></div>
+            <div class="meta"><span><svg class="ic star"><use href="#i-star"/></svg>4.9 (128 reviews)</span><span>Can come tomorrow</span></div>
+            <div class="items"><span>Parts</span><span>$40</span><span>Labor</span><span>$145</span><span>Guarantee</span><span>90 days</span></div>
+            <div class="why"><svg class="ic"><use href="#i-check"/></svg><span>Our pick: best reviews, and they can come tomorrow.</span></div>
+            <div class="btn">Choose Clearwater</div>
+          </div>
+          <div class="slip mini"><div><div class="nm">Neighborhood Fix<span class="tag">Cheapest</span></div><div class="sub">In 2 days · 30-day guarantee</div></div><div class="price">$160</div><svg class="ic"><use href="#i-chev"/></svg></div>
+          <div class="slip mini"><div><div class="nm">Oak &amp; Pipe Services</div><div class="sub">Tomorrow · 60-day guarantee</div></div><div class="price">$215</div><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Choosing.</b> Quotes are estimate slips: one big price, plain line items, and one sentence on why we picked it. The others stay one tap away.</p>
+    </div>
+    <!-- A3 approved + times -->
+    <div>
+      <div class="ph"><div class="sc a">
+        <div class="sb"><span>9:43</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span>Kitchen sink leak</span><span class="sp"></span><span>Maple House</span></div>
+        <div class="body">
+          <div class="slip perf sum">
+            <div class="nm">Clearwater Plumbing</div>
+            <div class="sub">Kitchen sink leak · Maple House</div>
+            <div class="price">$185</div>
+            <div class="stamp">Approved<small>Oct 11</small></div>
+          </div>
+          <div class="h">When can they come?</div>
+          <p class="p">Tap every time that works. We'll call Clearwater to set it up.</p>
+          <div><div class="dl">Mon, Oct 12</div><div class="chips"><div class="chip on"><svg class="ic"><use href="#i-check"/></svg>Morning<small>8 am – 12 pm</small></div><div class="chip">Afternoon<small>12 – 5 pm</small></div></div></div>
+          <div><div class="dl">Tue, Oct 13</div><div class="chips"><div class="chip">Morning<small>8 am – 12 pm</small></div><div class="chip on"><svg class="ic"><use href="#i-check"/></svg>Afternoon<small>12 – 5 pm</small></div></div></div>
+          <div><div class="fl">How do they get in?</div><div class="fv">I'll be home. Ring the bell.</div></div>
+          <div class="grow"></div>
+          <div class="btn">Send these times</div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Saying yes.</b> Tapping "Choose" asks once, then stamps the slip. Times are big tap-buttons instead of a date picker.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="hx-dir">
+  <div class="hx-head">
+    <div>
+      <div class="t"><span class="l">B</span>A text from a friend</div>
+      <p><b>The whole repair is one in-app conversation with Handy.</b> It's the most familiar interface there is, and it makes the AI calls feel alive in a demo. Watch out: a bigger rewrite, and older repairs are harder to find.</p>
+    </div>
+    <button class="hx-pick" data-choice="b-chat-thread" onclick="document.querySelectorAll('.hx-pick').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">Choose B</button>
+  </div>
+  <div class="hx-row">
+    <!-- B1 -->
+    <div>
+      <div class="ph"><div class="sc b">
+        <div class="sb"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="hd"><div class="av"><svg class="ic"><use href="#i-wrench"/></svg></div><div><div class="n">Handy</div><div class="s">Your repair helper</div></div></div>
+        <div class="pin"><div style="flex:1"><div class="t">Kitchen sink leak</div><div class="s">Getting prices · 1 of 3 in</div></div><div class="trk"><b class="on"></b><b></b><b></b></div></div>
+        <div class="th">
+          <div class="bu u photo">
+            <svg viewBox="0 0 240 150" role="img" aria-label="Photo of a leaking pipe under a sink">
+              <rect width="240" height="150" fill="#4A3F35"/>
+              <rect y="108" width="240" height="42" fill="#7A6650"/>
+              <ellipse cx="128" cy="132" rx="58" ry="9" fill="#6F93A8" opacity=".6"/>
+              <path d="M104 0v60a24 24 0 0 0 48 0V52h88" fill="none" stroke="#C9CED0" stroke-width="13" stroke-linecap="round"/>
+              <rect x="95" y="34" width="18" height="11" rx="2" fill="#E6E9EA"/>
+              <path d="M104 92c-4 7-4 11 0 13 4-2 4-6 0-13z" fill="#9CCDE8"/>
+              <path d="M110 112c-3 5-3 8 0 9 3-1 3-4 0-9z" fill="#9CCDE8"/>
+            </svg>
+            <div class="cap">Water under my kitchen sink</div>
+          </div>
+          <div class="bu h">Looks like a loose drain pipe. Not an emergency, and a plumber can fix it.</div>
+          <div class="bu h">I'm calling 3 plumbers for prices. I tell them I'm an AI, and I won't book anything until you say so.</div>
+          <div class="qc">
+            <div class="rw"><b>Clearwater Plumbing</b><span class="st done"><svg class="ic"><use href="#i-check"/></svg>$185</span></div>
+            <div class="rw"><b>Oak &amp; Pipe Services</b><span class="st"><span class="talk"><b></b><b></b><b></b><b></b></span>Talking</span></div>
+            <div class="rw"><b>Neighborhood Fix</b><span class="st"><svg class="ic"><use href="#i-phone"/></svg>Ringing</span></div>
+          </div>
+        </div>
+        <div class="cmp"><div class="in">Message Handy</div><div class="go"><svg class="ic"><use href="#i-arrow"/></svg></div></div>
+      </div></div>
+      <p class="hx-cap"><b>Calling.</b> Photo in, plain-English answer back, then live call status right in the thread. The pinned card always says where things stand.</p>
+    </div>
+    <!-- B2 -->
+    <div>
+      <div class="ph"><div class="sc b">
+        <div class="sb"><span>9:42</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="hd"><div class="av"><svg class="ic"><use href="#i-wrench"/></svg></div><div><div class="n">Handy</div><div class="s">Your repair helper</div></div></div>
+        <div class="pin"><div style="flex:1"><div class="t">Kitchen sink leak</div><div class="s">3 prices ready</div></div><div class="trk"><b class="on"></b><b class="on"></b><b class="on"></b></div></div>
+        <div class="th">
+          <div class="bu h">Got all 3 prices. Here's who I'd pick:</div>
+          <div class="qc">
+            <div class="top"><div class="qn">Clearwater Plumbing</div><div class="price">$185</div></div>
+            <div class="meta"><span><svg class="ic star"><use href="#i-star"/></svg>4.9 (128 reviews)</span><span>Can come tomorrow</span></div>
+            <div class="ln">Parts $40 + labor $145 · 90-day guarantee</div>
+            <div class="btns"><div class="btn">Book Clearwater</div><div class="btn ghost">See all 3</div></div>
+          </div>
+          <div class="bu h">Cheaper option: Neighborhood Fix for $160, but they can't come until Tuesday.</div>
+        </div>
+        <div class="qr"><span>Book Clearwater</span><span>Tell me more</span><span>Show all 3</span></div>
+        <div class="cmp"><div class="in">Message Handy</div><div class="go"><svg class="ic"><use href="#i-arrow"/></svg></div></div>
+      </div></div>
+      <p class="hx-cap"><b>Choosing.</b> Quotes arrive as cards in the thread. Reply buttons mean nobody has to type, but they can ask a question if they want.</p>
+    </div>
+    <!-- B3 -->
+    <div>
+      <div class="ph"><div class="sc b">
+        <div class="sb"><span>9:44</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="hd"><div class="av"><svg class="ic"><use href="#i-wrench"/></svg></div><div><div class="n">Handy</div><div class="s">Your repair helper</div></div></div>
+        <div class="pin"><div style="flex:1"><div class="t">Kitchen sink leak</div><div class="s">Booked · Mon, Oct 12</div></div><div class="trk"><b class="on"></b><b class="on"></b><b class="on"></b></div></div>
+        <div class="th">
+          <div class="bu h">Just checking: Clearwater Plumbing, about $185, for the sink at Maple House. Nothing is booked until you say yes.</div>
+          <div class="bu u">Yes, book it</div>
+          <div class="bu h">Which times work for you?</div>
+          <div class="bu u">Mon morning or Tue afternoon</div>
+          <div class="qc booked">
+            <div class="bk"><div class="ci"><svg class="ic"><use href="#i-cal"/></svg></div><div><div class="t">You're booked</div><div class="s">I called Clearwater and they confirmed.</div></div></div>
+            <div class="when">Mon, Oct 12 · 9–11 am</div>
+            <div class="ln">Clearwater Plumbing · about $185</div>
+            <div class="btn ghost">Add to my calendar</div>
+          </div>
+        </div>
+        <div class="cmp"><div class="in">Message Handy</div><div class="go"><svg class="ic"><use href="#i-arrow"/></svg></div></div>
+      </div></div>
+      <p class="hx-cap"><b>Saying yes.</b> Handy repeats the deal back before anything happens. Times and the booking land in the same thread.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="hx-dir">
+  <div class="hx-head">
+    <div>
+      <div class="t"><span class="l">C</span>Hardware-store aisle sign</div>
+      <p><b>Neo-brutalist contrast with ordinary layouts.</b> The biggest type, solid color blocks and buttons you can't miss. Best for older eyes and bad lighting. Watch out: loud, and can feel cheap to a property manager.</p>
+    </div>
+    <button class="hx-pick" data-choice="c-aisle-sign" onclick="document.querySelectorAll('.hx-pick').forEach(function(b){b.classList.remove('on')});this.classList.add('on')">Choose C</button>
+  </div>
+  <div class="hx-row">
+    <!-- C1 -->
+    <div>
+      <div class="ph"><div class="sc c">
+        <div class="sb"><span>9:41</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="steps"><div class="seg"><b class="on"></b><b class="on"></b><b></b><b></b></div><div class="lb">Step 2 of 4 · Getting prices</div></div>
+        <div class="body">
+          <div class="h">Calling 3 plumbers</div>
+          <p class="p">About 1 minute. Nothing gets booked.</p>
+          <div class="blk g"><div class="nm">Clearwater Plumbing</div><div class="big"><span class="dot"><svg class="ic"><use href="#i-check"/></svg></span>Price: $185</div></div>
+          <div class="blk y"><div class="nm">Oak &amp; Pipe Services</div><div class="big"><span class="talk"><b></b><b></b><b></b><b></b></span>Talking now</div></div>
+          <div class="blk"><div class="nm">Neighborhood Fix</div><div class="big"><svg class="ic"><use href="#i-phone"/></svg>Ringing…</div></div>
+          <div class="grow"></div>
+          <div class="warn"><svg class="ic"><use href="#i-shield"/></svg><span>Our assistant says it's an AI. It never books and never gives out your address.</span></div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Calling.</b> Signage-size type and color as meaning: green = done, yellow = happening now, white = waiting.</p>
+    </div>
+    <!-- C2 -->
+    <div>
+      <div class="ph"><div class="sc c">
+        <div class="sb"><span>9:42</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="steps"><div class="seg"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div><div class="lb">Step 3 of 4 · Pick one</div></div>
+        <div class="body">
+          <div class="h">Pick a plumber</div>
+          <p class="p">Prices include parts and labor.</p>
+          <div class="blk">
+            <div class="sticker">Best pick</div>
+            <div class="px">$185</div>
+            <div class="nm" style="margin-top:6px">Clearwater Plumbing</div>
+            <div class="chips"><span class="ch"><svg class="ic"><use href="#i-clock"/></svg>Tomorrow</span><span class="ch"><svg class="ic"><use href="#i-star"/></svg>4.9</span><span class="ch">90-day guarantee</span></div>
+            <div class="go sm">Pick this one <svg class="ic"><use href="#i-arrow"/></svg></div>
+          </div>
+          <div class="blk rowb"><div class="px">$160</div><div><div class="nm">Neighborhood Fix</div><div class="sub">In 2 days · Cheapest</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+          <div class="blk rowb"><div class="px">$215</div><div><div class="nm">Oak &amp; Pipe Services</div><div class="sub">Tomorrow</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Choosing.</b> Price first and huge. The recommended plumber gets a sticker; every block is one big tap target.</p>
+    </div>
+    <!-- C3 -->
+    <div>
+      <div class="ph"><div class="sc c">
+        <div class="sb"><span>9:43</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+        <div class="steps"><div class="seg"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></div><div class="lb">Step 3 of 4 · Confirm</div></div>
+        <div class="body">
+          <div class="h">Book this plumber?</div>
+          <div class="blk">
+            <div class="px">$185</div>
+            <div class="nm" style="margin-top:6px">Clearwater Plumbing</div>
+            <div class="sub">Kitchen sink leak · Maple House<br>Comes tomorrow · 90-day guarantee</div>
+          </div>
+          <div class="yband">Nothing is booked until you press the green button.</div>
+          <div class="grow"></div>
+          <div class="go">Yes, book it</div>
+          <div class="no">Not yet, go back</div>
+        </div>
+      </div></div>
+      <p class="hx-cap"><b>Saying yes.</b> One giant green button and a plain warning above it. Step 4 (pick times) follows the same big-block style.</p>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

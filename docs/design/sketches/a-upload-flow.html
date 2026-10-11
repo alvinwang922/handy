@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handy look A upload flow (snap, tell, diagnosis)</title>
+<style>body{margin:0;padding:32px;background:#F1EEE6;font-family:"Atkinson Hyperlegible Next",system-ui,sans-serif;color:#1E2B24}</style>
+</head>
+<body>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&family=Zilla+Slab:wght@500;600;700&display=swap');
+
+.hx-lede{max-width:72ch}
+.hx-row{display:grid;grid-template-columns:repeat(3,356px);gap:30px;overflow-x:auto;padding:4px 6px 10px;margin-top:1.5rem}
+.hx-cap{margin:14px 4px 0;font-size:.92rem;line-height:1.45;color:var(--text-secondary);max-width:340px}
+.hx-cap b{color:var(--text-primary);font-weight:600}
+.hx-notes{margin:2rem 0 0;max-width:80ch;color:var(--text-secondary);font-size:.95rem;line-height:1.55;padding-left:1.1rem}
+.hx-notes b{color:var(--text-primary);font-weight:600}
+
+.ph{width:356px;height:720px;border:8px solid #16171a;border-radius:46px;overflow:hidden;position:relative;box-shadow:0 2px 4px rgba(0,0,0,.08),0 22px 46px rgba(0,0,0,.16)}
+.ph .sc{height:100%;display:flex;flex-direction:column;overflow:hidden;line-height:1.35;-webkit-font-smoothing:antialiased}
+.ph .sb{flex:none;height:34px;padding:12px 26px 0;font:600 14px/1 -apple-system,system-ui,sans-serif;display:flex;justify-content:space-between}
+.ph .sb i{display:flex;gap:2px;align-items:flex-end;height:11px}
+.ph .sb i b{display:block;width:3px;background:currentColor;border-radius:1px}
+.ph .ic{width:20px;height:20px;flex:none}
+.ph .grow{flex:1;min-height:0}
+
+.a{--bg:#F3EDE1;--slip:#FFFDF7;--ink:#1E2B24;--ink2:#4A554E;--line:#D8CDB8;--green:#24533F;--tint:#E3EDE1;--amber:#9A6412;--red:#A3271B;background:var(--bg);color:var(--ink);font-family:'Atkinson Hyperlegible Next','Atkinson Hyperlegible',system-ui,sans-serif;font-size:17px}
+.a .bar{flex:none;display:flex;align-items:center;gap:6px;padding:10px 18px 4px;font-size:15px;color:var(--ink2)}
+.a .bar .sp{flex:1}
+.a .bar .prop{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:var(--ink);font-size:16px}
+.a .bar .prop .ic{width:18px;height:18px;transform:rotate(90deg)}
+.a .body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:6px 18px 20px}
+.a .h{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:29px;line-height:1.08;letter-spacing:-.01em;margin:4px 0 0;text-wrap:balance}
+.a .p{margin:-4px 0 0;color:var(--ink2);font-size:17px;text-wrap:pretty}
+.a .slip{position:relative;background:var(--slip);border-radius:3px 3px 10px 10px;padding:16px;box-shadow:0 1px 1px rgba(60,40,10,.05),0 8px 22px rgba(60,40,10,.09)}
+.a .perf{margin-top:6px}
+.a .perf::before{content:"";position:absolute;left:0;right:0;top:-6px;height:12px;background:radial-gradient(circle at 8px 6px,var(--bg) 4.5px,transparent 5px) 0 0/16px 12px repeat-x}
+.a .btn{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:12px;background:var(--green);color:#fff;font-weight:700;font-size:18px;box-shadow:0 1px 0 rgba(0,0,0,.15),0 4px 12px rgba(36,83,63,.25)}
+.a .btn.ghost{background:var(--slip);color:var(--green);border:1.5px solid var(--green);box-shadow:none}
+.a .lbl{font-weight:700;font-size:16.5px;margin-bottom:8px}
+.a .lk{color:var(--green);text-decoration:underline;text-underline-offset:3px;font-size:16px}
+
+/* screen 1 */
+.a .snap{flex:none;height:250px;border-radius:18px;border:2.5px dashed #BFB197;background:var(--slip);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center}
+.a .snap .cam{width:84px;height:84px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.12),0 8px 18px rgba(36,83,63,.28)}
+.a .snap .cam .ic{width:38px;height:38px}
+.a .snap .t{font-weight:800;font-size:21px}
+.a .snap .s{font-size:16px;color:var(--ink2);max-width:24ch}
+.a .tip{display:flex;gap:10px;align-items:flex-start;font-size:15.5px;color:var(--ink2)}
+.a .tip .ic{color:var(--amber)}
+.a .demo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:15.5px;color:var(--ink2)}
+.a .demo .chip{font-size:15px;font-weight:700;padding:0 8px;border-radius:6px;background:#E9E1D0;color:var(--ink)}
+
+/* screen 2 */
+.a .thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.a .thumbs svg{display:block;width:100%;height:84px;border-radius:10px}
+.a .thumbs .add .ic{width:24px;height:24px;border-radius:0}
+.a .thumbs .add{height:84px;border-radius:10px;border:2px dashed #BFB197;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:15px;color:var(--green);background:var(--slip)}
+.a .ta{position:relative;border:1.5px solid var(--line);border-radius:14px;background:var(--slip);padding:12px 14px 58px;font-size:17px;line-height:1.4;min-height:128px}
+.a .ta .caret{display:inline-block;width:2px;height:19px;background:var(--green);vertical-align:-3px;margin-left:1px}
+.a .mic{position:absolute;left:12px;bottom:10px;display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px 0 10px;border-radius:999px;background:var(--tint);color:var(--green);font-weight:700;font-size:15.5px}
+.a .rooms{display:flex;flex-wrap:wrap;gap:8px}
+.a .rooms span{display:inline-flex;align-items:center;gap:6px;height:46px;padding:0 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--slip);font-weight:700;font-size:16px}
+.a .rooms span.on{background:var(--green);border-color:var(--green);color:#fff}
+.a .rooms span .ic{width:16px;height:16px}
+
+/* screen 3 */
+.a .dx{display:grid;grid-template-columns:72px 1fr;gap:12px;align-items:center}
+.a .dx svg{display:block;width:72px;height:72px;border-radius:10px}
+.a .dx .nm{font-family:'Zilla Slab',Georgia,serif;font-weight:700;font-size:23px;line-height:1.05}
+.a .sure{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:2px 10px;border-radius:999px;background:var(--tint);color:var(--green);font-weight:700;font-size:15px}
+.a .facts{margin-top:14px;padding-top:12px;border-top:1.5px dashed var(--line);display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:16px}
+.a .facts dt{color:var(--ink2)}
+.a .facts dd{margin:0;font-weight:700}
+.a .now{margin-top:14px;display:flex;gap:10px;align-items:flex-start;background:#F7EFDD;border-radius:8px;padding:10px 12px;font-size:15.5px}
+.a .now .ic{color:var(--amber)}
+.a .now b{display:block}
+.a .fine{font-size:15px;color:var(--ink2);margin-top:12px}
+.a .sos{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1.5px solid #E2B9B2;background:#FBF1EE;color:var(--red);font-weight:700;font-size:15.5px}
+.a .sos .ic{color:var(--red)}
+.a .sos .sp{flex:1}
+.a .row2{display:flex;justify-content:center}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="sink-art">
+      <rect width="240" height="150" fill="#4A3F35"/>
+      <rect y="108" width="240" height="42" fill="#7A6650"/>
+      <ellipse cx="128" cy="132" rx="58" ry="9" fill="#6F93A8" opacity=".6"/>
+      <path d="M104 0v60a24 24 0 0 0 48 0V52h88" fill="none" stroke="#C9CED0" stroke-width="13" stroke-linecap="round"/>
+      <rect x="95" y="34" width="18" height="11" rx="2" fill="#E6E9EA"/>
+      <path d="M104 92c-4 7-4 11 0 13 4-2 4-6 0-13z" fill="#9CCDE8"/>
+      <path d="M110 112c-3 5-3 8 0 9 3-1 3-4 0-9z" fill="#9CCDE8"/>
+    </g>
+  </defs>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+</svg>
+
+<h2>Look A: reporting the problem</h2>
+<p class="subtitle hx-lede">The three screens before the calling screen: snap a photo → say what's happening → see what we think is wrong. No forms, no title field, no trade picker.</p>
+
+<div class="hx-row">
+  <!-- 1 · snap -->
+  <div>
+    <div class="ph"><div class="sc a">
+      <div class="sb"><span>9:38</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+      <div class="bar"><span class="prop">Maple House <svg class="ic"><use href="#i-chev"/></svg></span><span class="sp"></span><span>124 Maple Ave</span></div>
+      <div class="body">
+        <div class="h">What needs fixing?</div>
+        <p class="p">Take a photo of the problem. We'll work out who can fix it.</p>
+        <div class="snap">
+          <div class="cam"><svg class="ic"><use href="#i-camera"/></svg></div>
+          <div class="t">Take a photo</div>
+          <div class="s">Opens your camera</div>
+        </div>
+        <div class="btn ghost"><svg class="ic"><use href="#i-image"/></svg>Choose from my photos</div>
+        <div class="tip"><svg class="ic"><use href="#i-bulb"/></svg><span>Tip: one photo from a step back, then one close-up.</span></div>
+        <div class="grow"></div>
+        <div class="demo"><span class="chip">Demo</span><span class="lk">Use a sample photo</span></div>
+      </div>
+    </div></div>
+    <p class="hx-cap"><b>Snap.</b> The camera button is the whole screen. The home is already picked, and a property manager switches it from the top. The sample photo is labeled as a demo.</p>
+  </div>
+
+  <!-- 2 · tell -->
+  <div>
+    <div class="ph"><div class="sc a">
+      <div class="sb"><span>9:39</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+      <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span>New repair</span><span class="sp"></span><span>Maple House</span></div>
+      <div class="body">
+        <div class="h">Tell us what's happening</div>
+        <div class="thumbs">
+          <svg viewBox="0 0 240 150" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Photo 1: under the sink"><use href="#sink-art"/></svg>
+          <svg viewBox="70 20 110 90" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Photo 2: close-up of the pipe"><use href="#sink-art"/></svg>
+          <div class="add"><svg class="ic"><use href="#i-plus"/></svg>Add photo</div>
+        </div>
+        <div>
+          <div class="lbl">In your own words</div>
+          <div class="ta">Water dripping from the pipe under the kitchen sink. Cabinet floor is wet.<span class="caret"></span>
+            <span class="mic"><svg class="ic"><use href="#i-mic"/></svg>Or just say it</span>
+          </div>
+        </div>
+        <div>
+          <div class="lbl">Where is it?</div>
+          <div class="rooms"><span class="on"><svg class="ic"><use href="#i-check"/></svg>Kitchen</span><span>Bathroom</span><span>Bedroom</span><span>Outside</span><span>Other</span></div>
+        </div>
+        <div class="grow"></div>
+        <div class="btn">Find out what's wrong</div>
+      </div>
+    </div></div>
+    <p class="hx-cap"><b>Tell.</b> One text box with a big "say it" button for people who don't like typing. The room is a tap, not a dropdown. We write the repair's title from their words.</p>
+  </div>
+
+  <!-- 3 · what we think -->
+  <div>
+    <div class="ph"><div class="sc a">
+      <div class="sb"><span>9:39</span><i><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></i></div>
+      <div class="bar"><svg class="ic"><use href="#i-back"/></svg><span>Kitchen sink leak</span><span class="sp"></span><span>Maple House</span></div>
+      <div class="body">
+        <div class="h">Here's what we think</div>
+        <div class="slip perf">
+          <div class="dx">
+            <svg viewBox="70 20 110 90" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Your photo"><use href="#sink-art"/></svg>
+            <div><div class="nm">Loose drain connection</div><span class="sure"><svg class="ic" style="width:16px;height:16px"><use href="#i-check"/></svg>Pretty sure</span></div>
+          </div>
+          <dl class="facts">
+            <dt>Who fixes it</dt><dd>A plumber</dd>
+            <dt>How urgent</dt><dd>Not an emergency. This week.</dd>
+          </dl>
+          <div class="now"><svg class="ic"><use href="#i-bulb"/></svg><span><b>For now</b>Put a bowl under the pipe and don't use this sink.</span></div>
+          <div class="fine">This is our best guess. The plumber confirms when they see it.</div>
+        </div>
+        <div class="sos"><svg class="ic"><use href="#i-alert"/></svg><span>Smell gas, see sparks or flooding?</span><span class="sp"></span><svg class="ic"><use href="#i-chev"/></svg></div>
+        <div class="grow"></div>
+        <div class="btn"><svg class="ic"><use href="#i-phone"/></svg>Call 3 plumbers for prices</div>
+        <div class="row2"><span class="lk">That's not right, change details</span></div>
+      </div>
+    </div></div>
+    <p class="hx-cap"><b>What we think.</b> A plain-English name, "Pretty sure" instead of a percentage, what to do right now, and an always-visible emergency exit. The button says exactly what happens next.</p>
+  </div>
+</div>
+
+<ul class="hx-notes">
+  <li><b>Then:</b> the "Call 3 plumbers" button leads straight into the calling screen you already saw in look A.</li>
+  <li><b>Fits the API as-is:</b> photo, description, property and room go to <code>POST /api/requests</code>. The title is filled from their words, and the unit comes from the selected property.</li>
+  <li><b>Emergency:</b> if the photo or words mention gas, fire, sparks or flooding, screen 3 is replaced by a red safety screen with tap-to-call buttons. I can sketch that next.</li>
+</ul>
+
+</body>
+</html>

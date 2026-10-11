@@ -13,14 +13,14 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 
 ## Commands
 - `cp .env.example .env.local` once. With every `MOCK_*=1`, the full flow runs with no keys (fake calls finish in ~16 s).
-- `npm run dev` → http://localhost:3000 (UI = `public/index.html`, API = `app/api/**`)
+- `npm run dev` → http://127.0.0.1:3000 (UI = `public/index.html`, API = `app/api/**`)
 - `npm test` (vitest, `tests/`) · `npm run typecheck`
 - `npm run setup:receptionist` (P1) · `npm run seed:keewano` (P4)
 
 ## Ownership — edit only your own files; ask in team chat before touching anyone else's
 | Path | Owner |
 |---|---|
-| `public/index.html` (vanilla-JS UI prototype; replace its simulated `submitRequest`/`startOutreach`/`book`/`transcript` with API calls) | P3 frontend |
+| `public/index.html` (vanilla-JS UI; API-backed requests call the live endpoints, built-in samples stay simulated) | P3 frontend |
 | `lib/dial.ts`, `lib/instructions.ts`, `scripts/setup-receptionist.ts` | P1 calls |
 | `lib/claude.ts`, `lib/parts.ts`, `fixtures/transcripts/` | P2 AI |
 | `lib/keewano.ts`, `scripts/seed-keewano.ts`, `app/api/metrics/` | P4 data |

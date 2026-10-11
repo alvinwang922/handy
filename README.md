@@ -1,8 +1,20 @@
 # Handy — snap a photo, get it fixed
 
-**Handy turns a photo of a home-repair problem into a booked appointment.** Claude diagnoses the photo, Keewano picks which providers are worth calling, AI voice agents (Dial) call them in parallel for quotes, and once you approve one, Handy calls back to book it.
+**Handy turns a photo of a home-repair problem into a booked appointment.** Claude diagnoses the photo, Keewano picks which providers are worth calling, AI voice agents (Dial) call them for quotes, and once you approve one, Handy calls back to book it.
 
 Built in one day at SpeedHacks (a16z speedrun × SF Tech Week, 2026-10-11).
+
+## Verified live on 2026-10-11
+
+One run through the web UI (`public/index.html`) with every mock flag off:
+
+1. **Claude Opus 5.5** diagnosed "Drain leak at wall connection under kitchen sink" (plumber, $150–450 estimate).
+2. **Keewano** ranked the verified plumbers from their call history: Bay Area Rooter **96** was called; Mission Pipe Pros **64** (answers 59% of calls, final bills +18%) was skipped, and the UI says why.
+3. **Dial** placed a real AI quote call to our AI-receptionist number, which plays the fictional Bay Area Rooter.
+4. **Claude Sonnet 5.5** extracted **$180–$250 flat, $89 visit fee waived if hired** from the transcript, checked against the provider's own words. The call hit its 240 s cap before openings came up, so availability was marked *not given* rather than guessed.
+5. After an explicit approval of that exact quote, **Dial** placed the booking call; the provider confirmed **Tue Oct 13, 9 AM–12 PM**, terms unchanged, and the appointment exported to `.ics`.
+
+Providers and their history are fictional and seeded, and labeled as such. No real business was called.
 
 ## The problem
 
@@ -26,7 +38,7 @@ Claude (Opus 5.5 vision)  ──► diagnosis, trade, urgency, cost range, provi
 Keewano  ──► ranks providers from event history (answer rate, on-time rate, final bill vs quote)
    │        and checks the unit's repair history ("3rd plumbing issue → also ask for a replacement quote")
    ▼
-Dial  ──► AI voice agents call the top providers in parallel; each discloses it is an AI and never commits
+Dial  ──► AI voice agents call the top-ranked providers (up to 2 at once); each discloses it is an AI and never commits
    │
    ▼
 Claude  ──► transcript → structured quote (price, fee treatment, availability, scope, evidence)
@@ -46,8 +58,8 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. Verified live in the browser on 2026-10-11: Claude diagnosis → Keewano ranking (Bay Area Rooter, score 96, called; Mission Pipe Pros, 64, skipped) → one real Dial quote call to our AI-receptionist number → Claude extraction ($180–$250 flat, $89 fee waived if hired) → explicit approval → real Dial booking call → scheduled, with the provider's confirming words stored as evidence. In that run the quote call hit its 240 s cap before availability came up, so the quote was marked partial and the UI showed "Availability not given" instead of guessing; the receptionist persona now states openings up front |
-| Calendar export | An `.ics` route exists, but explicit dates, time zones, and duration are not reliably preserved. Show the stored booking window until export is corrected; see [`docs/submission.md`](docs/submission.md) |
+| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. **Verified live end to end on 2026-10-11** (see [above](#verified-live-on-2026-10-11)) |
+| Calendar export | **Real.** `.ics` uses the confirmed slot's explicit date and its own start and end ("Tue, Oct 13 · 9 am–12 pm" → 09:00–12:00) in the property's local time. Times are floating (no time-zone ID yet) |
 | Look B design prototype | `public/app/` with its own demo server (`node server/index.js`, then http://127.0.0.1:4173/app/): homeowner and manager dashboards from the design review. **Simulated:** scripted calls and local SQLite, labeled "Demo · simulated data", and not connected to the live backend |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
@@ -59,7 +71,7 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 | **Dial** | Outbound AI quote calls with AI disclosure, booking calls only after approval, an inbound AI-receptionist persona, idempotent call placement, speaker-separated transcripts, and repair photo packets to Dial-to-Dial recipients | It is the core action: Handy makes the phone calls so you don't have to |
 | **Keewano** | Typed, append-only event registry (`lib/keewano.ts`); SQL over the Postgres protocol decides **who gets called** and **what to ask**; before/after metrics; live Q&A over MCP | **Load-bearing:** a 4.4★ provider who answers only 59% of calls gets skipped; a unit's repair history adds a replacement-quote question. Example questions: [`docs/keewano-qa.md`](docs/keewano-qa.md) |
 | **Sparta Worlds** | [`sparta/`](sparta/README.md): a deposit-settlement agent that refunds a held deposit **exactly once** when a provider cancels, graded in Sparta's local Stripe copy under an injected HTTP 500 | The naive agent passes **3/6** runs; the fixed one (retry, stable idempotency key, verify after write) passes **6/6**. It runs after booking and isn't wired into the app yet |
-| **Alike** | Team coordination for our 4 engineers' coding agents: shared decisions anchored to contract files, briefings at session start | Shared decisions and context support work across sessions |
+| **Alike** | Team coordination for our coding agents (3 of 4 teammates; it needs macOS): shared decisions anchored to contract files, briefings at session start | Shared decisions and context support work across sessions |
 
 ## Safety and trust
 
@@ -71,7 +83,7 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 
 ## Run it
 
-Production quote and booking extraction are implemented behind the mock flags. See the [live endpoint handoff](eng-design/dial-endpoint-handoff.md) for configuration, frontend requests and controlled-call validation status. The hosted prototype URL should not be assumed to expose the local backend routes.
+There is no hosted backend: everything runs locally and binds to 127.0.0.1. See the [live endpoint handoff](eng-design/dial-endpoint-handoff.md) for configuration and controlled-call validation.
 
 ```bash
 npm install
@@ -89,6 +101,12 @@ To go live, flip each `MOCK_*` flag to `0` as you add its keys (see `.env.exampl
 | `npm run seed:keewano` | Loads the labeled seed history |
 | `npm run try:diagnose` | Tests Claude diagnosis on its own |
 | `npm run smoke:dial` | A controlled live Dial quote call |
+| `npm run smoke:booking` | A controlled live booking call |
+| `npm run setup:receptionist` | Gives the second Dial number the fictional "Bay Area Rooter" receptionist persona |
+
+For the live demo we set `QUOTE_FANOUT=1` (Dial's free tier allows 2 concurrent calls) and map the demo providers to our own Dial numbers in `data/providers.local.json` (gitignored; see `data/providers.local.example.json`).
+
+Look B design prototype (simulated, separate server): `node server/index.js`, then open http://127.0.0.1:4173/app/.
 
 API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /api/requests/:id` → `POST /api/requests/:id/book` → `GET /api/requests/:id/ics`. Also `GET /api/providers` and `GET /api/metrics`.
 
@@ -98,6 +116,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 |---|---|
 | `public/index.html` | Web UI (live backend) |
 | `public/app/`, `server/` | Look B design prototype and its demo server (simulated) |
+| `public/proto/`, `docs/design/` | Clickable design prototype, design system, screens and sketches |
 | `app/api/` | Next.js 16 route handlers |
 | `lib/orchestrator.ts` | Call lifecycle: concurrency cap, per-request locking, extraction retries, status machine |
 | `lib/claude.ts`, `lib/parts.ts` | Diagnosis and DIY part search |
@@ -121,9 +140,9 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 - Connect the Look B design (`public/app/`) to the live API, and run several providers' quote calls in parallel live (so far tested in simulation only).
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
-- Quote revisions and normalized availability windows (start/end plus time zone), so bookings never depend on phrases like "Tuesday afternoon".
+- Normalized availability windows (start/end plus time zone) end to end, so bookings and calendar invites never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.
 
 ## Team
 
-[@alvinwang922](https://github.com/alvinwang922) · [@rwberndt](https://github.com/rwberndt) · [@hjun-escape](https://github.com/hjun-escape) · Francesco. We built with Claude Code and coordinated our agents through Alike.
+[@alvinwang922](https://github.com/alvinwang922) · [@rwberndt](https://github.com/rwberndt) · [@hjun-escape](https://github.com/hjun-escape) · [@FrancescoRosciano](https://github.com/FrancescoRosciano). We built with Claude Code and coordinated our agents through Alike.

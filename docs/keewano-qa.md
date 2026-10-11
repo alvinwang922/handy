@@ -32,7 +32,7 @@ FROM events WHERE "Channel" IS NOT NULL GROUP BY channel ORDER BY channel;
 
 Result:
 - **manual** (seeded baseline): 120 requests, median **2,225 min (~37 h)** from report to booking, ~107 min of hands-on time each.
-- **handled**: fills in with each real end-to-end run.
+- **handled**: appears after a live run (real Dial calls) completes with Keewano enabled. None had been recorded at submission time.
 - **handled_mock**: mock-call test runs, shown separately.
 
 ### Q3. "Which trades cause the most repeat problems in the same unit?"

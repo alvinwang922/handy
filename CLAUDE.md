@@ -30,7 +30,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 - `lib/types.ts` is the contract between modules. Make **additive** changes only (new nullable fields), mirror them in `lib/schemas.ts`, and tell the team.
 - Validate every JSON object Claude returns with the zod schemas in `lib/schemas.ts` before using it.
 - `keewano.track()` must never throw. If ranking fails, the orchestrator falls back to rating order. Keep it that way.
-- API: `POST /api/requests` (multipart: photo, title, description, propertyId, unit, room, userActiveSec) → `POST /api/requests/:id/outreach` → poll `GET /api/requests/:id` every 3 s → `POST /api/requests/:id/book` `{providerId, slots[], accessNote, userActiveSec}` → `GET /api/requests/:id/ics`. Also `GET /api/requests`, `GET /api/requests/:id/photo`, `GET /api/metrics`.
+- API: `POST /api/requests` (multipart: photo, title, description, propertyId, unit, room, userActiveSec) → `POST /api/requests/:id/outreach` → poll `GET /api/requests/:id` every 3 s → `POST /api/requests/:id/book` `{providerId, quoteCallId, quoteRevision, slots[], accessNote, userActiveSec}` (live booking requires the `quoteCallId` and `quoteRevision` shown to the user) → `GET /api/requests/:id/ics`. Also `GET /api/requests`, `GET /api/requests/:id/photo`, `GET /api/metrics`.
 - Status flow: `diagnosed → quoting → quotes_ready → booking → scheduled` (also `emergency`, `failed`).
 - Property ids `p1`–`p3` match the prototype UI.
 

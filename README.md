@@ -40,13 +40,13 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Piece | Status |
 |---|---|
 | Photo diagnosis + DIY plan | **Real.** Claude Opus 5.5 vision with schema-validated structured output (`lib/claude.ts`) |
-| DIY part search | **Real.** Claude web search returns the 3 best purchase options (`lib/parts.ts`) |
+| Part search | **Real.** Claude web search returns the 3 best purchase options with verified product links, for DIY fixes and for parts a pro will need (`lib/parts.ts`) |
 | Provider ranking + unit history | **Real queries** against Keewano. The provider/unit history behind them is **seeded and labeled** (`DataSource=seed`) |
 | Dial voice calls | **Real, verified live end to end on the backend:** a quote call (with the photo delivered by MMS), then a booking call through the real `/book` and polling endpoints, confirmed by a controlled provider ([`eng-design/dial-endpoint-handoff.md`](eng-design/dial-endpoint-handoff.md)). Idempotency keys, speaker-separated transcripts, and smoke tests (`npm run smoke:dial`, `npm run smoke:booking`). Parallel live calls are untested, so the live demo uses `QUOTE_FANOUT=1` |
 | Photo packets to providers | Backend routes (`packet`, `share-packet`, `messages`) with idempotency and a recipient allowlist. One live photo MMS delivered to a controlled Dial number; live sends are limited to allowlisted numbers |
 | Transcript → quote/booking extraction | **Real.** Claude Sonnet 5.5 turns transcripts into schema-validated quotes and booking confirmations, checked against the provider's own words (`lib/evidence.ts`). Mock mode uses fixtures |
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
-| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **Diagnosis calls the live API.** The outreach, quote and booking screens still show labeled sample data; the backend behind them is covered by API tests and an end-to-end script |
+| Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **Diagnosis and part search use the live API.** The outreach, quote and booking *screens* are still the original prototype and are labeled simulated in the app. The live backend behind them (Dial calls, Keewano ranking, extraction, approval, booking) is verified by API tests, an end-to-end script, and a live Dial acceptance run |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
 

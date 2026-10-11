@@ -24,6 +24,6 @@ Behind the scenes, Alike helped us share engineering decisions across our coding
 
 We propose starting with property managers, where repairs repeat across units, with per-unit subscriptions and booking fees. Then we expand to homeowners.
 
-For me, it's getting back to unpacking. For a manager, it's getting back to running the properties.
+Whether it's your own home or a property you manage, a repair shouldn't take over your day.
 
 Handy. A photo, an approval, and your time back.

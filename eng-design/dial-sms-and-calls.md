@@ -1,10 +1,10 @@
 # Handy Dial engineering design
 
-**Status:** Reviewed proposal · October 11, 2026
+**Status:** Reviewed; implementation started · October 11, 2026
 
 **Scope:** Voice calls plus SMS and image sharing for accurate quotes, followed by user-approved scheduling.
 
-**Baseline:** [PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md), current Next.js scaffold, shared types and team ownership. This revision describes required changes; it does not claim they are implemented or live-tested.
+**Baseline:** [PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md), current Next.js scaffold, shared types and team ownership. This revision distinguishes the first implemented packet-sharing slice from the remaining work in section 10. No live message or call is claimed without a controlled acceptance test.
 
 Handy should call a provider, share the relevant repair photos and description, establish that both parties are discussing the same issue, and collect a qualified estimate. The user then approves a provider and terms, supplies time windows, and authorizes a separate scheduling conversation. Photos sent, photos reviewed, scope agreed, and appointment confirmed are separate facts.
 
@@ -174,7 +174,7 @@ Keep Keewano's registered event names (`QuoteRequested`, `CallAnswered`, `QuoteP
 
 ## 8. Demo setup and boundaries
 
-Keep existing `MOCK_DIAL`, `MOCK_CLAUDE`, `MOCK_KEEWANO`, `MAX_CONCURRENT_CALLS`, company name and call-duration configuration. Add messaging/MCP credentials and controlled-recipient allowlisting server-side; these checks are proposed, not present in the scaffold.
+Keep existing `MOCK_DIAL`, `MOCK_CLAUDE`, `MOCK_KEEWANO`, `MAX_CONCURRENT_CALLS`, company name and call-duration configuration. The first packet-sharing slice adds a server-side `DIAL_ALLOWED_RECIPIENTS` check for live messages. MCP authentication and call-context authorization remain to be implemented.
 
 Use Handy number A and a controlled provider number B. The earlier account review found US outbound messaging registration incomplete, so use verified Dial-to-Dial messaging for the initial demo. Calling support alone does not establish photo-message delivery to an ordinary mobile or business line. Verify channel eligibility and delivery with the actual recipient before the demo. [Hackathon quickstart](https://getdial.ai/hackathon/speedhacks/quickstart)
 
@@ -202,6 +202,20 @@ Tests must cover REST response mapping; late/missing transcripts; extraction ret
 **Live acceptance flow:** upload a supported sample image, call a controlled human provider, have the agent send it during the conversation, hear the provider identify the issue and agree the quoted scope, show that evidence with the estimate, obtain user approval/windows, and confirm a second scheduling call against the approved terms. A delivery receipt or mock extractor must not substitute for provider agreement.
 
 Measure usable-quote time, photo-review/scope-confirmation rate, clarification requests, user active time and approved-booking completion. The PRD's 50% time-saving target is still a hypothesis, not a measured outcome.
+
+## 10. Current implementation
+
+The first backend slice now supports one reviewed JPEG or PNG photo, capped at 1 MB, for a provider already included in the repair's quote outreach. It omits the property address and access note, versions the packet from its contents, requires an idempotency key, records the attempt before contacting Dial, and does not retry an uncertain send. Live messages require both Dial credentials and an exact recipient allowlist match. Mock mode performs no network request.
+
+| Endpoint | Current behavior |
+| --- | --- |
+| `GET /api/requests/:id/packet?providerId=:providerId` | Builds a provider-safe preview, warnings and an immutable packet version. |
+| `POST /api/requests/:id/share-packet` | Sends the reviewed packet through the mock or Dial REST adapter. Requires `Idempotency-Key`, `providerId` and `packetVersion`. |
+| `GET /api/requests/:id/messages` | Returns packet-send history with dispatch, delivery and photo-review states kept separate. Internal deduplication fingerprints are omitted. |
+
+Automated tests cover safe packet content, changed versions, emergency blocking, concurrent duplicate requests, uncertain delivery, idempotency conflicts and retries, and mock transport isolation. The API flow has also been exercised locally in mock mode. Production build and static checks pass.
+
+The UI action, Context MCP tool, inbound message/event listener, delivery reconciliation, provider photo-review evidence, image metadata removal/compression, multi-image selection, and controlled live acceptance test remain in the next slices. Until those exist, the feature must not imply that a delivered image was reviewed or that a live provider confirmed the scope.
 
 ## Section review outcome
 

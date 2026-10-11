@@ -157,4 +157,11 @@ export const BookingResultSchema = z.object({
   confirmed: z.boolean(),
   slot: z.string().nullable(),
   notes: z.string(),
+  outcome: z.enum(["confirmed", "no_matching_window", "revised_terms", "needs_information", "declined"]).optional(),
+  termsUnchanged: z.boolean().optional(),
+  evidence: z.array(z.object({
+    field: z.enum(["slot", "terms", "outcome"]),
+    turnIndex: z.number().int().nonnegative(),
+    providerText: z.string().default(""),
+  })).optional(),
 });

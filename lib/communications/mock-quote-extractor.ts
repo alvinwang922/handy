@@ -8,6 +8,8 @@ export interface QuoteExtractionInput {
   transcript: string;
   transcriptTurns: TranscriptTurn[];
   diagnosis: Diagnosis;
+  referenceAt?: string;
+  timeZone?: string;
 }
 
 interface MoneyMention { value: number; index: number }
@@ -46,7 +48,7 @@ export function mockExtractQuote(input: QuoteExtractionInput): QuoteResult {
     /(?:\d\s*(?:am|pm)\b|\b(?:am|pm|morning|afternoon|noon|opening|available|availability)\b)/i.test(turn.text),
   );
   const warrantyTurn = providerTurns.find((turn) => /\b(warranty|guarantee)\b/i.test(turn.text));
-  const conditionTurns = providerTurns.filter((turn) => /\b(provisional|confirm(?:ed)? (?:on|after)|on[- ]site|corrod|nonstandard|additional parts|code related|waiv|if (?:they|you|the customer) (?:hire|proceed))\b/i.test(turn.text));
+  const conditionTurns = providerTurns.filter((turn) => /\b(provisional|confirm(?:ed)? (?:on|after)|on[- ]site|corrod|nonstandard|additional parts|code related|waiv(?:e|ed|er)?|if (?:they|you|the customer) (?:hire|proceed))\b/i.test(turn.text));
   const scopeTurn = providerTurns.find((turn) => /\b(includ|labor|fittings|reseal|replace|inspection visit)/i.test(turn.text))
     ?? providerTurns.find((turn) => /\b(repair|inspection|basket strainer|slip joint|trap)\b/i.test(turn.text));
   const requestedInfoTurns = providerTurns.filter((turn) =>

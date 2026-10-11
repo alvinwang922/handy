@@ -79,6 +79,7 @@ export function buildQuoteJob(request: RepairRequest, providerRecord: Provider, 
     idempotencyKey: `handy:quote:${attemptId}`,
     maxCallDurationSeconds: config.quoteCallMaxSec,
     outboundInstruction,
+    brief,
   };
 }
 

@@ -200,6 +200,7 @@ export interface QuoteJob {
   idempotencyKey: string;
   maxCallDurationSeconds: number;
   outboundInstruction: string;
+  brief?: RepairBrief;             // snapshot for extraction after the call, even if intake changes
 }
 
 // PRD principle 1: no booking call without an explicit, recorded approval.
@@ -217,6 +218,29 @@ export interface BookingResult {
   confirmed: boolean;
   slot: string | null;
   notes: string;
+  outcome?: "confirmed" | "no_matching_window" | "revised_terms" | "needs_information" | "declined";
+  termsUnchanged?: boolean;
+  evidence?: { field: "slot" | "terms" | "outcome"; turnIndex: number; providerText: string }[];
+}
+
+export interface BookingJob {
+  requestId: string;
+  providerId: string;
+  quoteCallId: string;
+  quoteRevision: string;
+  approvedQuote: Quote;
+  feeTreatment: FeeTreatment;
+  approvalAmountUsd: number | null;
+  approvalBasis: "repair_quote" | "inspection_visit";
+  offeredSlots: string[];
+  timeZone: string;
+  referenceAt: string;
+}
+
+export interface BookingExtractionInput extends BookingJob {
+  dialCallId: string;
+  transcript: string;
+  transcriptTurns: TranscriptTurn[];
 }
 
 export type CallPurpose = "quote" | "booking";
@@ -246,6 +270,7 @@ export interface CallRecord {
   quoteResult: QuoteResult | null;
   quoteRevision?: string | null;   // hash of terms + evidence, submitted with booking approval
   booking: BookingResult | null;
+  bookingJob?: BookingJob | null; // freezes approved terms and user windows before dispatch
   startedAt: string | null;
   endedAt: string | null;
   error: string | null;            // last placement error (e.g. Dial 402/429), shown in UI

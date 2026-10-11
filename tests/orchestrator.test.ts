@@ -189,6 +189,15 @@ describe("persisted call lifecycle", () => {
 });
 
 describe("booking reconciliation", () => {
+  it("does not dispatch a legacy booking without the approved terms snapshot", async () => {
+    seed(call({ purpose: "booking", dispatchState: "queued", state: "queued_local",
+      dialCallId: null, quoteJob: null, bookingJob: null }), "booking");
+    await refresh("req_demo");
+    expect(state.placeCall).not.toHaveBeenCalled();
+    expect(state.saved!.calls[0].dispatchState).toBe("failed");
+    expect(state.saved!.calls[0].error).toMatch(/booking approval snapshot/);
+  });
+
   it("retains booking state for an unknown dispatch and prevents a new call", async () => {
     seed(call({ purpose: "booking", dispatchState: "send_unknown", state: "Terminated", terminationType: "failed",
       dialCallId: null, transcriptStatus: "unavailable", quoteJob: null }), "booking");
@@ -202,7 +211,14 @@ describe("booking reconciliation", () => {
 
   it("keeps an unreadable completed booking blocked after extraction retries are exhausted", async () => {
     seed(call({ purpose: "booking", state: "Terminated", terminationType: "completed", transcriptStatus: "ready", transcript,
-      transcriptTurns, quoteJob: null, extractAttempts: 2 }), "booking");
+      transcriptTurns, quoteJob: null, extractAttempts: 2,
+      bookingJob: {
+        requestId: "req_demo", providerId: provider.id, quoteCallId: "quote_original", quoteRevision: "revision",
+        approvedQuote: quoteResult().quote, feeTreatment: "none", approvalAmountUsd: 220,
+        approvalBasis: "repair_quote", offeredSlots: ["Tuesday morning"],
+        timeZone: "America/Los_Angeles", referenceAt: "2026-10-11T12:00:00Z",
+      },
+    }), "booking");
     state.extractBooking.mockRejectedValue(new Error("Cannot establish booking outcome"));
     await refresh("req_demo");
     await refresh("req_demo");

@@ -5,19 +5,32 @@ const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 const DATE_TOKENS =
   /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/g;
-const RANGE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?\b/;
+const RANGE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/;
 const SINGLE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/;
 const BARE = /\b(\d{1,2})(?::(\d{2}))?\b/;
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MONTH_DAY = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b|\b(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\b/;
+
+const to24 = (hour: number, meridiem: string | undefined) =>
+  meridiem === "pm" && hour < 12 ? hour + 12 : meridiem === "am" && hour === 12 ? 0 : hour;
 
 export function parseSlotStart(slot: string, now = new Date()): Date {
+  return parseSlot(slot, now).start;
+}
+
+// Start and end of a human-readable slot. An explicit calendar date ("Oct 20", "10/20") wins over the
+// weekday; the end is the range's own end time, else start + 2 h.
+export function parseSlot(slot: string, now = new Date()): { start: Date; end: Date } {
   const lower = slot.toLowerCase();
   const day = DAYS.findIndex((d) => new RegExp(`\\b${d}`).test(lower));
+  const date = lower.match(MONTH_DAY);
   // Drop calendar dates ("10/13", "October 13") so their numbers aren't read as the hour.
   const s = lower.replace(DATE_TOKENS, " ");
 
   let hour = 9;
   let minute = 0;
   let meridiem: string | undefined;
+  let endAt: [number, number] | null = null;
   const range = s.match(RANGE);
   const single = s.match(SINGLE);
   const bare = s.match(BARE);
@@ -26,7 +39,10 @@ export function parseSlotStart(slot: string, now = new Date()): Date {
     minute = range[2] ? Number(range[2]) : 0;
     const endHour = Number(range[4]);
     // "2 to 4pm" shares the end's meridiem; "11–1pm" crosses noon, so the start is AM.
-    meridiem = range[3] ?? (range[5] === "pm" && hour > endHour && hour !== 12 ? "am" : range[5]);
+    meridiem = range[3] ?? (range[6] === "pm" && hour > endHour && hour !== 12 ? "am" : range[6]);
+    let end24 = to24(endHour, range[6] ?? meridiem);
+    if (!range[6] && !meridiem && end24 < 7) end24 += 12; // "1–3" for a repair visit means afternoon
+    endAt = [end24, range[5] ? Number(range[5]) : 0];
   } else if (single) {
     hour = Number(single[1]);
     minute = single[2] ? Number(single[2]) : 0;
@@ -41,13 +57,21 @@ export function parseSlotStart(slot: string, now = new Date()): Date {
 
   const start = new Date(now);
   start.setHours(hour, minute, 0, 0);
-  if (day >= 0) {
+  if (date) {
+    const month = date[1] ? MONTHS.indexOf(date[1]) : Number(date[3]) - 1;
+    const dom = Number(date[1] ? date[2] : date[4]);
+    start.setFullYear(now.getFullYear(), month, dom);
+    if (start.getTime() < now.getTime() - 86_400_000) start.setFullYear(now.getFullYear() + 1, month, dom); // "Jan 5" said in December
+  } else if (day >= 0) {
     const delta = (day - now.getDay() + 7) % 7 || 7; // next occurrence, never today
     start.setDate(now.getDate() + delta);
   } else {
     start.setDate(now.getDate() + 1);
   }
-  return start;
+  const end = new Date(start);
+  if (endAt && endAt[0] * 60 + endAt[1] > hour * 60 + minute) end.setHours(endAt[0], endAt[1], 0, 0);
+  else end.setTime(start.getTime() + 2 * 60 * 60 * 1000);
+  return { start, end };
 }
 
 const fmt = (d: Date) =>
@@ -58,8 +82,7 @@ const fmt = (d: Date) =>
 const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\r\n|\r|\n/g, "\\n");
 
 export function buildIcs(e: { uid: string; slot: string; summary: string; location: string; description: string }): string {
-  const start = parseSlotStart(e.slot);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const { start, end } = parseSlot(e.slot);
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

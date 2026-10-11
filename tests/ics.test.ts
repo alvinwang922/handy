@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIcs, parseSlotStart } from "../lib/ics";
+import { buildIcs, parseSlot, parseSlotStart } from "../lib/ics";
 
 const sunday = new Date("2026-10-11T12:00:00"); // demo day is a Sunday
 
@@ -23,6 +23,19 @@ describe("parseSlotStart", () => {
   ])("parses %s", (slot, weekday, hour) => {
     const d = parseSlotStart(slot as string, sunday);
     expect([d.getDay(), d.getHours()]).toEqual([weekday, hour]);
+  });
+
+  it("uses an explicit calendar date over the next matching weekday", () => {
+    expect(parseSlotStart("Tue, Oct 20 · 9 am–12 pm", sunday).getDate()).toBe(20);
+    expect(parseSlotStart("Tuesday 10/20 9-11am", sunday).getDate()).toBe(20);
+  });
+
+  it("ends at the range's own end time, else two hours later", () => {
+    const at = (slot: string) => { const { start, end } = parseSlot(slot, sunday); return [start.getHours(), end.getHours()]; };
+    expect(at("Tue, Oct 13 · 9 am–12 pm")).toEqual([9, 12]);
+    expect(at("Tue 11–1pm")).toEqual([11, 13]);
+    expect(at("Wednesday 2 to 4 with Sam")).toEqual([14, 16]);
+    expect(at("Tue 9am")).toEqual([9, 11]);
   });
 
   it("falls back to tomorrow 9am for unparseable slots", () => {

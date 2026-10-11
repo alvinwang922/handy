@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handy — prototype review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="proto.css">
+<style>
+  body{height:auto;min-height:100%;font-size:15px}
+  .rv{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"top top" "map proto" "idx proto";gap:24px 32px;padding:24px 32px 48px;max-width:1680px;margin:0 auto}
+  .rv-top{grid-area:top;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 24px;border-bottom:1px solid var(--line);padding-bottom:16px}
+  .rv-top h1{margin:0;font-size:26px;line-height:1.15}
+  .rv-top p{margin:0;color:var(--ink2);max-width:62ch}
+  h2{font-size:18px;margin:0 0 12px}
+
+  /* Flow map */
+  .rv-map{grid-area:map;min-width:0}
+  .lane{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-card);padding:16px 16px 20px;margin-bottom:16px}
+  .lane-h{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+  .lane-h b{font-size:16px}
+  .lane-h span{color:var(--ink3);font-size:14px}
+  .track{display:flex;align-items:flex-start;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin}
+  .col{display:flex;flex-direction:column;gap:8px;flex:none;width:148px}
+  .arrow{flex:none;width:22px;height:44px;display:grid;place-items:center;color:var(--ink3)}
+  .arrow svg{width:18px;height:12px}
+  .node{display:block;width:100%;text-align:left;min-height:44px;padding:8px 10px;border:1px solid var(--line);background:var(--bg);border-radius:12px;cursor:pointer;font-size:14px;line-height:1.25;color:var(--ink)}
+  .node:hover{border-color:var(--ink3);background:var(--pinned)}
+  .node small{display:block;color:var(--ink3);font-size:12px;margin-bottom:2px;font-family:ui-monospace,Menlo,monospace}
+  .node.entry{border-width:2px;border-color:var(--ink2)}
+  .node.outcome{background:var(--green-tint);border-color:var(--green)}
+  .node.exit{background:var(--red-tint);border-color:var(--red)}
+  .node[aria-current="true"]{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 0 0 3px var(--green-tint)}
+  .node[aria-current="true"] small{color:#E5EEE8}
+  .branch{position:relative;margin-left:14px;padding-left:10px;border-left:2px dashed var(--line)}
+  .branch .why{display:block;font-size:12px;color:var(--ink2);margin:0 0 3px}
+  .branch .node{border-style:dashed}
+  .branch .node.exit{border-style:solid}
+  .asm{margin:2px 0 0;padding:6px 8px;border-radius:8px;background:var(--amber-tint);color:var(--amber);font-size:12px;line-height:1.3}
+  .asm b{font-weight:700}
+  .join{flex:none;align-self:flex-start;min-height:44px;padding:8px 12px;border:1px dashed var(--green);border-radius:12px;background:none;color:var(--green);font-size:14px;font-weight:700;cursor:pointer}
+  .rv-role{display:flex;gap:10px;align-items:flex-start;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--pinned);font-size:14px}
+  .rv-role .asm{margin:0;flex:none}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;padding:0;list-style:none;font-size:13px;color:var(--ink2)}
+  .legend i{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--line);vertical-align:-2px;margin-right:6px;background:var(--bg)}
+  .legend .e i{border:2px solid var(--ink2)}
+  .legend .b i{border-style:dashed;border-color:var(--ink3)}
+  .legend .o i{background:var(--green-tint);border-color:var(--green)}
+  .legend .x i{background:var(--red-tint);border-color:var(--red)}
+
+  /* Prototype */
+  .rv-proto{grid-area:proto;position:sticky;top:16px;align-self:start;display:flex;flex-direction:column;gap:12px;align-items:center}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--bg);padding:3px}
+  .seg button{min-height:38px;padding:0 14px;border:0;border-radius:var(--r-pill);background:none;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink2)}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+  .btn{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--bg);font-size:14px;font-weight:700;cursor:pointer;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center}
+  .btn:hover{background:var(--pinned)}
+  .now{font-size:14px;color:var(--ink2);min-height:20px;text-align:center}
+  .now b{color:var(--ink)}
+  .frame{width:390px;height:780px;border-radius:28px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--bg)}
+  .frame iframe{width:390px;height:780px;border:0;display:block;transform-origin:0 0}
+  .frame.desk{width:614px;height:468px;border-radius:14px}
+  .frame.desk iframe{width:1024px;height:780px;transform:scale(.6)}
+
+  /* Index */
+  .rv-idx{grid-area:idx}
+  .groups{columns:3 220px;column-gap:24px}
+  .grp{break-inside:avoid;margin:0 0 16px}
+  .grp h3{font-size:14px;margin:0 0 6px;color:var(--ink2)}
+  .grp ul{list-style:none;margin:0;padding:0}
+  .grp a{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+  .grp a:hover{background:var(--bg)}
+  .grp a code{color:var(--ink3);font-size:12px}
+  .grp a[aria-current="true"]{background:var(--green);color:#fff}
+  .grp a[aria-current="true"] code{color:#E5EEE8}
+
+  @media (max-width:1100px){
+    .rv{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "proto" "map" "idx";padding:16px}
+    .rv-proto{position:static}
+  }
+  @media (max-width:440px){
+    .frame,.frame iframe{width:100%}
+    .frame{width:min(390px,100%)}
+    .frame.desk{width:100%;height:auto;aspect-ratio:1024/780}
+    .frame.desk iframe{transform:scale(var(--k,.33))}
+  }
+</style>
+</head>
+<body>
+<div class="rv">
+  <header class="rv-top">
+    <h1>Handy — prototype review</h1>
+    <p>Click any screen in the map or the index to open it in the prototype. The map follows along as you click through.</p>
+  </header>
+
+  <section class="rv-map" aria-labelledby="map-h">
+    <h2 id="map-h">User flow</h2>
+    <ul class="legend" aria-label="Legend">
+      <li class="e"><i></i>Entry point</li>
+      <li class="b"><i></i>Branch (trigger above it)</li>
+      <li class="o"><i></i>Outcome</li>
+      <li class="x"><i></i>Exits the flow</li>
+    </ul>
+    <div id="lanes"></div>
+    <p class="rv-role"><span class="asm"><b>Assumption</b></span><span><b>Plumbers</b> interact only by phone (AI calls); no provider screens.</span></p>
+  </section>
+
+  <section class="rv-proto" aria-label="Connected prototype">
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Prototype width">
+        <button type="button" data-w="phone" aria-pressed="true">Phone</button>
+        <button type="button" data-w="desk" aria-pressed="false">Desktop</button>
+      </div>
+      <button type="button" class="btn" id="restart">Restart journey</button>
+      <a class="btn" id="newtab" href="index.html#welcome" target="_blank" rel="noopener">Open in new tab</a>
+    </div>
+    <div class="now" aria-live="polite" id="now"></div>
+    <div class="frame" id="frame"><iframe name="proto" id="proto" title="Handy prototype" src="index.html#welcome"></iframe></div>
+  </section>
+
+  <section class="rv-idx" aria-labelledby="idx-h">
+    <h2 id="idx-h">Screen index</h2>
+    <div class="groups" id="groups"></div>
+  </section>
+</div>
+
+<script src="core.js"></script>
+<script>
+(() => {
+  const R = (window.H && H.REGISTRY) || [];
+  const T = Object.fromEntries(R.map(r => [r[1], r[2]]));
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const ASM = {
+    'emergency':'Emergency keywords trigger the exit; detection rules TBD.',
+    'notice-credit':'Shown when the calling service runs out of credit.',
+    'tenant-access':'Tenant is notified by Handy; no SMS to real phones in demo.',
+    'reschedule':'Rescheduling keeps the same plumber and price.',
+    'manager-home':'Managers see all properties; homeowners see one home.'
+  };
+  const asm = id => ASM[id] ? `<p class="asm"><b>Assumption.</b> ${esc(ASM[id])}</p>` : '';
+  const node = (id, kind='') => `<button type="button" class="node ${kind}" data-id="${id}"><small>${id}</small>${esc(T[id]||id)}</button>${asm(id)}`;
+  const br = (id, why, kind='') => `<div class="branch">${why?`<span class="why">${esc(why)}</span>`:''}${node(id, kind)}</div>`;
+  const arrow = '<span class="arrow" aria-hidden="true"><svg viewBox="0 0 18 12"><path d="M0 6h15M11 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>';
+  const col = html => `<div class="col">${html}</div>`;
+
+  const home = [
+    col(node('welcome','entry')),
+    col(node('home','entry') + br('home-empty','no repairs yet')),
+    col(node('new-photo') + br('photo-permission','camera blocked') + br('photo-error','upload failed')),
+    col(node('new-details') + br('details-error','missing info')),
+    col(node('diagnosing')),
+    col(node('diagnosis') + br('diagnosis-unsure','low confidence') + br('emergency','gas, sparks, flooding: exits flow','exit')),
+    col(node('calling') + br('calling-trouble','no answer') + br('transcript','view a call') + br('no-quotes','no prices') + br('notice-credit','service limit')),
+    col(node('quotes') + br('quotes-all','compare all') + br('quote-unclear','unclear price')),
+    col(node('approve')),
+    col(node('schedule')),
+    col(node('booking') + br('booking-failed','times didn’t work')),
+    col(node('booked','outcome')),
+    col(node('reschedule','outcome') + node('done','outcome') + node('activity','outcome'))
+  ];
+  const mgr = [
+    col(node('manager-home','entry') + br('manager-empty','filters match nothing')),
+    col(node('property-switch')),
+    col(node('tenant-access')),
+    `<button type="button" class="join" data-id="new-photo">Joins the homeowner path at Add a photo</button>`
+  ];
+  const lane = (name, sub, cols) => `<div class="lane" role="group" aria-label="${name} lane"><div class="lane-h"><b>${name}</b><span>${sub}</span></div><div class="track">${cols.join(arrow)}</div></div>`;
+  document.getElementById('lanes').innerHTML =
+    lane('Homeowner','Photo to booked repair', home) +
+    lane('Property manager','Reports on behalf of a tenant', mgr);
+
+  const groups = [];
+  R.forEach(([g,id,t,role]) => { let G = groups.find(x => x.g===g); if(!G) groups.push(G={g,items:[]}); G.items.push([id,t,role]); });
+  document.getElementById('groups').innerHTML = groups.map(G =>
+    `<div class="grp"><h3>${esc(G.g)}</h3><ul>${G.items.map(([id,t]) =>
+      `<li><a href="index.html#${id}" target="proto" data-id="${id}"><span>${esc(t)}</span><code>${id}</code></a></li>`).join('')}</ul></div>`).join('');
+
+  const ifr = document.getElementById('proto'), now = document.getElementById('now'), tab = document.getElementById('newtab');
+  function mark(id){
+    document.querySelectorAll('[data-id]').forEach(el => {
+      const on = el.dataset.id === id && !el.classList.contains('join');
+      on ? el.setAttribute('aria-current','true') : el.removeAttribute('aria-current');
+    });
+    now.innerHTML = id ? `Showing <b>${esc(T[id]||id)}</b> <code>${esc(id)}</code>` : '';
+    tab.href = 'index.html#' + id;
+    const n = document.querySelector('.node[aria-current="true"]');
+    n && n.scrollIntoView({block:'nearest', inline:'nearest'});
+  }
+  function open(id){
+    try { ifr.contentWindow.location.hash = id; } catch(e) { ifr.src = 'index.html#' + id; }
+    mark(id);
+  }
+  document.getElementById('lanes').addEventListener('click', e => { const b = e.target.closest('[data-id]'); b && open(b.dataset.id); });
+  document.getElementById('groups').addEventListener('click', e => { const a = e.target.closest('a[data-id]'); a && mark(a.dataset.id); });
+  window.addEventListener('message', e => { if (e.data && typeof e.data.handyScreen === 'string') mark(e.data.handyScreen); });
+
+  document.getElementById('restart').addEventListener('click', () => {
+    try { ifr.contentWindow.H.reset(); } catch(e) {}
+    ifr.src = 'index.html?r=' + Date.now() + '#welcome';
+    mark('welcome');
+  });
+
+  const frame = document.getElementById('frame');
+  function fit(){
+    if (!frame.classList.contains('desk')) return;
+    frame.style.setProperty('--k', (frame.clientWidth / 1024).toFixed(3));
+  }
+  document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x===b)));
+    frame.classList.toggle('desk', b.dataset.w === 'desk'); fit();
+  }));
+  window.addEventListener('resize', fit);
+  document.title = 'Handy — prototype review';
+  mark('welcome');
+})();
+</script>
+</body>
+</html>

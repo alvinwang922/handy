@@ -265,7 +265,8 @@ export async function refresh(id: string): Promise<RepairRequest | null> {
           call.transcript = snap.transcript;
           call.transcriptTurns = snap.transcriptTurns;
           call.transcriptHash = createHash("sha256").update(snap.transcript).digest("hex");
-          call.transcriptStatus = "ready";
+          // A mid-call transcript is partial: only a Terminated snapshot's transcript is final.
+          call.transcriptStatus = snap.state === "Terminated" ? "ready" : "pending";
         } else if (snap.state === "Terminated" && snap.terminationType !== "completed") {
           call.transcriptStatus = "unavailable";
         } else if (snap.state === "Terminated" && transcriptTimedOut(call)) {

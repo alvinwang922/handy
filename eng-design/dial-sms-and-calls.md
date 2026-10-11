@@ -53,7 +53,7 @@ flowchart TD
 | Darwin teammate | Return provider IDs, capabilities, phone numbers and source metadata. Confirm contact information before dispatch; discovery results without a callable number cannot enter voice outreach. Seeded providers remain labeled. |
 | Your Dial module | Prompts, calls, SMS conversation handling, webhook processing, transcript extraction, communication state and booking outcomes. |
 | Keewano teammate | Consume committed domain events and expose timelines and metrics. A temporary analytics outage must not cause another call or booking. |
-| Alike | Share repair context and development handoffs if the sponsor interface is available. It is outside the critical call path. |
+| Alike | Preserve engineering decisions and development handoffs between coding sessions. See the [Alike development workflow](alike-development-workflow.md). No runtime repair-context integration is verified or required. |
 
 The app database is the operational authority for approvals and jobs. Publish events to Keewano through an outbox: save the state change and an event in the same database transaction, then deliver the event asynchronously. This adds a transactional boundary to the PRD's event-history design without requiring Keewano to coordinate external side effects.
 

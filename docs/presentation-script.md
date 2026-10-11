@@ -40,7 +40,7 @@
 
 **Say:**
 
-> A star rating doesn't tell me who will answer or whether the final bill will match the quote. Handy uses Keewano's event history to rank providers and identify recurring issues at the property.
+> A star rating doesn't tell me who will answer or whether the final bill will match the quote. We use Keewano's repair and provider event history to rank providers by response rate, punctuality, and quote accuracy. It also flags recurring issues so the call agent can ask about replacement as well as repair.
 >
 > In our seeded demo data, Mission Pipe Pros answers 59 percent of calls and bills about 18 percent above its quotes. Handy skips it despite a 4.4-star rating. These are fictional providers, not claims about real businesses.
 >
@@ -52,11 +52,11 @@
 
 **Say:**
 
-> Dial's voice agent introduces itself as an AI, explains the repair, and asks about scope, price, fees, and availability. It requests an estimate without booking or sharing the exact address.
+> We use Dial for AI voice calls to request quotes, then a separate scheduling call after user approval. The agent introduces itself as an AI and asks about scope, price, fees, and availability without booking or sharing the exact address during quoting.
 >
 > Claude then extracts a quote with evidence from the provider's words. In our completed live test, the controlled provider quoted 220 dollars with no visit fee.
 >
-> We also verified image-MMS delivery. The voice agent's ability to view that image is a separate step still to implement.
+> Dial's messaging API also delivered a repair photo to our controlled test number. The voice agent's ability to view that image is a separate step still to implement.
 
 **Presenter cue:** If a new run returns different terms, read those terms. Do not narrate $220 over a different quote. A sample comparison table must remain labeled **Sample quotes**; it is not evidence of multiple live responses.
 
@@ -88,11 +88,13 @@
 
 **Say:**
 
-> Today, diagnosis and part search are live. We validated real quote and scheduling calls on the backend; connecting the sample UI is still in progress. Keewano's demo history is seeded. We used Alike to coordinate development decisions.
+> Diagnosis and part search are live, and quote and scheduling calls passed controlled backend tests. We're still connecting the sample UI.
 >
-> For future payments, our separate Sparta deposit prototype improved from three of six to six of six passes under an injected failure. It isn't connected to booking yet.
+> We used Alike to share engineering decisions and carry context between our coding agents' sessions.
 >
-> We propose starting with property managers, then homeowners. Next are verified provider discovery, the connected UI, accurate calendar export, and measuring actual savings.
+> Sparta Worlds tested a separate deposit-refund prototype against simulated Stripe with an injected server error. It improved from three of six to six of six passes and isn't connected to the app yet.
+>
+> We propose starting with property managers, then homeowners. Next are verified provider discovery, accurate calendar export, and measuring actual savings.
 >
 > Handy: report the problem, review the options, approve the repair.
 
@@ -113,6 +115,17 @@
 **On screen:** Cite ArcSite beside the statistic and label it as a homeowner survey. It does not measure property-manager travel time.
 
 **Transition:** “Let's follow one leaking-sink report.” Continue with the photo scene. Do not invent a commuting-hours benchmark; use a manager's documented travel logs if we later obtain them.
+
+## Sponsor sentences and repo evidence
+
+These lines are incorporated into the scenes above. Use this as a reference for the sponsor slide; do not read it again as an extra segment.
+
+| Sponsor used | One or two sentences for the presentation | Evidence / placement |
+|---|---|---|
+| **Dial** | “We use Dial to make AI voice calls for quotes and, after user approval, a separate call to schedule the appointment. Its messaging API also delivered a repair photo to our controlled test number.” | [Voice adapter](../lib/dial.ts), [message adapter](../lib/communications/dial-messages.ts), [controlled live acceptance](../eng-design/dial-endpoint-handoff.md#current-evidence-and-limits). Quote-call scene and scheduling scene. |
+| **Keewano** | “Keewano stores repair and provider events that we query to rank providers by response rate, punctuality, and quote accuracy. It also flags recurring issues so our agent can ask about replacement as well as repair; the demo history is seeded.” | [Event writes, ranking and unit insight](../lib/keewano.ts), [provider selection](../lib/orchestrator.ts), [live query examples](keewano-qa.md). Provider-selection scene. |
+| **Alike** | “We used Alike to record shared engineering decisions and preserve context across coding-agent sessions. That gave the team a common reference for the API contracts we were building.” | [Team workflow](../CLAUDE.md#alike-team-coordination-for-our-coding-agents), [repository partner summary](../README.md#partner-tools). Development credit in the closing scene. This is development tooling; no runtime Alike integration is claimed. |
+| **Sparta Worlds** | “We used Sparta Worlds to test a separate deposit-refund prototype against simulated Stripe with an injected server error. Recorded passes improved from three of six to six of six; this prototype isn't connected to the app yet.” | [Prototype and limitations](../sparta/README.md), [agent](../sparta/projects/handy-deposits/settlement-agent.mjs), [recorded evidence](../sparta/evidence/summary.json). Reliability credit in the closing scene. |
 
 ## Recording notes
 

@@ -1,187 +1,218 @@
 # Handy Dial engineering design
 
-**Status:** Proposed hackathon implementation · October 11, 2026
+**Status:** Reviewed proposal · October 11, 2026
 
-**Scope:** SMS and voice agents for provider quotes and appointment scheduling
+**Scope:** Voice calls plus SMS and image sharing for accurate quotes, followed by user-approved scheduling.
 
-**Product contract:** [Handy PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md)
+**Baseline:** [PRD](https://github.com/alvinwang922/handy/blob/main/PRD.md), current Next.js scaffold, shared types and team ownership. This revision describes required changes; it does not claim they are implemented or live-tested.
 
-Build one communications module behind the Handy app. It accepts a repair brief and selected providers, uses Dial to contact them, and returns structured quotes with supporting conversation history. After the user approves a quote and submits time windows, the same module contacts the chosen provider to arrange the appointment.
-
-The central rule is that **collecting a quote and authorizing a booking are separate operations**. Dial handles communication; Handy owns approvals, workflow state, and the meaning of the outcome.
+Handy should call a provider, share the relevant repair photos and description, establish that both parties are discussing the same issue, and collect a qualified estimate. The user then approves a provider and terms, supplies time windows, and authorizes a separate scheduling conversation. Photos sent, photos reviewed, scope agreed, and appointment confirmed are separate facts.
 
 ## 1. Fit with the existing app
 
-The current repository is a static HTML prototype with browser storage, hardcoded providers, scripted transcripts, and simulated delays. Keep the user journey and replace these simulation points with backend requests.
+The repository already has a Next.js backend, JSON-file storage, a Dial REST adapter, and a polling orchestrator. The frontend in `public/index.html` still simulates the main interactions. Extend these modules and connect the UI to them.
 
-| Existing interaction | Implementation change |
+| User step | App behavior and required work |
 | --- | --- |
-| Issue intake and assessment | Main app persists the repair and supplies a versioned repair brief. Photo analysis remains outside this module. |
-| `startOutreach()` | Start an outreach job and show individual provider progress as results arrive. |
-| `providers(r)` and quote cards | Render persisted providers and extracted quotes using stable IDs, replacing array indexes. |
-| `transcript()` | Load the real conversation attached to the communication attempt; show pending or unavailable when appropriate. |
-| `approve(i)` | Persist approval of a specific quote version, including price conditions and inspection fees. |
-| `book()` | Submit approved quote, available windows, and access instructions; display scheduling progress. |
-| Confirmation and rescheduling | Render a verified booking outcome. Preserve the existing appointment while a reschedule is pending. |
+| Report an issue | Keep photo, description, property/unit, room and urgency. Assessment remains preliminary; emergencies stop outreach. Preserve homeowner and property-manager wording. |
+| Get quotes | Rank suitable providers, show the photos and summary being shared, then start quote conversations. Exact addresses and access codes are excluded at this stage. |
+| Provider call | Show call progress and a parallel message thread. Allow the agent to send the approved photo packet during the call. |
+| Compare | Display actual extracted estimates, pricing conditions, photo-review/scope status, and source conversations. Unknown information stays unknown. |
+| Approve and schedule | Keep provider selection and time-window entry. The final booking action explicitly confirms the displayed provider, price conditions and windows before dispatch. |
+| Track or reschedule | Show a verified appointment. Rescheduling and marking complete remain PRD requirements; they are not yet implemented in the backend. |
 
-Browser storage can retain draft form values, but approvals and appointments must live on the server. The homeowner or manager role switch in the prototype is a presentation control; server authorization must enforce access to the repair and property.
+The first **Approve estimate** click may remain a UI selection. The final **Approve and call to schedule** action can persist approval through the existing booking endpoint; a separate approval API is not necessary. A changed quote must be shown again before that final action.
+
+Add visible states for **Photos sent**, **Provider reviewed photos**, **Scope confirmed**, and **More information needed**. A delivered message must never automatically set the last two. A description-only estimate can still appear, clearly provisional; the app must not claim photo-based agreement when the provider has not reviewed the images.
 
 ## 2. Architecture and ownership
 
-**Proposed default:** Node.js with TypeScript, the Dial SDK, and a transactional SQL database. Use the team's existing backend and database if available; these contracts do not require a frontend rewrite. One API service and a database-backed job worker are sufficient for the hackathon. They can run in one persistent Node deployment, with jobs recovered after restart.
+Use the current single-process Next.js app and JSON store for the controlled local demo. Keep voice progress on the existing three-second polling path. Add messaging storage and a local event listener for SMS. Agent-triggered sending during a call adds a narrow Context MCP endpoint reachable by Dial; the rest of the demo app can stay local.
 
 ```mermaid
 flowchart TD
-    UI[Handy web app] --> API[Handy backend]
-    Assessment[Assessment and provider discovery] --> API
-    API --> DB[(Repairs, approvals, jobs and communications)]
-    DB --> Worker[Communications worker]
-    Worker --> Dial[Dial voice and SMS]
-    Dial --> Provider[Service provider]
-    Dial --> Webhook[Signed webhook endpoint]
-    Webhook --> DB
-    Worker --> Extract[Structured outcome extraction]
-    Extract --> DB
-    DB --> Outbox[Event publisher]
-    Outbox --> Keewano[Keewano repair timeline]
-    API --> UI
+    UI[Handy UI] --> API[Existing request routes]
+    API --> O[Shared orchestrator and JSON store]
+    O --> D[Dial adapter]
+    D --> Voice[Managed voice call]
+    Voice --> Pro[Provider]
+    Voice --> MCP[Handy photo-sharing Context MCP tool]
+    MCP --> Packet[Authorized repair packet]
+    Packet --> D
+    D --> MMS[SMS or MMS to the same provider]
+    MMS --> Pro
+    Events[Dial message events] --> Listener[Local message listener]
+    Listener --> O
+    O --> AI[P2 transcript and message extraction]
+    AI --> O
+    O --> K[Keewano ranking and analytics]
 ```
 
-| Owner or integration | Boundary |
+| Owner | Responsibility |
 | --- | --- |
-| Main app teammate | Intake, assessment, repair ownership, approval UI, quote comparison, availability and confirmation screens. |
-| Darwin teammate | Return provider IDs, capabilities, phone numbers and source metadata. Confirm contact information before dispatch; discovery results without a callable number cannot enter voice outreach. Seeded providers remain labeled. |
-| Your Dial module | Prompts, calls, SMS conversation handling, webhook processing, transcript extraction, communication state and booking outcomes. |
-| Keewano teammate | Consume committed domain events and expose timelines and metrics. A temporary analytics outage must not cause another call or booking. |
-| Alike | Preserve engineering decisions and development handoffs between coding sessions. See the [Alike development workflow](alike-development-workflow.md). No runtime repair-context integration is verified or required. |
+| P1 calls | `lib/dial.ts`, `lib/instructions.ts`, receptionist setup; proposed messaging adapter and narrow photo-sharing tool. |
+| P2 AI | Diagnosis and structured extraction in `lib/claude.ts`; extract provider-confirmed scope and quote evidence from calls/messages. |
+| P3 frontend | Wire existing routes; show sharing status, quote basis, approval terms and scheduling outcomes. |
+| Shared glue | Orchestration, persistence, routes, types and schemas. Coordinate additive changes before implementation. |
+| P4 data | Keewano provider ranking, recurring-issue context, registered events and metrics; analytics failures must not break a call. |
 
-The app database is the operational authority for approvals and jobs. Publish events to Keewano through an outbox: save the state change and an event in the same database transaction, then deliver the event asynchronously. This adds a transactional boundary to the PRD's event-history design without requiring Keewano to coordinate external side effects.
+Seeded provider records plus Keewano ranking are the current discovery path. Darwin remains a conditional discovery extension, not a requirement for Dial dispatch. Alike carries development decisions and handoffs; no runtime repair integration is required. Preserve the separate Alike development-workflow document.
 
-Serve the frontend and API under one origin where practical. If the existing static host stays separate, use an explicitly allowed frontend origin and authenticated requests. Run the worker on a host that supports persistent execution; do not depend on work continuing after a serverless request returns.
+The earlier SQL/job-worker design is a deployment upgrade, not a prerequisite for the demo. Public or multi-user operation needs authentication, property authorization, transactional persistence and durable processing. The current unauthenticated local app must not be described as providing those protections. Expose only authenticated tool/webhook endpoints if tunneling is used.
 
-## 3. Contracts with the rest of Handy
+## 3. Existing contracts and additive changes
 
-The communications module reads a frozen snapshot at the start of each job. Editing a repair later must not silently change what an active call is discussing.
+Keep the current routes and return shapes:
 
-| Record | Required contents |
+| Endpoint | Contract |
 | --- | --- |
-| `RepairBrief` | Repair and property IDs, version, issue description, preliminary assessment, trade, proposed scope, service area, urgency, relevant photo references and sharing permissions. |
-| `ProviderContact` | Provider ID, display name, verified E.164 number, discovery source, supported channel, and demo flag. |
-| `CommunicationAttempt` | Job, repair and provider IDs; purpose; channel; attempt number; Dial call/message IDs; transport state; outcome; timestamps; transcript reference; prompt version. |
-| `ProviderQuote` | ID and version; provider; repair-brief version; scope; fixed/range/inspection-required pricing; currency; amounts in cents; parts/labor notes; inspection fee; warranty; availability; conditions; expiry if stated; source attempt and evidence. |
-| `Approval` | User ID, quote ID and version, provider ID, accepted scope and price conditions, consent text, timestamp and revocation state. |
-| `SchedulingRequest` | Approval ID, appointment windows, property timezone, access notes, and existing appointment ID/version for rescheduling. |
-| `Appointment` | Provider, repair, approval and quote references; agreed time or arrival window; timezone; price conditions; explicit confirmation evidence; status. |
+| `POST /api/requests` | Multipart intake; returns `RepairRequest`. |
+| `POST /api/requests/:id/outreach` | Selects ranked providers and starts quoting; returns `RepairRequest`. |
+| `GET /api/requests/:id` | Poll every three seconds; refreshes Dial calls, extracts results, advances the queue and returns `RepairRequest`. |
+| `POST /api/requests/:id/book` | `{providerId, slots[], accessNote, userActiveSec, consentText?}`; records approval and starts booking. |
+| `GET /api/requests/:id/ics` | Calendar export for a confirmed appointment. |
 
-Missing quote details are `null`, not invented defaults. A preliminary estimate is labeled accordingly. A provider who needs an inspection produces an inspection-required result; the user must see and approve any visit fee before scheduling it. Never rank an unknown repair total as a zero-dollar quote.
+Retain `RepairRequest`, `CallRecord`, `Quote`, `Approval`, `BookingResult` and their current USD fields. Do not introduce competing `/api/repairs` endpoints, replace status names, or silently change dollars to cents. Mirror additive model fields in `lib/schemas.ts`.
 
-**Proposed API surface**
+Proposed additions, not fields already present:
 
-| Endpoint | Request and result |
+| Record or extension | Purpose |
 | --- | --- |
-| `POST /api/repairs/:id/outreach` | `{providerIds, briefVersion}` → `202 {jobId}`. The backend resolves the approved brief and verified contacts. |
-| `GET /api/repairs/:id/communications` | Attempts, quote summaries, current booking state and latest update version. |
-| `GET /api/communications/:attemptId` | Transcript/messages and extracted evidence, subject to repair access. |
-| `POST /api/repairs/:id/approvals` | `{quoteId, quoteVersion}` → persisted approval. Shared app endpoint, consumed by this module. |
-| `POST /api/repairs/:id/scheduling` | `{approvalId, windows, timeZone, accessNotes, existingAppointmentId?}` → `202 {jobId}`. |
-| `POST /api/webhooks/dial` | Dial event ingestion; authenticated by signature rather than an app session. |
+| `RepairPacket` | Immutable description/assessment version, provider-safe location, requester role and approved represented-party label, selected photo IDs/version, summary, and authorization to share with the outreach providers. |
+| `MessageRecord` | Local/Dial IDs, repair/provider/call association, direction, text, media references, delivery state, source, packet version, timestamps and error. |
+| `PhotoReview` | `unknown`, `not_received`, `not_reviewed` or `reviewed`; provider's description of the issue, explicit scope agreement and supporting call/message evidence. |
+| `CallRecord` additions | Persisted dispatch key/state, frozen prompt/packet, extraction state and evidence references. |
+| `Quote` additions | Quote revision and source call/message references; packet version; quote basis (`photos_and_call`, `description_only`, `inspection_required`); review/scope evidence. |
+| `Approval` additions | Exact quote revision or snapshot, pricing basis, hourly rate where relevant, authorized total cap or inspection-only fee, waiver conditions, scope, booking type, windows and actor where available. |
+| `BookingResult` additions | Structured outcome, agreed scope/price conditions, normalized window and provider-confirmation evidence. |
 
-Each action endpoint takes a client-generated `Idempotency-Key`, scoped to actor, repair and operation. Store its request hash and result; repeated submissions return the existing job and conflicting payloads return `409`. Derive the actor from authentication, never from a submitted user ID. Scheduling validates the current approval, quote version, property access and absence of another active booking job in one transaction.
+Add `quoteCallId` and `quoteRevision` to the booking request. The revised UI submits the version it displayed; the backend compares it with the stored quote and rejects stale or missing evidence of approved terms before live booking. Existing stored requests can keep nullable migration fields, but cannot bypass this check. Carry requester role and represented-party label from intake into the packet so homeowner calls do not default to the property-management company persona.
 
-Windows use absolute timestamps plus an IANA timezone, for example `{start: "2026-10-13T09:00:00-07:00", end: "2026-10-13T12:00:00-07:00"}` with `America/Los_Angeles`. Display the property's timezone explicitly instead of assuming the browser timezone. Confirm an arrival window as a window; do not invent an exact start or duration.
+For multiple photos, add a photo collection while preserving the existing `photoPath` as the primary image. Current intake only stores one; do not promise a working gallery without that extension.
 
-For the MVP, poll the communications endpoint every two seconds while a job is active, with backoff on errors and suspension when the page is hidden. Refreshing the page resumes from persisted state. WebSockets can wait.
+A new proposed `POST /api/requests/:id/share-packet` accepts a provider ID and packet version for the UI's **Send photos** action. The server resolves recipient and files from the repair; neither the browser nor the voice model can supply arbitrary phone numbers or media URLs. It calls the same sharing service as the MCP tool. Persist messages on the request response or behind an additive messages endpoint if payload size requires it.
 
-## 4. Quote collection workflow
+Keep current `slots: string[]` for compatibility, but add canonical start/end timestamps, a display label and the property's IANA timezone. The current calendar exporter guesses a weekday and two-hour duration; replace that behavior before presenting calendar downloads as exact confirmations.
 
-1. **Prepare:** Validate the repair is eligible for routine outreach, resolve providers, and save the brief snapshot and one job per provider. Begin with one active call at a time; make concurrency configurable after checking account limits.
-2. **Call:** Create a persisted attempt before calling Dial. Its instruction introduces Handy as an AI assistant seeking an estimate, gives the issue and service area, and asks about likely scope, total or range, parts/labor, inspection fees, warranty, conditions and availability. State that the assessment is preliminary and no booking is authorized.
-3. **Observe:** Display queued, calling, unanswered or failed status from communication events. A transport-completed call is not yet a quote.
-4. **Extract:** Fetch the completed conversation when its transcript is ready. Use a model with a strict output schema to extract quote facts and evidence, followed by deterministic validation. Ambiguous or contradictory amounts become `needs_clarification`.
-5. **Publish:** Persist a usable quote and emit `quote.received`. Show quotes incrementally, including when only one of three providers has responded. Do not fabricate results to fill the comparison UI.
+## 4. Quote conversation and scope agreement
 
-The Dial adapter uses `makeCall`, `sendMessage` and call retrieval behind a small internal interface. Call retries reuse the same persisted Dial `idempotencyKey`. The SDK does not automatically retry, and SMS sending has no equivalent idempotency key. An uncertain SMS send enters `send_unknown` for reconciliation instead of an automatic resend. [Dial Node SDK](https://docs.getdial.ai/documentation/sdks/node)
+1. **Prepare the repair packet.** Snapshot selected photos, the user's observations, preliminary assessment and proposed scope. Separate observations from guesses. Use the property's neighborhood/service area, not the provider's service-area field as though it were the property location.
+2. **Select providers.** Keep trade filtering, Keewano ranking, the top-three queue and rating fallback. A provider needs a verified controlled destination for the demo. Filter actual service-area compatibility when real discovery is introduced.
+3. **Persist before contact.** Save a queued attempt and immutable prompt/packet before calling Dial. Save its returned call ID immediately. The current orchestrator dispatches before saving; that ordering must change.
+4. **Open the call.** Disclose that Handy is an AI assistant acting for the homeowner or manager. Describe the issue, ask whether this is a suitable number for photos, and send the approved packet through the tool in section 6. Pre-sending is allowed when messaging suitability is already known.
+5. **Confirm understanding.** Ask whether the provider can open the images and what area/problem they show. Read back the proposed repair scope and ask for agreement or a correction. A voice agent must not infer that the provider saw a photo from a delivery receipt.
+6. **Collect the estimate.** Ask total/range versus hourly price, parts/labor inclusions, visit fee and waiver, inspection needs, warranty, exclusions and availability. Replacement options remain separate from the original repair estimate. No hiring, appointment commitment or exact address disclosure occurs in this call.
+7. **Extract and publish.** P2 extracts facts from the provider's words and replies, validates the schema, and retains evidence. Show partial results as cards fill. If photos cannot be viewed, record that limitation and qualify the quote; if the provider disputes the issue or needs another image, surface a follow-up rather than invent agreement.
 
-Dial may produce the transcript after `call.ended`; `call.transcribed` signals its availability. Failed or unanswered calls may never produce a transcript. Track `awaiting_transcript`, fetch the canonical call record, and use bounded reconciliation before exposing `transcript_unavailable`. [Dial voice lifecycle](https://docs.getdial.ai/documentation/capabilities/receive-a-voice-call)
+**Dial contract:** the current REST path `POST https://api.getdial.ai/api/v1/calls` and `{call: ...}` response wrapper match the reference. Send `outboundInstruction`, `to`, and exactly one sender selector. Keep `maxCallDurationSeconds` at 240 for quotes and 180 for booking unless configured within account limits; documented values are 60–3600 seconds, with additional free-account restrictions. [Call API](https://docs.getdial.ai/api-reference/rest-api/calls/make-call)
 
-**Extraction output:** `quote_received | inspection_required | needs_clarification | declined | no_answer | failed`. Every amount and booking-critical condition must be supported by provider speech or a provider message. Save extractor and prompt versions so a bad interpretation can be inspected without repeating a call.
+Poll the call after termination until a transcript arrives or a bounded wait expires. The existing 60-second post-termination wait is a Handy policy, not a Dial guarantee. A later **Refresh transcript** can reconcile without redialing. Transcript readiness and extraction success need separate states so an extraction failure can be retried using the saved transcript. [Transcript lifecycle](https://docs.getdial.ai/documentation/capabilities/receive-a-voice-call)
 
-## 5. Approval and scheduling workflow
+## 5. Approval and scheduling
 
-1. The user approves a quote version and its conditions in Handy.
-2. The user selects windows and presses **Call to schedule**. This creates a scheduling request; approving a quote alone does not start a scheduling call.
-3. Immediately before dispatch, the worker rechecks approval validity and acquires a lock for the repair's booking operation.
-4. The scheduling instruction includes only the approved provider, scope, price conditions, allowed windows and necessary access details. Ask the provider to confirm one window and restate the agreement. Changed price, scope or fees require new user approval; unavailable windows require new availability.
-5. Extract the outcome and validate it against the scheduling request. Only explicit provider agreement within an allowed window and approved terms creates a confirmed appointment.
-6. Return confirmation to the app and optionally send a written summary. Failed confirmation-message delivery does not undo an already confirmed appointment.
+The existing booking POST is the authorization boundary. Require a usable quote with explicit terms, or an explicitly priced inspection visit. A quote-call record with `quote: null` is insufficient. Hourly pricing with unknown total must be presented as such; an hourly rate is not an approved total cap. Record the rate and an authorized maximum total, or authorize an inspection-only visit with a known fee. Without a clear commitment boundary, seek clarification before booking. A missing repair price is never zero or unlimited consent.
 
-Scheduling outcomes are `confirmed | no_matching_slot | requires_reapproval | needs_clarification | failed`. Call completion and message delivery are transport facts, never booking outcomes.
+Before dispatch, persist approval, quote/packet snapshot, allowed windows and the queued booking attempt. Validate that the submitted quote revision is still current and serialize booking attempts for the repair. New images that change the issue, revised scope, provider changes or added fees require renewed user review.
 
-For rescheduling, retain the original appointment while negotiating a replacement and require the provider to acknowledge replacing it. A failed negotiation leaves the original appointment in place. If the provider cancels the original without confirming a replacement, surface that explicitly for user action. The MVP blocks changing providers while a booking call is active; later cancellation support must reconcile what the provider actually agreed before starting another booking.
+The booking agent repeats the approved scope and price conditions, offers only the allowed windows, and shares the address/access details after the provider agrees. Preserve conditional fee waivers; the current formatter's unconditional “plus visit fee” wording must not turn a waived fee into an approved extra charge.
 
-Prompts constrain agent behavior but cannot guarantee what is said in a live conversation. Restrict the first demo to controlled numbers; review transcripts for commitment errors before using the workflow with real businesses.
+The application marks `scheduled` only when provider evidence confirms an allowed window and unchanged approved terms. P2's extractor needs the approved quote and scope in addition to the transcript and slots. Apply deterministic checks after extraction: nonempty matching slot, consistent provider, current approval and no material changes. A model's `confirmed: true` is not sufficient on its own.
 
-## 6. SMS and inbound conversations
+Outcomes: confirmed, no matching window, revised quote requiring approval, clarification needed, or communication failure. An SMS or call that merely proposes a time cannot confirm the appointment. A failed written-summary delivery does not undo an appointment already agreed during the call.
 
-Implement SMS as a persisted conversation using the same repair context and quote/scheduling rules. Receiving a text triggers `message.received`; the Handy worker routes it, updates context, and decides whether a reply is needed. Dial supplies the message transport; the application supplies the SMS response policy. [Dial inbound SMS](https://docs.getdial.ai/documentation/capabilities/receive-an-sms)
+Rescheduling is still required by the PRD but needs explicit implementation. Keep the old appointment while negotiating, require acknowledgment that the new slot replaces it, and surface any cancellation without replacement. Do not silently create a second booking. Completion tracking also needs an explicit app action and status extension.
 
-MVP SMS uses are sending a concise repair brief, asking a missing quote question, proposing approved appointment windows, and sending a confirmation summary. A reply such as “yes” is actionable only when it unambiguously answers the current proposal. A delivered proposal does not prove acceptance.
+## 6. SMS and images during calls
 
-Route messages by Handy number, provider number and active conversation. Include a short repair reference in outbound text. Allow only one active workflow per number pair for the MVP; queue other repairs for that provider. Unmatched or ambiguous replies go to review. Do not let provider text create user approvals.
+**Primary purpose:** let the provider inspect the same issue Handy is discussing and return a quote against that scope. Written quote and appointment summaries are secondary uses. The older team spec's “SMS out of scope” no longer reflects this requested slice; reconcile that statement during team integration.
 
-Stop automatic replies after completion, opt-out, or a configurable turn limit, initially six replies. Duplicate inbound events must not trigger duplicate replies. When both endpoints are owned Dial numbers, explicitly distinguish the coordinator and demo-provider roles so one event cannot be processed by both agents.
+### Repair packet delivery
 
-Track SMS delivery independently from the conversation outcome. Standard SMS has no read receipts. For photos, prefer an expiring Handy share link scoped to the repair. Dial MMS mirrors media to a stable public URL and does not support SVG, which is the prototype's current mock-photo format. Sending photos as MMS therefore needs an explicit sharing decision and a supported image format. [Dial SMS and media](https://docs.getdial.ai/documentation/capabilities/send-an-sms)
+Send a short text with the repair reference, room, observed symptoms, preliminary scope, and selected images. Example: “Repair H123: leak at the kitchen sink drain connection; cabinet gets wet after use. Photos attached. Please confirm which connection you see leaking and whether your estimate covers that repair.” Omit access codes, tenant contact details and precise address from quoting messages.
 
-Inbound voice callbacks can initially capture the repair reference and message for follow-up. Do not rewrite one shared number's inbound prompt for each repair: simultaneous repairs would overwrite one another's context. Dynamic inbound voice negotiation can follow once repair-context lookup is implemented.
+Dial's message API accepts JSON `mediaUrls` or multipart file uploads. Standard-number MMS allows up to ten items with a 5 MB per-file limit, and the REST reference additionally specifies a 5 MB total carrier-content cap. Use at most three compressed JPEG/PNG images comfortably below that total. HEIC and the prototype's SVG sample need conversion or a supported demo fixture. [Send message API](https://docs.getdial.ai/api-reference/rest-api/messages/send-message)
 
-## 7. Events and reliability
+Native MMS delivery is documented for US/Canada; other supported destinations may receive links. Dial mirrors attachments to public, non-expiring media URLs, so expiring an upload source cannot revoke the resulting copy. [SMS and media capabilities](https://docs.getdial.ai/documentation/capabilities/send-an-sms), [Public media API](https://docs.getdial.ai/api-reference/rest-api/messages/get-public-media)
 
-Subscribe to `call.status_changed`, `call.ended`, `call.transcribed`, `message.received` and `message.status_changed`.
+For the controlled demo, use a non-sensitive fixture. For real repair photos, show the selected images before sharing, strip unnecessary metadata, and avoid including unrelated personal details. A Handy-hosted expiring photo page sent as a link in the text body is an alternative where access control matters; do not pass it as `mediaUrls`, which would initiate media ingestion. Build and deploy that page before offering it. A localhost photo URL cannot serve an external provider or Dial.
 
-Verify `X-Dial-Signature` with HMAC-SHA256 over the timestamp and raw request body, use a constant-time comparison, and reject timestamps outside five minutes. Handle malformed signatures without throwing. Persist the event under unique `X-Dial-Event-ID`, enqueue processing transactionally, then return `2xx`. A duplicate already stored event can return success. If durable storage fails, return an error so Dial retries. Dial documents at-least-once delivery and six delivery attempts. [Dial webhooks](https://docs.getdial.ai/documentation/platform/webhooks)
+### Agent-triggered sharing
 
-The worker correlates events using stored Dial IDs. Keep unmatched events temporarily because an event can arrive before the API response containing its ID. Reconcile canonical call/message state when events arrive late or in an unexpected order; do not regress a finished attempt to ringing. In the two-number demo, only the coordinator's outbound attempt generates the quote, even if both call legs emit events.
+Use a narrow `send_repair_packet` tool on a Handy Context MCP server. Dial documents that connected tools are available to its managed voice agent during calls. This is a custom Handy tool calling the messaging adapter; putting “text them the photos” in a prompt alone does not establish a working message action. [Context MCP](https://docs.getdial.ai/documentation/platform/context-mcp)
 
-Persist jobs with leases, attempt counts and a next-run time so a process restart recovers unfinished work. Recovery never blindly repeats an external action: reuse a call idempotency key or reconcile an uncertain SMS. Start with manual retry for unanswered provider calls to avoid repeated unsolicited contact.
+Authenticate the MCP connection and authorize each tool call using `X-Dial-Direction`, `X-Dial-User-Number` and `X-Dial-Agent-Number`. No repair/call ID header is documented. Resolve exactly one active server-side attempt for the pair and direction; reject missing/template values or ambiguous matches. Tool discovery must not return repair data. The model cannot choose a recipient or arbitrary file. The demo provider's inbound call leg cannot access the coordinator's repair-sharing tool.
 
-Keep three separate state dimensions:
+The service checks that the packet is approved for sharing, records an attempt before sending, and returns the existing message status when the same packet is requested again. Return `pending`, `delivered`, `failed` or `send_unknown` accurately; the voice agent reports only what the result establishes. If a send response is uncertain, do not resend automatically. An intentional resend requires a new reviewed attempt.
 
-| Dimension | Example states |
+A UI **Send photos** button uses the same service and supports manual assistance during a live call. If the provider requests a different recipient, create a follow-up task for the user to verify it; do not redirect home photos solely on an unverified spoken number. If another angle is needed, request it from the user, create a new packet version, and re-confirm the relevant scope.
+
+### Replies and evidence
+
+Store inbound/outbound messages with the call and packet references. `sendMessage` starts a thread; `replyToMessage` can answer a received message. Both sending and replying need application-level duplicate protection. Reconcile uncertain sends with filtered `listMessages`; Dial has no message get-by-ID route. [Reply API](https://docs.getdial.ai/api-reference/rest-api/messages/reply-to-message), [Message event](https://docs.getdial.ai/api-reference/events/message-received)
+
+One active workflow per number pair avoids ambiguous repair references in the MVP. Provider text is untrusted input: it can clarify scope but cannot authorize the homeowner's spending, change the recipient or override system rules. Stop replies after completion, opt-out, or a six-reply budget. Carry actual message source/channel so dashboard-injected traffic is labeled as simulated.
+
+A delivered photo is not proof it was viewed, and standard SMS does not supply read receipts. Record review and scope agreement only from explicit provider statements. The AI receptionist demo can acknowledge a fixed scenario, but do not claim it visually inspected images unless an image-capable tool has actually done so. Use a human teammate for the photo-review acceptance test.
+
+## 7. Reliability and events
+
+**Voice MVP:** preserve REST polling and the existing states `diagnosed → quoting → quotes_ready → booking → scheduled`, with `emergency` and `failed`. Per-call lifecycle remains `queued_local`, `Queued`, `Ringing`, `In-Progress`, `Terminated`. Model sharing/extraction outcomes separately rather than overloading these states.
+
+The current GET refresh drives extraction and queued dispatch. If the browser stops polling, that processing pauses while already placed calls continue at Dial. Keep the demo's progress view open and document this behavior. Moving refresh to a persistent worker is required for unattended processing, not something polling already provides.
+
+**SMS MVP:** run a persistent local event listener and open it before sending. The SDK's stream only replays missed events within two minutes. Store a message watermark and reconcile filtered history after reconnecting. The documented message list returns up to 100 newest records without pagination; hitting that ceiling is a possible recovery gap to surface, not proof of complete recovery. Deduplicate message IDs and serialize updates through the same app process/store owner. A separate listener process forwards events to the app rather than independently writing `data/db.json`. [Node events](https://docs.getdial.ai/documentation/sdks/node), [List messages](https://docs.getdial.ai/api-reference/rest-api/messages/list-messages)
+
+**Hosted upgrade:** signed webhooks can replace the local listener. Verify the signature over the timestamp and exact raw body, check header/body ID and type consistency, persist the event and return `2xx` before Dial's 10-second timeout. Deduplicate verified event IDs, handle `webhook.ping`, and reconcile gaps after the bounded six delivery attempts. [Webhooks](https://docs.getdial.ai/documentation/platform/webhooks)
+
+Normalize REST and event fields: the call resource has structured `status.state` and `duration`; `call.ended` carries a terminal outcome and `durationSeconds`. Retain cancellation information. Follow transcript availability rather than treating a completed transport as a successful quote or booking. [Get call](https://docs.getdial.ai/api-reference/rest-api/calls/get-call), [Call ended event](https://docs.getdial.ai/api-reference/events/call-ended)
+
+The specific REST reference and SDK docs support a call idempotency key, while older tutorial/limits prose says otherwise. Preserve the team's no-automatic-call-retry rule. Add a stored key defensively, reconcile uncertain placement, and validate its behavior on controlled numbers before relying on retry semantics. SMS sends/replies remain non-idempotent. [Retry reference](https://docs.getdial.ai/documentation/reference/errors#retries-and-idempotency)
+
+Required hardening: account-wide dispatch capacity, persistence before side effects, duplicate booking protection, explicit unknown-send states, retryable extraction, bounded backoff for temporary failures, and a paused state for exhausted credit. Current concurrency is per repair, and `402`/`429` are retried on refresh; do not describe that as account-wide budgeting or controlled retry yet.
+
+Keep Keewano's registered event names (`QuoteRequested`, `CallAnswered`, `QuotePriceCents`, `JobBooked`, `UserActiveSec`, etc.). Coordinate additions for packet sent, scope confirmed and messaging failure with P4. The current nonthrowing analytics calls are best-effort; a durable outbox and repair sequence become a deployment improvement, not an already implemented audit trail.
+
+## 8. Demo setup and boundaries
+
+Keep existing `MOCK_DIAL`, `MOCK_CLAUDE`, `MOCK_KEEWANO`, `MAX_CONCURRENT_CALLS`, company name and call-duration configuration. Add messaging/MCP credentials and controlled-recipient allowlisting server-side; these checks are proposed, not present in the scaffold.
+
+Use Handy number A and a controlled provider number B. The earlier account review found US outbound messaging registration incomplete, so use verified Dial-to-Dial messaging for the initial demo. Calling support alone does not establish photo-message delivery to an ordinary mobile or business line. Verify channel eligibility and delivery with the actual recipient before the demo. [Hackathon quickstart](https://getdial.ai/hackathon/speedhacks/quickstart)
+
+Start with one outbound call; confirm account limits and allow for the provider's inbound leg if both numbers use the same account. A credit promotion is not proof of unlimited concurrency. Keep every API key, number mapping, transcript and private photo out of public GitHub. MCP/webhooks need reachable authenticated endpoints. Uploading local images as multipart avoids exposing their source URL; `mediaUrls` must be reachable by Dial, and a Handy photo page must be reachable by the recipient.
+
+An AI receptionist demonstrates agent-to-agent voice, but a human teammate viewing the delivered image demonstrates the new photo-review requirement. For the Dial-to-Dial test, deliberately configure B to forward inbound voice to a controlled teammate phone; the teammate answers there and views B's received images in Dial. Alternatively, use a verified messaging-eligible human destination. This forwarding setup must be tested; it has not been configured by this design review. [Inbound forwarding](https://docs.getdial.ai/documentation/capabilities/receive-a-voice-call)
+
+Label fictional businesses, sample repair photos, seeded rankings, fixture transcripts and mock extraction independently. Real transport does not make a simulated business or forced mock booking outcome real.
+
+## 9. Implementation sequence and acceptance tests
+
+| Step | Required result |
 | --- | --- |
-| Repair phase | `assessment`, `collecting_quotes`, `quotes_ready`, `scheduling`, `scheduled`, `complete` |
-| Communication | `queued`, `calling`, `awaiting_transcript`, `processing`, `completed`, `failed`, `send_unknown` |
-| Business outcome | Quote received, inspection required, clarification needed, appointment confirmed, approval required, no matching slot |
+| 1. Align contracts | Adopt this revision's current routes/ownership; agree additive packet, message, approval and booking-evidence fields with teammates. |
+| 2. Harden voice and approval | Persist before dispatch, block unusable quotes, separate extraction from call completion, validate approved terms/windows. |
+| 3. Deliver photos | One selected repair packet reaches the controlled provider; receipt, review and scope statuses remain distinct. |
+| 4. Share during a call | Managed voice invokes the authorized Context MCP tool; the provider receives and discusses the image without the model choosing arbitrary recipients. |
+| 5. Complete the journey | Image-backed quote → explicit approval → offered windows → booking call → validated confirmation in the existing UI. |
+| 6. Finish PRD gaps | Rescheduling, completion, and reliability upgrades are tracked explicitly; they are not silently claimed complete by the demo. |
 
-Publish `outreach.started`, `call.completed`, `quote.received`, `quote.approved`, `availability.submitted`, `appointment.confirmed` and communication failure events to Keewano. Include a stable event ID, repair sequence number, occurrence time, actor, provider and source-attempt reference. Consumers deduplicate events. Keep full transcripts in access-controlled storage and share only the necessary event fields.
+Keep P1 transport/prompts in existing files. Add a small shared packet service, message listener and MCP endpoint; do not start a separate general-purpose agent platform. P2 owns extraction updates, and shared route/type/store changes follow team coordination.
 
-## 8. Demo setup and configuration
+Tests must cover REST response mapping; late/missing transcripts; extraction retry without redial; duplicate clicks/tool calls/events; crash after dispatch; account-wide call capacity; credit exhaustion; cross-repair MCP access; missing/ambiguous call headers; unsupported/oversized images; uncertain or failed message delivery; provider has not viewed images; changed scope after new photos; conditional visit fees; missing quotes; out-of-window or higher-price booking responses; and failed rescheduling preserving the old appointment.
 
-Use number A as Handy and number B as a fictional plumbing business. Configure B's inbound voice instructions with a consistent scenario, estimate and availability; its SMS responder uses the same scenario data. The UI must distinguish a real Dial interaction with a simulated business from a real contractor quote.
+**Live acceptance flow:** upload a supported sample image, call a controlled human provider, have the agent send it during the conversation, hear the provider identify the issue and agree the quoted scope, show that evidence with the estimate, obtain user approval/windows, and confirm a second scheduling call against the approved terms. A delivery receipt or mock extractor must not substitute for provider agreement.
 
-The earlier account review found two active voice/SMS numbers with US outbound SMS registration incomplete. Plan SMS demonstrations between Dial numbers, as described in the [hackathon quickstart](https://getdial.ai/hackathon/speedhacks/quickstart), and verify eligibility before enabling texts to ordinary US mobile numbers. Keep homeowner confirmation in the app for the first demo.
+Measure usable-quote time, photo-review/scope-confirmation rate, clarification requests, user active time and approved-booking completion. The PRD's 50% time-saving target is still a hypothesis, not a measured outcome.
 
-Server configuration: `DIAL_API_KEY`, `DIAL_FROM_NUMBER_ID`, `DIAL_WEBHOOK_SECRET`, `DATABASE_URL`, and the team's extraction-model credential. Add a server-enforced `DEMO_ALLOWED_NUMBERS` list and a call budget. Keys, full tenant access instructions and transcripts do not belong in browser bundles, public GitHub files or routine logs.
+## Section review outcome
 
-Start with one live provider interaction. Three-provider outreach uses the same queue; remaining cards may use clearly labeled fixtures until more controlled destinations are available. Test fixtures and live attempts carry separate source flags through quotes and appointments.
-
-## 9. Implementation order and completion criteria
-
-| Step | Deliverable | Complete when |
-| --- | --- | --- |
-| 1. Agree contracts | Shared types, database tables, fake Dial adapter and API responses | Frontend can render pending, success and failure states without real calls. |
-| 2. Voice quote | Dial adapter, quote prompt, signed webhook, transcript extraction | One controlled call produces a traceable structured quote in Handy. |
-| 3. Approved booking | Approval validation, scheduling prompt, outcome validation | Selecting a quote and windows produces a matching confirmed demo appointment. |
-| 4. SMS | Conversation routing, reply worker, delivery status | A controlled SMS exchange clarifies a quote or confirms a proposed window without loops. |
-| 5. App integration | Replace simulation handlers, reconnect polling, Keewano outbox | Refresh preserves progress and the repair timeline reflects actual actions. |
-| 6. Demo hardening | Failure handling, recovery tests, scenario fixtures | Duplicate requests/events do not create duplicate calls, quotes or bookings. |
-
-Suggested module layout: `communications/dial-adapter.ts`, `quote-workflow.ts`, `booking-workflow.ts`, `sms-workflow.ts`, `extract-outcome.ts`, `prompts/`, plus the webhook route, shared contracts, and database migrations. Keep these in the app backend rather than starting separate agent services.
-
-Required tests cover duplicate action requests and webhook events; out-of-order events; worker restart after dispatch; absent transcripts; ambiguous SMS sends; higher price or inspection fees; stale/revoked approvals; windows in different timezones; cross-property access; ambiguous SMS replies; and failed rescheduling that preserves the prior appointment. Use a fake Dial adapter for automated tests, then controlled numbers for the live end-to-end check.
-
-Instrument time to first usable quote, approval-to-confirmation time, unanswered calls, extraction failures and blocked duplicate actions. Measure active user time separately from elapsed call time; the PRD's 50% time-saving target remains a hypothesis until tested.
-
-**First implementation milestone:** From a saved sink-leak repair, press Get quotes, complete one Dial call, display its extracted estimate and transcript, approve it, choose windows, and complete a second Dial call that returns a confirmed demo appointment. This proves the full app integration before adding more providers or channels.
-
-Before coding, align with the team on the backend host, database, authenticated user/repair IDs, provider-contact contract and extraction model. The contracts above are the proposed defaults; these choices should not block building the fake adapter and frontend states.
+| Section | Review result |
+| --- | --- |
+| 1 | Corrected the outdated static-only description; preserved homeowner/manager flow and added photo-review visibility. |
+| 2 | Reused Next.js/polling; corrected ownership and sponsor boundaries; added the supported mid-call tool path. |
+| 3 | Preserved existing API/types; specified additive packet, message, evidence and scheduling fields. |
+| 4 | Added photo-based scope agreement and corrected location, quote terms, persistence and transcript handling. |
+| 5 | Closed design gaps around missing quotes, approval persistence, changed fees, confirmed windows and rescheduling. |
+| 6 | Made image sharing during quote calls a core requirement; separated MMS transport, review evidence and tool authorization. |
+| 7 | Distinguished local-demo behavior from durable delivery; documented retry conflicts and current implementation gaps. |
+| 8 | Kept controlled destinations and truthful demo labels; added a human photo-review test. |
+| 9 | Reordered work around the current app and the newly clarified image-sharing journey. |

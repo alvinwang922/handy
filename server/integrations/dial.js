@@ -1,9 +1,27 @@
 import { randomUUID } from 'node:crypto';
 
+// Slots are local to the service area (Bay Area), not the server's clock: Vercel runs in UTC.
+const SERVICE_TZ = 'America/Los_Angeles';
+// 2-hour windows covering 8 am to 9 pm local time.
+const SLOT_STARTS = [8, 10, 12, 14, 16, 18, 19];
+
+// Wall-clock time in SERVICE_TZ → UTC instant (handles daylight saving).
+function zonedTime(year, month, day, hour) {
+  const guess = Date.UTC(year, month - 1, day, hour);
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: SERVICE_TZ, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .formatToParts(new Date(guess)).map(p => [p.type, p.value]));
+  const asLocal = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute);
+  return new Date(guess - (asLocal - guess));
+}
+
 export function availableWindows(offset = 1) {
-  return [offset, offset + 1, offset + 2].flatMap(day => [8, 10, 12, 14, 16].map(hour => {
-    const start = new Date(); start.setDate(start.getDate() + day); start.setHours(hour, 0, 0, 0);
-    const end = new Date(start); end.setHours(hour + 2);
+  const today = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: SERVICE_TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date()).map(p => [p.type, p.value]));
+  return [offset, offset + 1, offset + 2].flatMap(dayOffset => SLOT_STARTS.map(hour => {
+    const d = new Date(Date.UTC(+today.year, +today.month - 1, +today.day + dayOffset));
+    const start = zonedTime(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), hour);
+    const end = new Date(start.getTime() + 2 * 3600 * 1000);
     return { start: start.toISOString(), end: end.toISOString() };
   }));
 }

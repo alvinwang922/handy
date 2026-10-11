@@ -8,7 +8,7 @@ For a property manager, those problems arrive across multiple properties: inspec
 
 In comes Handy.
 
-Here's my faucet spraying water sideways. I upload the photo and describe what's happening. Claude gives a preliminary assessment and creates a repair brief. If it's a simple fix, Handy offers DIY guidance and part options, with compatibility checks before buying. Here, I'm choosing professional help.
+Here's my faucet spraying water sideways. I upload the photo and describe what's happening. Handy gives a preliminary assessment and creates a repair brief.
 
 Now, who should I call? This is where Keewano comes in. Handy uses its history of provider responses, punctuality, and quote accuracy to rank the options. Keewano also helps spot repeat problems at a property, so the agent can ask about replacement as well as repair. For this demo, we're using sample history and test providers.
 

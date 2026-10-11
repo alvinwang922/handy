@@ -63,7 +63,7 @@ export function quoteInstruction(
     `Location: ${context?.serviceArea ?? p.serviceArea}. Do not give the exact address; say it will be shared only after approval when booking.`,
     context ? `Reference date: ${context.referenceAt}. Confirm the calendar date and timezone of every opening.` : "",
     context?.photosAvailable
-      ? "A repair photo exists in Handy but is shared through a separate approved message. Do not claim the provider reviewed it unless they explicitly say so."
+      ? "A repair photo exists in Handy and is shared through a separate approved message. Ask whether it arrived and whether they can view it. If they can, ask what issue it shows and confirm the repair scope. If they cannot, continue with a provisional description-only estimate. Do not claim the photo was sent or reviewed without confirmation."
       : "No photos are being sent during this call. Do not claim the provider reviewed one.",
     `Ask these concisely, prioritizing price, fee treatment, scope, and availability before any readback:\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`,
     d.questionsForProviders.length ? `If it comes up naturally, also ask: ${d.questionsForProviders.join("; ")}.` : "",

@@ -2,6 +2,7 @@
 
 - [Dial SMS and call agents](dial-sms-and-calls.md): reviewed app integration, photo sharing during calls, quote and booking workflows, and implementation milestones.
 - [Dial/outreach PRD coverage](dial-prd-coverage.md): ownership, implemented versus live-tested behavior, booking-extractor handoff and remaining requirements.
+- [Live Dial endpoint handoff](dial-endpoint-handoff.md): environment setup, frontend requests, production extraction and controlled scheduling acceptance.
 - [Darwin provider discovery](darwin-provider-discovery.md): P1-owned prototype, capability-to-provider handoff and integration acceptance gates.
 - [Alike development workflow](alike-development-workflow.md): a scoped pilot for carrying decisions and handoffs between coding sessions.
 

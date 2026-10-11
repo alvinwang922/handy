@@ -5,7 +5,7 @@ const flag = (name: string) => process.env[name] === "1" || process.env[name] ==
 export const config = {
   mockDial: flag("MOCK_DIAL"),
   mockClaude: flag("MOCK_CLAUDE"),
-  // Real diagnosis + mock transcript extraction until extractQuote/extractBooking land.
+  // Transcript extraction can remain simulated while real diagnosis is enabled.
   mockClaudeExtract: flag("MOCK_CLAUDE") || flag("MOCK_CLAUDE_EXTRACT"),
   // Part-search agent (Claude web search) for DIY diagnoses.
   mockParts: flag("MOCK_CLAUDE") || flag("MOCK_PARTS"),

@@ -69,6 +69,8 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 
 ## Run it
 
+Production quote and booking extraction are implemented behind the mock flags. See the [live endpoint handoff](eng-design/dial-endpoint-handoff.md) for configuration, frontend requests and controlled-call validation status. The hosted prototype URL should not be assumed to expose the local backend routes.
+
 ```bash
 npm install
 # npm run dev creates .env.local from .env.example on first run: every MOCK_* = 1, no keys needed (fake calls finish in ~16 s)

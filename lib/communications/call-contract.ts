@@ -83,7 +83,7 @@ export function buildQuoteJob(request: RepairRequest, providerRecord: Provider, 
   };
 }
 
-export function validateQuoteResult(raw: unknown, job: QuoteJob, rawSource: unknown): QuoteResult {
+export function validateQuoteResult(raw: unknown, job: Pick<QuoteJob, "requestId" | "briefVersion" | "providerId">, rawSource: unknown): QuoteResult {
   const result = QuoteResultSchema.parse(raw);
   const source = CallSourceSchema.parse(rawSource);
   if (

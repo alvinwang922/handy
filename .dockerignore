@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.claude
+.superpowers
+.impeccable
+.gstack
+.vercel
+.env*
+!.env.example
+data/handy.sqlite*
+data/db.json
+data/uploads
+docs/UI-UX review.pdf
+sparta/node_modules

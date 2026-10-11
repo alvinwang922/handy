@@ -1,0 +1,18 @@
+# Run Handy locally:  docker compose up --build   →  http://localhost:3030
+# Reads secrets and MOCK_* flags from .env at runtime (never copied into the image).
+services:
+  web:
+    build: .
+    ports:
+      - "${HANDY_PORT:-3030}:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LOOKB_DATA_PATH: /app/data/runtime/handy.sqlite
+    volumes:
+      - handy-data:/app/data/runtime
+    restart: unless-stopped
+
+volumes:
+  handy-data:

@@ -1,6 +1,8 @@
-import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+
+// Loaded at runtime so Next.js bundlers never try to resolve node:sqlite.
+const { DatabaseSync } = process.getBuiltinModule('node:sqlite');
 
 export function createStore(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });

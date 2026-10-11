@@ -1,0 +1,5 @@
+[
+  { "id": "p1", "name": "Maple House", "address": "124 Maple Avenue", "units": ["Main home"], "tenant": "Jamie Chen" },
+  { "id": "p2", "name": "Oak Street Duplex", "address": "86 Oak Street", "units": ["Unit 2A", "Unit 2B"], "tenant": "Taylor Reed" },
+  { "id": "p3", "name": "Cedar Cottage", "address": "32 Cedar Lane", "units": ["Unit 1"], "tenant": "Sam Rivera" }
+]

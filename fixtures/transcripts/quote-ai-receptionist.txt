@@ -1,0 +1,11 @@
+User: Thanks for calling Bay Area Rooter, how can I help?
+Agent: Hi, this is an AI assistant calling on behalf of Maple Property Management. I'd like a quote for a slow leak under a kitchen sink where the drain pipe connects.
+User: Happy to help. Is the leak at the drain trap or the supply line?
+Agent: At the drain connection. It gets worse after running the faucet.
+User: That's usually the trap. We quote $180 to $250 flat for that. There's an $89 diagnostic visit fee, waived if you hire us.
+Agent: What are your earliest openings?
+User: Tuesday 9 to 11am or Wednesday 1 to 3pm.
+Agent: Would you need to inspect it first?
+User: Our tech will inspect on arrival and confirm the price before starting.
+Agent: Thank you. That's $180 to $250 flat, $89 visit fee waived if hired, Tuesday 9 to 11am or Wednesday 1 to 3pm. We'll call back to confirm.
+User: Sounds good. Goodbye!

@@ -1,0 +1,12 @@
+Agent: Hi, this is an AI assistant calling on behalf of Maple Property Management. I'm looking for a quote on a plumbing repair. Do you have a minute?
+User: Sure, go ahead.
+Agent: There's a slow leak under a kitchen sink where the drain pipe connects. The cabinet floor gets damp after running the faucet. What would something like that usually cost?
+User: Sounds like a slip nut or a washer on the trap. If it's just that, we'd do it for $175 flat. If the trap is corroded and needs replacing, more like $240.
+Agent: Got it. Is there a separate service call charge?
+User: No, that's all in.
+Agent: What are your two earliest openings this week?
+User: Tuesday 2 to 4pm, or Thursday 9 to 11am.
+Agent: Would you need to see it before confirming the price?
+User: No, we can confirm on site.
+Agent: Great. So that's $175 to $240 flat, available Tuesday 2 to 4pm or Thursday 9 to 11am. We'll call back to confirm. Thank you!
+User: Thanks, bye.

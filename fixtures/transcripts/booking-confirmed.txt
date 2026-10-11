@@ -1,0 +1,7 @@
+User: Bay Area Rooter, this is Dana.
+Agent: Hi Dana, this is an AI assistant calling on behalf of Maple Property Management. You quoted us earlier today for a kitchen sink drain leak, $180 to $250 flat. We'd like to book. Does Tuesday 9 to 11am work?
+User: Tuesday 9 to 11 works.
+Agent: Great. The address is 124 Maple Avenue, Main home. The tenant will be home; please call on arrival.
+User: Got it, 124 Maple Avenue, call on arrival.
+Agent: To confirm: Tuesday 9 to 11am at 124 Maple Avenue, $180 to $250 flat. Thank you!
+User: Confirmed. See you Tuesday.

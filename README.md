@@ -16,3 +16,20 @@ Handy is an interactive prototype for a home-repair assistant. Homeowners and pr
 The prototype is a single, dependency-free HTML file. Open `index.html` directly in a browser or serve the repository with any static file server.
 
 All providers, ratings, prices, assessments, calls, and bookings shown in the prototype are fictional demo content. No real provider is contacted and no appointment is booked.
+
+## Running the full app (backend + real integrations)
+
+The prototype UI is served by a Next.js 16 backend that places real AI phone calls (Dial), diagnoses photos (Claude), and ranks providers from event history (Keewano).
+
+```bash
+npm install
+cp .env.example .env.local   # all MOCK_* flags = 1 → full flow with no keys
+npm run dev                  # http://localhost:3000
+npm test
+```
+
+- Product requirements: [`PRD.md`](PRD.md)
+- Technical design and API contracts: [`docs/superpowers/specs/2026-10-11-handled-design.md`](docs/superpowers/specs/2026-10-11-handled-design.md)
+- Team conventions for coding agents: [`CLAUDE.md`](CLAUDE.md)
+
+Demo honesty: providers are teammates and our own AI-receptionist number, and Keewano history is seeded. Both are labeled in the app. We never call real businesses with fake jobs.

@@ -1,0 +1,37 @@
+import { z } from "zod";
+
+// zod mirrors of lib/types.ts — validate every JSON object Claude returns before trusting it.
+
+export const TradeSchema = z.enum(["plumber", "electrician", "handyman", "hvac", "appliance", "locksmith", "other"]);
+
+export const DiagnosisSchema = z.object({
+  title: z.string(),
+  likelyCause: z.string(),
+  trade: TradeSchema,
+  urgency: z.enum(["emergency", "soon", "routine"]),
+  needsOnsiteInspection: z.boolean(),
+  costRangeUsd: z.tuple([z.number(), z.number()]),
+  jobBrief: z.string(),
+  questionsForProviders: z.array(z.string()),
+  confidence: z.number().min(0).max(1),
+});
+
+export const QuoteSchema = z.object({
+  priceLowUsd: z.number().nullable(),
+  priceHighUsd: z.number().nullable(),
+  pricingType: z.enum(["flat", "hourly", "visit_fee_plus", "unknown"]),
+  visitFeeUsd: z.number().nullable(),
+  availability: z.array(z.string()),
+  needsInspection: z.boolean(),
+  scope: z.string().nullable(),
+  warranty: z.string().nullable(),
+  conditions: z.string().nullable(),
+  notes: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+
+export const BookingResultSchema = z.object({
+  confirmed: z.boolean(),
+  slot: z.string().nullable(),
+  notes: z.string(),
+});

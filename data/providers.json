@@ -1,0 +1,15 @@
+[
+  { "id": "plumb_rooter", "name": "Bay Area Rooter", "trade": "plumber", "phone": "+14155550101", "rating": 4.8, "reviewCount": 212, "serviceArea": "San Francisco" },
+  { "id": "plumb_golden", "name": "Golden Gate Plumbing", "trade": "plumber", "phone": "+14155550102", "rating": 4.6, "reviewCount": 154, "serviceArea": "San Francisco" },
+  { "id": "plumb_mission", "name": "Mission Pipe Pros", "trade": "plumber", "phone": "+14155550199", "rating": 4.4, "reviewCount": 87, "serviceArea": "San Francisco" },
+  { "id": "plumb_sunset", "name": "Sunset Drain & Sewer", "trade": "plumber", "phone": "+14155550103", "rating": 4.2, "reviewCount": 61, "serviceArea": "San Francisco" },
+  { "id": "hvac_breeze", "name": "Breeze Heating & Air", "trade": "hvac", "phone": "+14155550111", "rating": 4.7, "reviewCount": 133, "serviceArea": "San Francisco" },
+  { "id": "hvac_comfort", "name": "Comfort Zone HVAC", "trade": "hvac", "phone": "+14155550112", "rating": 4.5, "reviewCount": 98, "serviceArea": "San Francisco" },
+  { "id": "hvac_polar", "name": "Polar Bear Cooling", "trade": "hvac", "phone": "+14155550199", "rating": 4.1, "reviewCount": 40, "serviceArea": "San Francisco" },
+  { "id": "handy_fixit", "name": "FixIt Handyman Co.", "trade": "handyman", "phone": "+14155550121", "rating": 4.9, "reviewCount": 301, "serviceArea": "San Francisco" },
+  { "id": "handy_hammer", "name": "Hammer & Hinge", "trade": "handyman", "phone": "+14155550122", "rating": 4.6, "reviewCount": 120, "serviceArea": "San Francisco" },
+  { "id": "handy_doors", "name": "Doors & More", "trade": "handyman", "phone": "+14155550199", "rating": 4.3, "reviewCount": 55, "serviceArea": "San Francisco" },
+  { "id": "elec_spark", "name": "Bright Spark Electric", "trade": "electrician", "phone": "+14155550131", "rating": 4.7, "reviewCount": 140, "serviceArea": "San Francisco" },
+  { "id": "elec_volt", "name": "Volt Bros Electric", "trade": "electrician", "phone": "+14155550132", "rating": 4.4, "reviewCount": 72, "serviceArea": "San Francisco" },
+  { "id": "appl_repair", "name": "Appliance Rescue", "trade": "appliance", "phone": "+14155550141", "rating": 4.5, "reviewCount": 88, "serviceArea": "San Francisco" }
+]

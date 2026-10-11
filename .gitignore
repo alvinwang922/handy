@@ -1,1 +1,21 @@
+# dependencies
+/node_modules
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+# env + secrets (repo is shared with judges)
+.env*
+!.env.example
+# local runtime data (personal phone numbers, uploads, db)
+data/db.json
+data/uploads/
+data/providers.local.json
+# misc
 .DS_Store
+*.pem
+npm-debug.log*
+/coverage
+.vercel

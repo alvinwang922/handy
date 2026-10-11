@@ -71,7 +71,7 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 
 ```bash
 npm install
-cp .env.example .env.local   # every MOCK_* flag = 1 → the full flow runs with no keys (fake calls finish in ~16 s)
+# npm run dev creates .env.local from .env.example on first run: every MOCK_* = 1, no keys needed (fake calls finish in ~16 s)
 npm run dev                  # http://127.0.0.1:3000
 npm test                     # vitest
 npm run typecheck

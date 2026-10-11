@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node -e \"const fs=require('fs');if(!fs.existsSync('.env.local')){fs.copyFileSync('.env.example','.env.local');console.log('Created .env.local from .env.example (all MOCK_* = 1: runs with no keys)')}\"",
     "dev": "next dev -H 127.0.0.1",
     "build": "next build",
     "start": "next start",

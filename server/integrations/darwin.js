@@ -11,7 +11,7 @@ export function discover(brief) {
     capabilityId: `demo:${category}:estimate:${i + 1}`, revision: 'seeded-directory-v1',
     rating: ['4.9', '4.8', '4.7'][i], reviews: [128, 86, 204][i],
     price, parts, labor: price - parts, window: i === 2 ? 'In 2 days' : 'Tomorrow',
-    warranty: `${[90, 60, 30][i]}-day demo workmanship warranty`, demo: true
+    warranty: `${[90, 60, 30][i]}-day workmanship warranty`, demo: true
   }));
   providers.push({ ...providers[2], id: `${category}-unanswered`, name: 'Busy Local Services', capabilityId: `demo:${category}:unanswered`, unanswered: true });
   return {

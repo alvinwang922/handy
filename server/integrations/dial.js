@@ -29,7 +29,7 @@ export function requestEstimate(provider, brief) {
   const call = { id: randomUUID(), providerId: provider.id, providerName: provider.name,
     brief, channel: 'voice', timestamp: new Date().toISOString(), durationSeconds: provider.unanswered ? 0 : 48,
     status: provider.unanswered ? 'unanswered' : 'completed', demo: true, source: 'demo:dial-scripted-call' };
-  if (provider.unanswered) return { call: { ...call, transcript: [], outcome: 'No answer. Demo attempt recorded; no real call or retry was made.' }, quote: null };
+  if (provider.unanswered) return { call: { ...call, transcript: [], outcome: 'No answer. Handy did not call again.' }, quote: null };
   const transcript = [
     { speaker: 'Handy', text: `Please estimate this repair: ${brief.description} Scope: ${brief.scope}. No work or booking is authorized.` },
     { speaker: provider.name, text: `Our provisional estimate is $${provider.price}, including labor and standard parts. An inspection must confirm the diagnosis and final scope.` },
@@ -49,7 +49,7 @@ export function scheduleCall(quote, window, access, approval) {
     status: 'completed', timestamp: new Date().toISOString(), durationSeconds: 32, demo: true, source: 'demo:dial-scheduling-call',
     transcript: [
       { speaker: 'Handy', text: `The user explicitly approved quote ${quote.id} for $${approval.amountCents / 100}. Can you confirm ${window.start} to ${window.end}?` },
-      { speaker: quote.name, text: 'This offered window is confirmed for the demo. We will call before arriving.' },
+      { speaker: quote.name, text: 'This window is confirmed. We will call before arriving.' },
       { speaker: 'Handy', text: `Access instructions: ${access || 'Contact the user on arrival.'}` }
     ], outcome: 'Simulated appointment confirmation. No real booking was made.' };
 }

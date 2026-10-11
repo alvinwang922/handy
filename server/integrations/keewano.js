@@ -23,5 +23,5 @@ export function analytics(events) {
     medianTimeToFirstQuoteSeconds: median(elapsed('issue.created', 'quote.received')),
     medianApprovalToBookingSeconds: median(elapsed('quote.approved', 'appointment.confirmed')),
     activeCoordinationTime: null,
-    note: 'Local demo event metrics. Simulated calls are immediate; active user time is not measured.' };
+    note: 'Active coordination time is not measured yet.' };
 }

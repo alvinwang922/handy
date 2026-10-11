@@ -65,7 +65,7 @@ H.statusStep = {hazard:1, assessment:1, quotes:2, scheduling:3, scheduled:3, com
 H.h = html => `<div class="bu h">${html}</div>`;
 H.u = html => `<div class="bu u">${html}</div>`;
 H.typing = () => `<div class="typing" role="status" aria-label="Handy is typing"><i></i><i></i><i></i></div>`;
-H.demo = (label='Demo') => `<span class="tag demo">${H.esc(label)}</span>`;
+H.demo = () => '';
 H.toast = msg => { const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status'); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); };
 H.sheet = (title, html, bind) => {
   const d = document.createElement('dialog'); d.className = 'sheet'; d.setAttribute('aria-label', title);
@@ -205,7 +205,7 @@ H.render = () => {
   const repair = route.name === 'repair' ? H.repair(route.id) : null;
   let center;
   if (route.name === 'new' && H.ui.report) center = header('Report a problem', 'New repair', true) + safe(() => H.ui.report.render(S));
-  else if (route.name === 'insights' && H.ui.insights) center = header('Insights', 'Demo metrics', true) + safe(() => H.ui.insights.render(S));
+  else if (route.name === 'insights' && H.ui.insights) center = header('Insights', 'How repairs are going', true) + safe(() => H.ui.insights.render(S));
   else if (route.name === 'settings' && H.ui.settings) center = header('Settings', 'Your houses', true) + safe(() => H.ui.settings.render(S));
   else if (repair) {
     const owner = ORDER.map(n => H.parts[n]).find(p => p && p.owns && p.owns.includes(repair.status));
@@ -217,7 +217,7 @@ H.render = () => {
     (H._fetched ||= new Set()).add(route.id);
     H.api('GET', `/api/repairs/${route.id}`).then(d => H.upsert(d.repair)).catch(() => H.render());
     center = header('Handy', 'Your repair helper', true) + `<div class="loading">${H.typing()} Opening your repair…</div>`;
-  } else if (route.name === 'repair') center = header('Handy', 'Your repair helper', true) + `<div class="page"><h1>We couldn’t find that repair</h1><p class="lead">It may have been removed when the demo was reset.</p><button class="btn" data-nav="#/">Back to your repairs</button></div>`;
+  } else if (route.name === 'repair') center = header('Handy', 'Your repair helper', true) + `<div class="page"><h1>We couldn’t find that repair</h1><p class="lead">It may have been removed.</p><button class="btn" data-nav="#/">Back to your repairs</button></div>`;
   else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; center = header('Handy', H.isManager() ? 'Property manager' : 'Your repair helper', false, `<button class="act" data-nav="#/settings">${H.icon('home')} Houses &amp; settings</button>`) + errorBox() + (dash ? safe(() => dash.render(S)) : ''); }
   const showDetails = !!repair && !!H.ui.details;
   root.className = 'shell' + (showDetails ? '' : ' no-details');

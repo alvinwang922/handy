@@ -129,11 +129,11 @@ const icsStamp = iso => new Date(iso).toISOString().replace(/[-:]/g, '').replace
 const icsText = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const buildIcs = r => {
   const b = r.booking, p = H.prop(r.property) || {}, pro = (r.approval && r.approval.providerName) || proName(r, b.providerId);
-  const desc = [`${r.title}`, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.money(r.approval.amountCents)}` : '', b.access ? `How to get in: ${b.access}` : '', 'Demo booking from Handy. No real pro was contacted.'].filter(Boolean).join('\n');
-  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//Repair helper (demo)//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+  const desc = [`${r.title}`, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.money(r.approval.amountCents)}` : '', b.access ? `How to get in: ${b.access}` : ''].filter(Boolean).join('\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//Repair helper//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT', `UID:${b.id}@handy.local`, `DTSTAMP:${icsStamp(new Date().toISOString())}`,
     `DTSTART:${icsStamp(b.window.start)}`, `DTEND:${icsStamp(b.window.end)}`,
-    `SUMMARY:${icsText(`${pro}: ${r.title} (demo)`)}`,
+    `SUMMARY:${icsText(`${pro}: ${r.title}`)}`,
     `LOCATION:${icsText([p.name, p.unit].filter(Boolean).join(', '))}`,
     `DESCRIPTION:${icsText(desc)}`, 'STATUS:CONFIRMED', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
 };

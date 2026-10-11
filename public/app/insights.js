@@ -88,7 +88,7 @@ const details = m => {
     ['Approved repairs that got booked', pct(m.quoteToBookingConversion), 'Not enough data yet'],
     ['Typical wait for the first price', duration(m.medianTimeToFirstQuoteSeconds), 'Not enough data yet'],
     ['Typical time from your yes to booked', duration(m.medianApprovalToBookingSeconds), 'Not enough data yet'],
-    ['Your time spent coordinating', m.activeCoordinationTime == null ? null : duration(m.activeCoordinationTime), 'Not measured in the demo']
+    ['Your time spent coordinating', m.activeCoordinationTime == null ? null : duration(m.activeCoordinationTime), 'Not measured yet']
   ];
   return `<dl>${rows.map(([k, v, na]) => `<dt>${k}</dt><dd class="${v == null ? 'na' : ''}">${H.esc(v == null ? na : v)}</dd>`).join('')}</dl>`;
 };
@@ -155,7 +155,7 @@ H.ui.insights = {
       <p class="sub">Repairs as they stand right now.</p>
       ${byProperty(S)}
       <h2>More detail</h2>
-      <p class="sub">Times are typical (the middle value). In the demo, calls finish instantly.</p>
+      <p class="sub">Times are typical (the middle value).</p>
       ${details(m)}
     </div>`;
   },

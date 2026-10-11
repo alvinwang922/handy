@@ -189,7 +189,7 @@ function buildIcs(r) {
     `Price: ${H.money(b.amountCents)} (provisional)`,
     `Warranty: ${warrantyOf(r)}`,
     `How to get in: ${note || 'They will call you on arrival.'}`,
-    'Booked by Handy. Demo: simulated booking, no real appointment was made.'
+    'Booked by Handy.'
   ].join('\n');
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',

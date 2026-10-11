@@ -133,7 +133,7 @@ const photosHtml = () => {
     ${S.pending ? '' : left > 0 ? `<div class="pick">
         <button type="button" class="btn ghost" data-pick="camera">${H.icon('camera')} Take a photo</button>
         <button type="button" class="btn ghost" data-pick="library">${H.icon('image')} ${S.photos.length ? 'Add another photo' : 'Choose from my photos'}</button>
-        ${S.photos.includes(SAMPLE) ? '' : `<button type="button" class="btn plain" data-sample>Use the sample photo (Demo)</button>`}
+        ${S.photos.includes(SAMPLE) ? '' : `<button type="button" class="btn plain" data-sample>Use the sample photo</button>`}
       </div>
       <p class="meta-line">${H.icon('info')} Up to 3 photos. No photo? You can still send it.</p>`
       : `<p class="meta-line">${H.icon('check')} That’s 3 photos, the most Handy can take.</p>`}`;

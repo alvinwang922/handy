@@ -196,7 +196,7 @@ H.ui.rail = {
       <div class="rl-top"><button type="button" class="btn" data-nav="#/new">${H.icon('camera')} Report a problem</button></div>
       ${mgr ? managerRail(S) : ownerRail(S)}
       <div class="rl-foot">
-        <div class="r1">${H.demo('Demo · simulated data')}<button type="button" class="btn plain" data-rl-reset>Reset demo</button></div>
+        <div class="r1">${H.demo('Demo · simulated data')}<button type="button" class="btn plain" data-rl-reset>Start over</button></div>
         <a class="rl-switch" href="/app/">${H.icon('user')} Switch app</a>
       </div>
     </div>`;
@@ -223,13 +223,13 @@ function refocus(sel) {
 }
 
 function openReset() {
-  H.sheet('Reset the demo?', `
-    <p style="margin:0 0 12px">This puts the demo back to its starting point: the sample repairs at Maple House and Oak Street Duplex.</p>
-    <div class="note amber" style="margin-bottom:16px">${H.icon('alert')}<span>Any repairs, prices, approvals and bookings you made in this demo will be removed. Nothing real is affected: no pros are called and nothing is cancelled.</span></div>
+  H.sheet('Start over?', `
+    <p style="margin:0 0 12px">This puts everything back to the starting point: the sample repairs at Maple House and Oak Street Duplex.</p>
+    <div class="note amber" style="margin-bottom:16px">${H.icon('alert')}<span>Any repairs, prices, approvals and bookings you made will be removed. Nothing real is affected: no pros are called and nothing is cancelled.</span></div>
     <p class="msg" role="alert" hidden style="color:var(--red);margin:0 0 12px"></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button type="button" class="btn" data-confirm>${H.icon('refresh')} Reset the demo</button>
-      <button type="button" class="btn ghost" data-cancel>Keep my demo</button>
+      <button type="button" class="btn" data-confirm>${H.icon('refresh')} Start over</button>
+      <button type="button" class="btn ghost" data-cancel>Keep everything</button>
     </div>`, (d, close) => {
     d.querySelector('[data-cancel]').addEventListener('click', close);
     const go = d.querySelector('[data-confirm]'), msg = d.querySelector('.msg');
@@ -242,7 +242,7 @@ function openReset() {
         await H.refresh();
         H.go('#/');
         refocus('.center h1');
-        H.toast('The demo is back to its starting point.');
+        H.toast('Back to the starting point.');
       } catch (e) {
         go.disabled = false; go.innerHTML = `${H.icon('refresh')} Try again`;
         msg.textContent = e.message; msg.hidden = false;

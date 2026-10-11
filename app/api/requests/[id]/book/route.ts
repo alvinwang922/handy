@@ -34,14 +34,21 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     if (!provider || !quoteCall) return { status: 400, body: { error: "provider was not part of this request's outreach" } };
     // Only a provider who actually quoted can be approved and booked (no "callback" to someone who never answered).
     const quote = quoteCall.quote;
-    if (quoteCall.terminationType !== "completed" || !quote || (quote.priceLowUsd == null && quote.visitFeeUsd == null)) {
+    if (
+      quoteCall.terminationType !== "completed" || !quote || quote.outcome === "declined" ||
+      (quote.priceLowUsd == null && quote.priceHighUsd == null && quote.visitFeeUsd == null)
+    ) {
       return { status: 409, body: { error: "This provider has no quote to approve" } };
     }
+    // An inspection-only offer approves the visit fee, never an invented repair total.
+    const inspectionOnly = quote.outcome === "inspection_only" || (quote.priceLowUsd == null && quote.priceHighUsd == null);
     req.approval = {
       providerId: provider.id,
-      amountUsd: quote?.priceHighUsd ?? quote?.priceLowUsd ?? null,
+      amountUsd: inspectionOnly ? quote.visitFeeUsd : (quote.priceHighUsd ?? quote.priceLowUsd),
       approvedAt: nowIso(),
       consentText: body.consentText ?? `Approved ${provider.name} at ${formatQuote(quote)}; book one of: ${slots.join("; ")}`,
+      quoteCallId: quoteCall.id,
+      basis: inspectionOnly ? "inspection_visit" : "repair_quote",
     };
     req.userActiveSec += Number(body.userActiveSec) || 0;
     if (req.approval.amountUsd != null) {

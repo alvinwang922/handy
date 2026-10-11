@@ -48,10 +48,30 @@ export interface ProviderScore {
   reason: string;
 }
 
+// Call-result contract additions (eng-design/dial-call-results-contract.md, validated on 3 live calls).
+// All optional, so existing producers and consumers keep working. null = unknown; 0 = explicitly free.
+export type QuoteOutcome = "quote_received" | "inspection_only" | "needs_information" | "declined";
+export type FeeTreatment = "none" | "additional" | "included" | "waived_if_hired" | "unknown";
+export type QuoteField = "repair_price" | "fee" | "fee_treatment" | "scope" | "availability" | "warranty" | "conditions";
+
+export interface QuoteEvidence {
+  field: "price" | "fee" | "availability" | "scope" | "warranty" | "conditions" | "missingInformation";
+  providerText: string;            // provider's words; matched against provider turns after normalization
+  turnIndex?: number | null;       // index into CallRecord.transcriptTurns when known
+}
+
+export interface TranscriptTurn {
+  speaker: "agent" | "user" | "transfer_target"; // on an outbound call, "user" is the provider
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
 export interface Quote {
-  priceLowUsd: number | null;
+  priceLowUsd: number | null;      // repair price only; null for inspection-only offers
   priceHighUsd: number | null;
-  pricingType: "flat" | "hourly" | "visit_fee_plus" | "unknown";
+  // "visit_fee_plus" is legacy: new extractions describe the repair price here and the fee in feeTreatment.
+  pricingType: "flat" | "hourly" | "inspection_only" | "visit_fee_plus" | "unknown";
   visitFeeUsd: number | null;
   availability: string[];
   needsInspection: boolean;        // true → label the estimate "provisional" (PRD §6)
@@ -60,14 +80,22 @@ export interface Quote {
   conditions: string | null;       // e.g. "price confirmed on site", "parts extra"
   notes: string;
   confidence: number;              // < 0.5 → UI shows "unclear — view transcript"
+  outcome?: QuoteOutcome;          // business result; a "completed" call is not proof of a quote
+  collectionStatus?: "complete" | "partial";
+  uncollectedFields?: QuoteField[]; // what OUR agent failed to establish (e.g. availability)
+  missingInformation?: string[];   // what the PROVIDER asked for (e.g. pipe material, close-up photo)
+  feeTreatment?: FeeTreatment;     // "waived_if_hired" is not an extra charge
+  evidence?: QuoteEvidence[];
 }
 
 // PRD principle 1: no booking call without an explicit, recorded approval.
 export interface Approval {
   providerId: string;
-  amountUsd: number | null;        // upper bound of the approved quote
+  amountUsd: number | null;        // upper bound of the approved repair quote, or the visit fee for inspection-only
   approvedAt: string;
   consentText: string;
+  quoteCallId?: string;            // the exact quote call (and its quote) the user approved
+  basis?: "repair_quote" | "inspection_visit";
 }
 
 export interface BookingResult {
@@ -89,6 +117,7 @@ export interface CallRecord {
   terminationType: TerminationType | null;
   durationSec: number | null;
   transcript: string | null;
+  transcriptTurns?: TranscriptTurn[] | null; // speaker-separated; needed for evidence checks and talk-time metrics
   quote: Quote | null;
   booking: BookingResult | null;
   startedAt: string | null;

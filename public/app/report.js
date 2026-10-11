@@ -1,33 +1,35 @@
-/* report.js — #/new: report a problem as a chat with Handy (photo, room, what's happening, name, urgency). */
+/* report.js — #/new: report a problem as a chat with Handy.
+   One required thing (what's happening); photo, name and property are optional and quiet.
+   On Send Handy runs on its own: create the repair, then (unless it is a hazard) ask pros for prices via H.autopilot.
+   Room and urgency are no longer asked; the server still needs them, so we send room:'Other', urgency:'Soon'. */
 (function(){
 const H = window.H;
-const ROOMS = ['Kitchen', 'Bathroom', 'Living room', 'Bedroom', 'Exterior', 'Other'];
-const URGENCY = [
-  ['Routine', 'Routine', 'Whenever is easy, in the next few weeks.'],
-  ['Soon', 'Soon', 'This week, before it gets worse.'],
-  ['Urgent', 'Urgent', 'Today or tomorrow. You can’t use something you need.']
-];
 const SAMPLE = '/assets/sample-sink.svg';
 const MAX_PHOTOS = 3, MAX_SIDE = 1568, MAX_BYTES = 5 * 1024 * 1024;
 const DRAFT_KEY = 'handy-report-draft';
+const DRAFT_FIELDS = ['title', 'description', 'property', 'titleTouched'];
 const BAD_TYPE = 'That photo type can’t be read. Try a JPG or PNG, or take a new photo.';
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---------- Module state (survives core re-renders; text also survives reload) ---------- */
-const blank = () => ({ title:'', description:'', property:null, room:null, urgency:'Soon', titleTouched:false,
-  photos:[], processing:0, photoNote:'', errors:{}, pending:false, serverError:'' });
+const blank = () => ({ title:'', description:'', property:null, titleTouched:false,
+  photos:[], processing:0, photoNote:'', errors:{}, pending:false, stage:'', serverError:'' });
 let S = blank();
-try {
-  const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
-  if (d) ['title','description','property','room','urgency','titleTouched'].forEach(k => { if (d[k] != null) S[k] = d[k]; });
-} catch {}
 const saveDraft = () => {
-  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ title:S.title, description:S.description, property:S.property, room:S.room, urgency:S.urgency, titleTouched:S.titleTouched })); } catch {}
+  try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(DRAFT_FIELDS.map(k => [k, S[k]])))); } catch {}
 };
 const clearDraft = () => { try { sessionStorage.removeItem(DRAFT_KEY); } catch {} };
+try {
+  const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
+  if (d) {
+    DRAFT_FIELDS.forEach(k => { if (d[k] != null) S[k] = d[k]; });
+    if ('room' in d || 'urgency' in d) saveDraft(); /* drop old room/urgency fields from earlier drafts */
+  }
+} catch {}
 
-const isManager = st => st.role === 'manager';
+const manager = () => (H.isManager ? H.isManager() : H.state.role === 'manager');
 const propertyFor = st => {
-  if (!isManager(st)) return 'p1';
+  if (!manager()) return 'p1';
   const ids = (st.properties || []).map(p => p.id);
   if (S.property && ids.includes(S.property)) return S.property;
   if (st.propertyFilter && ids.includes(st.propertyFilter)) return st.propertyFilter;
@@ -40,13 +42,23 @@ const titleFrom = text => {
   const t = words.length > 60 ? words.slice(0, 60).replace(/\s+\S*$/, '') : words;
   return t ? t[0].toUpperCase() + t.slice(1) : '';
 };
+const titleFor = () => (S.title.trim() || titleFrom(S.description) || S.description.trim().slice(0, 60) || 'Repair').slice(0, 120);
+const kindError = err => {
+  if (!err || err.status === 0) return (err && err.message) || 'Can’t reach Handy right now. Please try again.';
+  if (err.status >= 500) return 'Handy hit a snag on its side. Your words are still here, so please try again in a moment.';
+  return `That didn’t send. ${err.message || 'Please try again.'}`;
+};
+const STAGE = {
+  look: () => S.photos.length ? 'Looking at your photo…' : 'Reading what you wrote…',
+  call: () => 'Calling pros for prices…'
+};
 
 /* ---------- CSS (injected once) ---------- */
 if (!document.getElementById('css-report')) {
   const st = document.createElement('style'); st.id = 'css-report';
   st.textContent = `
 .rp{display:flex;flex-direction:column;flex:1}
-.rp .thread{gap:12px;padding:20px 16px 8px;overflow:visible}
+.rp .thread{gap:12px;padding:20px 16px 24px;overflow:visible}
 .rp .step{align-self:stretch;display:flex;flex-direction:column;gap:12px;margin:4px 0 12px}
 .rp .bu.h + .step{margin-top:0}
 .rp .pick{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -62,32 +74,32 @@ if (!document.getElementById('css-report')) {
 .rp .shot .lbl{position:absolute;left:10px;bottom:10px}
 .rp .busy{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink2);align-self:flex-end}
 .rp .busy .typing{padding:10px 12px}
-.rp .where{display:flex;align-items:center;gap:8px;font-size:17px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--pinned)}
-.rp .where .ic{color:var(--green)}
 .rp .field{margin-bottom:0}
-.rp .field .lab{font-weight:700}
-.rp .qr{margin:0}
-.rp .qr button{min-height:48px}
-.rp .urg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.rp .urg button{min-height:72px;border:1.5px solid #C9C3B6;border-radius:14px;background:#fff;cursor:pointer;text-align:left;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:2px}
-.rp .urg button:hover{border-color:var(--green)}
-.rp .urg button b{font-size:17px}
-.rp .urg button small{font-size:15px;color:var(--ink2);line-height:1.3}
-.rp .urg button[aria-pressed="true"]{border-color:var(--green);background:var(--green-tint);color:var(--green)}
-.rp .urg button[aria-pressed="true"] small{color:var(--green-press)}
-.rp .field.err .qr button{border-color:var(--red)}
-.rp .count{font-size:15px;color:var(--ink3);text-align:right;font-variant-numeric:tabular-nums}
+/* The one required field: strong label, firm border, roomy box */
+.rp .req label{font-size:18px;font-weight:700;color:var(--ink)}
+.rp .req textarea{min-height:132px;border:2px solid var(--ink3);border-radius:14px;padding:14px 16px;line-height:1.45}
+.rp .req textarea:focus{border-color:var(--green);outline:none;box-shadow:0 0 0 3px var(--green-tint)}
+.rp .req.err textarea{border-color:var(--red)}
+/* Optional fields: quieter label, lighter border, soft fill */
+.rp .opt-group{display:flex;flex-direction:column;gap:14px;padding-top:4px}
+.rp .opt label{font-size:16px;font-weight:600;color:var(--ink2);display:flex;align-items:baseline;gap:8px}
+.rp .opt label .o{font-size:15px;font-weight:400;color:var(--ink3)}
+.rp .opt input,.rp .opt select{min-height:48px;border:1px solid #CFC9BC;background:var(--pinned);color:var(--ink);font-size:17px}
+.rp .opt input:focus,.rp .opt select:focus{background:#fff;border-color:var(--green);outline:none;box-shadow:0 0 0 3px var(--green-tint)}
+.rp .opt .hint{color:var(--ink3)}
+.rp .where{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink2)}
+.rp .where .ic{width:18px;height:18px;color:var(--ink3)}
 .rp .dock{display:flex;flex-direction:column;gap:8px}
 .rp .dock .acts{display:flex;align-items:center;gap:12px}
 .rp .dock .acts .btn.plain{min-height:52px;padding:0 12px}
-.rp .dock .why{font-size:15px;color:var(--ink2);margin:0}
+.rp .dock .why{font-size:15px;color:var(--ink2);margin:0;display:flex;gap:6px;align-items:center}
+.rp .dock .why .ic{width:18px;height:18px;color:var(--green)}
 .rp .wait{display:flex;flex-direction:column;gap:10px;scroll-margin-bottom:calc(var(--dock-h,96px) + 16px)}
-.rp .thread{padding-bottom:24px}
-.rp .wait .say{font-size:15px;color:var(--ink2);display:flex;align-items:center;gap:8px}
+.rp .wait .bu.u p{overflow-wrap:anywhere}
+.rp .wait .say{display:flex;align-items:center;gap:10px;font-size:15px;color:var(--ink2)}
+.rp .wait .say span{transition:opacity .25s cubic-bezier(.16,1,.3,1)}
 .rp textarea::placeholder,.rp input::placeholder{color:var(--ink3)}
 @media (max-width:639px){
-  .rp .urg{grid-template-columns:1fr}
-  .rp .urg button{min-height:60px}
   .rp .shot{width:104px;height:104px}
   .rp .pick .btn{flex-basis:100%}
 }`;
@@ -119,12 +131,12 @@ const photosHtml = () => {
 };
 
 const propertyHtml = st => {
-  if (!isManager(st)) {
+  if (!manager()) {
     const p = H.prop && H.prop('p1');
-    return `<div class="where">${H.icon('home')}<span>${H.esc(p ? `${p.name} · ${p.unit}` : 'Maple House · Main home')}</span></div>`;
+    return `<div class="where">${H.icon('home')}<span>For ${H.esc(p ? `${p.name} · ${p.unit}` : 'Maple House')}</span></div>`;
   }
   const cur = propertyFor(st);
-  return `<div class="field"><label for="rp-prop">Which property?</label>
+  return `<div class="field opt"><label for="rp-prop">Which property?</label>
     <select id="rp-prop" ${S.pending ? 'disabled' : ''}>${(st.properties || []).map(p => `<option value="${H.esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${H.esc(p.name)} · ${H.esc(p.unit)}</option>`).join('')}</select></div>`;
 };
 
@@ -133,42 +145,35 @@ const render = st => {
   if (H._lastRoute !== '#/new' && !S.pending) { S.errors = {}; S.serverError = ''; S.photoNote = ''; }
   const dis = S.pending ? 'disabled' : '';
   const firstName = (st.actor && st.actor.name ? st.actor.name.split(' ')[0] : '');
-  const hasPhoto = S.photos.length > 0;
+  const said = S.description.trim();
   return `<form class="rp" novalidate aria-busy="${S.pending}">
   <div class="thread">
-    ${H.h(`<p>${firstName ? `Hi ${H.esc(firstName)}. ` : ''}What needs fixing?</p><p>Send me a photo of the problem. Get close, and show any water or damage.</p>`)}
+    ${H.h(`<p>${firstName ? `Hi ${H.esc(firstName)}. ` : ''}What needs fixing?</p><p>A photo helps. Get close, and show any water or damage.</p>`)}
     <div class="step" id="rp-photos">${photosHtml()}</div>
-    ${H.h(`<p>${hasPhoto ? 'Got it. ' : ''}Where is it, and what’s happening?</p>`)}
+    ${H.h(`<p>${S.photos.length ? 'Got it. ' : ''}Now tell me what’s happening.</p>`)}
     <div class="step">
-      ${propertyHtml(st)}
-      <div class="field ${S.errors.room ? 'err' : ''}" id="f-room"><span class="lab" id="rp-room-l">Room</span>
-        <div class="qr" role="group" aria-labelledby="rp-room-l" ${S.errors.room ? 'aria-describedby="err-room"' : ''}>
-          ${ROOMS.map(r => `<button type="button" data-room="${H.esc(r)}" aria-pressed="${r === S.room}" ${dis}>${H.esc(r)}</button>`).join('')}
-        </div>${errMsg('room')}</div>
-      <div class="field ${S.errors.description ? 'err' : ''}"><label for="rp-desc">What’s happening?</label>
-        <textarea id="rp-desc" maxlength="1200" placeholder="For example: water drips from the pipe under the sink when it runs." aria-describedby="${described('description', 'rp-desc-h')}" ${S.errors.description ? 'aria-invalid="true"' : ''} ${dis}>${H.esc(S.description)}</textarea>
-        <span class="hint" id="rp-desc-h">Mention any smell of gas, sparks or flooding.</span>${errMsg('description')}</div>
-      <div class="field ${S.errors.title ? 'err' : ''}"><label for="rp-title">Name it in a few words</label>
-        <input id="rp-title" maxlength="120" autocomplete="off" placeholder="Leaky kitchen sink" value="${H.esc(S.title)}" aria-describedby="${described('title', 'rp-title-h')}" ${S.errors.title ? 'aria-invalid="true"' : ''} ${dis}>
-        <span class="hint" id="rp-title-h">This is how the repair shows in your list.</span>${errMsg('title')}</div>
-    </div>
-    ${H.h('<p>How soon does it need fixing?</p>')}
-    <div class="step">
-      <div class="urg" role="group" aria-label="How soon">
-        ${URGENCY.map(([v, head, sub]) => `<button type="button" data-urg="${v}" aria-pressed="${v === S.urgency}" ${dis}><b>${H.esc(head)}</b><small>${H.esc(sub)}</small></button>`).join('')}
+      <div class="field req ${S.errors.description ? 'err' : ''}"><label for="rp-desc">What’s happening?</label>
+        <textarea id="rp-desc" maxlength="1200" placeholder="For example: water drips from the pipe under the kitchen sink when it runs." aria-required="true" aria-describedby="${described('description', 'rp-desc-h')}" ${S.errors.description ? 'aria-invalid="true"' : ''} ${dis}>${H.esc(S.description)}</textarea>
+        <span class="hint" id="rp-desc-h">Say which room it’s in. Mention any smell of gas, sparks or flooding.</span>${errMsg('description')}</div>
+      <div class="opt-group">
+        <div class="field opt"><label for="rp-title">Name it <span class="o">Optional</span></label>
+          <input id="rp-title" maxlength="120" autocomplete="off" placeholder="Handy names it for you" value="${H.esc(S.title)}" aria-describedby="rp-title-h" ${dis}>
+          <span class="hint" id="rp-title-h">How it shows in your list. Filled in from what you wrote.</span></div>
+        ${propertyHtml(st)}
       </div>
     </div>
     ${S.pending ? `<div class="wait">
-      ${H.u(`<p>${H.esc(S.title)}</p>`)}
-      <div class="say" role="status">${H.typing()}<span>${hasPhoto ? 'Looking at your photo…' : 'Reading what you wrote…'}</span></div>
+      ${H.u(`<p>${H.esc(said.length > 160 ? said.slice(0, 157) + '…' : said)}</p>`)}
+      <div class="say" role="status" aria-live="polite">${H.typing()}<span id="rp-stage">${H.esc((STAGE[S.stage] || STAGE.look)())}</span></div>
     </div>` : ''}
   </div>
   <div class="dock">
     ${S.serverError ? `<div class="note red" role="alert">${H.icon('alert')}<span>${H.esc(S.serverError)}</span></div>` : ''}
     <div class="acts">
       <button type="submit" class="btn" id="rp-send" ${S.pending || S.processing ? 'disabled' : ''}>${S.pending ? 'Sending…' : S.processing ? 'Getting your photo ready…' : `Send to Handy ${H.icon('arrow')}`}</button>
-      <a class="btn plain" href="#/" data-cancel>Cancel</a>
+      ${S.pending ? '' : `<a class="btn plain" href="#/" data-cancel>Cancel</a>`}
     </div>
+    ${S.pending ? '' : `<p class="why">${H.icon('shield')}Handy then calls pros for prices. Nothing is booked until you say yes.</p>`}
   </div>
 </form>`;
 };
@@ -205,6 +210,13 @@ async function toJpeg(file) {
 }
 
 /* ---------- Bind ---------- */
+const scrollWait = () => {
+  const c = document.querySelector('.center');
+  if (c && c.scrollHeight > c.clientHeight) c.scrollTo({top:c.scrollHeight, behavior:'smooth'});
+  window.scrollTo({top:document.documentElement.scrollHeight, behavior:'smooth'});
+};
+const onNew = () => H.route && H.route.name === 'new';
+
 const bind = root => {
   const form = root.querySelector('form.rp'); if (!form) return;
   const $ = s => form.querySelector(s);
@@ -220,7 +232,11 @@ const bind = root => {
     delete S.errors[key];
     const el = form.querySelector(`#err-${key}`), field = el && el.closest('.field');
     if (el) el.remove();
-    if (field) { field.classList.remove('err'); field.querySelectorAll('[aria-invalid]').forEach(x => x.removeAttribute('aria-invalid')); }
+    if (field) {
+      field.classList.remove('err');
+      field.querySelectorAll('[aria-invalid]').forEach(x => x.removeAttribute('aria-invalid'));
+      field.querySelectorAll('[aria-describedby]').forEach(x => x.setAttribute('aria-describedby', x.getAttribute('aria-describedby').replace(`err-${key}`, '').trim()));
+    }
   };
 
   /* Hidden file inputs live outside the re-rendered photo box */
@@ -241,8 +257,7 @@ const bind = root => {
     const room = MAX_PHOTOS - S.photos.length - S.processing;
     if (files.length > room) S.photoNote = `Handy can take ${MAX_PHOTOS} photos. I kept the first ${Math.max(room, 0)}.`;
     const take = files.slice(0, Math.max(room, 0));
-    const bad = take.filter(f => !readable(f));
-    if (bad.length) S.photoNote = BAD_TYPE;
+    if (take.some(f => !readable(f))) S.photoNote = BAD_TYPE;
     const good = take.filter(readable);
     S.processing += good.length; repaintPhotos();
     await Promise.all(good.map(async f => {
@@ -250,7 +265,7 @@ const bind = root => {
       catch (e) { S.photoNote = e && e.message === 'size' ? 'That photo is too large to send. Try taking a new one.' : BAD_TYPE; }
       finally { S.processing--; }
     }));
-    if (form.isConnected) repaintPhotos(); else if (H.route && H.route.name === 'new') H.render();
+    if (form.isConnected) repaintPhotos(); else if (onNew()) H.render();
   }
 
   function bindPhotos() {
@@ -259,7 +274,7 @@ const bind = root => {
     if (sample) sample.addEventListener('click', () => {
       if (S.photos.length + S.processing >= MAX_PHOTOS || S.photos.includes(SAMPLE)) return;
       S.photos.push(SAMPLE); S.photoNote = ''; repaintPhotos();
-      const next = $('[data-pick="library"]') || $('[data-room]'); if (next) next.focus({preventScroll:true});
+      const next = $('#rp-desc'); if (next && !next.value.trim()) next.focus({preventScroll:true});
     });
     form.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
       S.photos.splice(+b.dataset.rm, 1); S.photoNote = ''; repaintPhotos();
@@ -271,70 +286,67 @@ const bind = root => {
   const prop = $('#rp-prop');
   if (prop) prop.addEventListener('change', () => { S.property = prop.value; saveDraft(); });
 
-  form.querySelectorAll('[data-room]').forEach(b => b.addEventListener('click', () => {
-    S.room = b.dataset.room; saveDraft(); clearErr('room');
-    form.querySelectorAll('[data-room]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  }));
-  form.querySelectorAll('[data-urg]').forEach(b => b.addEventListener('click', () => {
-    S.urgency = b.dataset.urg; saveDraft();
-    form.querySelectorAll('[data-urg]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  }));
-
   const desc = $('#rp-desc'), title = $('#rp-title');
   desc.addEventListener('input', () => {
     S.description = desc.value;
-    if (!S.titleTouched) { S.title = titleFrom(desc.value); title.value = S.title; if (S.title) clearErr('title'); }
+    if (!S.titleTouched) { S.title = titleFrom(desc.value); title.value = S.title; }
     if (desc.value.trim()) clearErr('description');
     saveDraft();
   });
   title.addEventListener('input', () => {
     S.title = title.value; S.titleTouched = title.value.trim() !== '';
-    if (title.value.trim()) clearErr('title');
     saveDraft();
   });
 
-  $('[data-cancel]').addEventListener('click', e => { e.preventDefault(); if (!S.pending) { clearDraft(); S = blank(); } H.go('#/'); });
+  const cancel = $('[data-cancel]');
+  if (cancel) cancel.addEventListener('click', e => { e.preventDefault(); if (!S.pending) { clearDraft(); S = blank(); } H.go('#/'); });
 
   form.addEventListener('submit', async e => {
     e.preventDefault();
-    if (S.pending || S.processing) return;
+    if (S.pending || S.processing || H.state.busy) return;
     S.description = desc.value; S.title = title.value;
-    if (!S.title.trim() && S.description.trim()) { S.title = titleFrom(S.description); }
-    const errors = {};
-    if (!S.room) errors.room = 'Choose the room it’s in.';
-    if (!S.description.trim()) errors.description = 'Tell Handy what’s happening, in a sentence or two.';
-    if (!S.title.trim()) errors.title = 'Give it a short name, like “Leaky kitchen sink”.';
-    S.errors = errors; S.serverError = '';
-    if (Object.keys(errors).length) {
+    S.errors = {}; S.serverError = '';
+    if (!S.description.trim()) {
+      S.errors.description = 'Tell Handy what’s happening, in a sentence or two.';
       H.render();
-      const c = document.querySelector('.center form.rp');
-      const first = errors.room ? c.querySelector('[data-room]') : errors.description ? c.querySelector('#rp-desc') : c.querySelector('#rp-title');
-      if (first) { first.focus({preventScroll:true}); (first.closest('.field') || first).scrollIntoView({block:'center'}); }
+      const t = document.querySelector('.center form.rp #rp-desc');
+      if (t) { t.focus({preventScroll:true}); t.closest('.field').scrollIntoView({block:'center'}); }
       return;
     }
-    const body = { title:S.title.trim(), description:S.description.trim(), property:propertyFor(st), room:S.room, urgency:S.urgency, photos:S.photos.slice() };
-    S.pending = true; H.render();
-    const scrollWait = () => {
-      /* Scroll the pane to its end so the Handy typing bubble sits just above the pinned send bar */
-      const c = document.querySelector('.center');
-      if (c && c.scrollHeight > c.clientHeight) c.scrollTo({top:c.scrollHeight, behavior:'smooth'});
-      window.scrollTo({top:document.documentElement.scrollHeight, behavior:'smooth'});
-    };
-    scrollWait();
-    try {
-      const { repair } = await H.api('POST', '/api/repairs', body);
-      clearDraft(); S = blank();
-      H.upsert(repair);
-      if (H.route && H.route.name === 'new') H.go('#/repair/' + repair.id);
-      else { H.toast('Sent to Handy. Your repair is in the list.'); H.render(); }
-    } catch (err) {
-      S.pending = false; S.serverError = err.message || 'Something went wrong. Please try again.';
-      if (H.route && H.route.name === 'new') {
+    const body = { title:titleFor(), description:S.description.trim(), property:propertyFor(st),
+      room:'Other', urgency:'Soon', photos:S.photos.slice() };
+    S.pending = true; S.stage = 'look'; H.render(); scrollWait();
+
+    let repair;
+    try { [{ repair }] = await Promise.all([H.api('POST', '/api/repairs', body), sleep(900)]); /* let the first step be readable */ }
+    catch (err) {
+      S.pending = false; S.stage = ''; S.serverError = kindError(err);
+      if (onNew()) {
         H.render();
         const n = document.querySelector('.center form.rp .dock .note'); if (n) n.scrollIntoView({block:'nearest'});
         const b = document.querySelector('#rp-send'); if (b) b.focus({preventScroll:true});
       }
+      return;
     }
+
+    const hazard = repair.status === 'hazard';
+    if (!hazard && onNew()) {
+      /* Show the next step in place for a beat before opening the repair */
+      S.stage = 'call';
+      const s = document.getElementById('rp-stage'); if (s) s.textContent = STAGE.call();
+      await sleep(700);
+    }
+    const stillHere = onNew();
+    clearDraft(); S = blank();
+    if (stillHere) H.go('#/repair/' + repair.id); /* go first so the upsert renders the repair, not a blank form */
+    H.upsert(repair);
+    if (!stillHere) H.toast(hazard ? 'Sent. Handy flagged a possible safety issue.' : 'Sent to Handy. It is getting prices now.');
+    if (hazard) return;
+
+    /* Fully autonomous: ask pros for prices right away. Hold busy so no one else requests prices twice. */
+    H.state.busy = true;
+    try { await H.autopilot(repair); }
+    finally { H.state.busy = false; H.render(); }
   });
 };
 

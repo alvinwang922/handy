@@ -158,7 +158,7 @@ const timeline = r => {
     const add = (icon, text, extra = {}) => { const it = {icon, text, at, ...extra}; items.push(it); return it; };
     switch (e.type) {
       case 'handoff.created': break;
-      case 'issue.created': add('camera', 'You reported the problem', {sub: [r.room, e.payload && e.payload.urgency].filter(Boolean).join(' · ')}); break;
+      case 'issue.created': add('camera', 'You reported the problem', {sub: r.room && r.room !== 'Other' ? r.room : ''}); break;
       case 'photo.added': add('image', p.demoPhoto ? 'Sample photo added' : 'Photo added'); break;
       case 'assessment.proposed': add('wrench', items.some(i => i.edited) ? 'Handy made a new guess' : 'Handy made a first guess'); break;
       case 'hazard.flagged': add('alert', 'Flagged as possibly dangerous — finding pros paused', {cls:'warn'}); break;
@@ -211,13 +211,13 @@ const section = (key, title, body, collapsible, open) => collapsible
 const summary = r => {
   const p = H.prop(r.property);
   const step = H.statusStep[r.status] || 1;
-  const place = [p && p.name, p && p.unit, r.room].filter(Boolean).join(' · ');
+  const place = [p && p.name, p && p.unit, r.room !== 'Other' && r.room].filter(Boolean).join(' · ');
   const urg = r.urgency === 'Urgent' ? 'tag amber' : 'tag';
   const word = H.statusWords[r.status] || humanize(r.status);
   const statusTag = r.status === 'hazard' ? `<span class="tag red">${H.icon('alert')} ${esc(word)}</span>` : `<span class="tag">${esc(word)}</span>`;
   return `<h3>${esc(r.title)}</h3>
     ${place ? `<p class="dt-sub">${esc(place)}</p>` : ''}
-    <div class="dt-line"><span class="${urg}">${esc(r.urgency || 'Routine')}</span>${statusTag}</div>
+    <div class="dt-line">${statusTag}</div>
     <ol class="dt-steps" aria-label="Step ${step} of 3">${['Guess','Prices','Booked'].map((l, i) => `<li class="${i < step ? 'on' : ''}"${i === step - 1 ? ' aria-current="step"' : ''}>${l}</li>`).join('')}</ol>`;
 };
 
@@ -234,7 +234,7 @@ const approval = (r, S) => {
   const ev = (r.events || []).find(e => e.type === 'quote.approved' && e.payload && e.payload.approvalId === a.id);
   const who = (ev && ev.actor && ev.actor.name) || (S && S.actor && S.actor.id === a.userId && S.actor.name) || 'you';
   return `<div class="dt-ok">${H.icon('shield')}<p>You approved <b>${esc(a.providerName)}</b> for <b class="amt">${esc(H.money(a.amountCents))}</b> on ${esc(fullWhen(a.timestamp))}.</p></div>
-    ${a.consentText ? `<blockquote>“${esc(a.consentText)}”</blockquote>` : ''}
+    <blockquote>“I approve this pro and this provisional price.”</blockquote>
     <p class="dt-sub" style="margin-top:10px">Approved by ${esc(who)}</p>`;
 };
 

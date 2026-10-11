@@ -194,3 +194,16 @@ body{background:var(--stage)}
 .icon-btn{width:48px;height:48px;border:0;background:none;border-radius:12px;display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .icon-btn:hover{background:var(--pinned)}
 .err-box{margin:12px 16px}
+
+/* ---------- App chooser (index.html) ---------- */
+.choose{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;background:var(--stage)}
+.choose-in{max-width:720px;width:100%;background:var(--bg);border-radius:28px;box-shadow:var(--shadow);padding:40px 32px}
+.choose-in h1{font-size:34px;margin:16px 0 8px}
+.choose-in .av{width:56px;height:56px}
+.choose-in .av .ic{width:28px;height:28px}
+.choose-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+@media (max-width:560px){.choose-grid{grid-template-columns:1fr}.choose-in{padding:28px 20px}}
+.choose-card{display:flex;flex-direction:column;gap:6px;padding:22px 20px;border:1.5px solid var(--line);border-radius:18px;text-decoration:none;color:var(--ink);min-height:120px;justify-content:center}
+.choose-card:hover{border-color:var(--green);background:var(--green-tint)}
+.choose-card .t{font-size:21px;font-weight:800}
+.choose-card .s{color:var(--ink2)}

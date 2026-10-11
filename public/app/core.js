@@ -10,7 +10,10 @@
        H.ui.report    = {render(state) , bind(root)}                       → report.js   (#/new)
        H.ui.insights  = {render(state) , bind(root)}                       → insights.js (#/insights)
        H.ui.details   = {render(repair, state), bind(root, repair)}        → details.js  (right panel for #/repair/<id>)
-       H.ui.home      = {render(state) , bind(root)}                       → rail.js     (#/ center: welcome / empty state)
+       H.ui.dashboard.owner   = {render(state), bind(root)}                 → dash-owner.js   (#/ center for the homeowner app)
+       H.ui.dashboard.manager = {render(state), bind(root)}                 → dash-manager.js (#/ center for the property-manager app)
+     Role is fixed per app (owner.html / manager.html): H.ROLE, H.isManager(), H.myRepairs().
+     Autopilot: H.autopilot(repair) after report; H.approveAndBook(repair, quote, access) on Yes.
      Thread for #/repair/<id> = core pin + concatenated history parts + the dock of the part that owns repair.status:
        H.part(name, {history(repair) → html|'' , owns:[statuses], dock(repair) → html, bind(root, repair)})
        Parts render in this order: intake, assessment (assess.js) · quotes (quotes.js) · scheduling, booked (booking.js)
@@ -88,8 +91,13 @@ H.api = async (method, path, body) => {
 
 /* ---------- State ---------- */
 const saved = JSON.parse(localStorage.getItem('handy-ui') || '{}');
-H.state = { repairs:[], properties:[], metrics:null, integrations:[], actor:null, role: saved.role || 'owner', propertyFilter: saved.propertyFilter || 'all', busy:false, error:null, loaded:false };
-H.saveUi = () => localStorage.setItem('handy-ui', JSON.stringify({role:H.state.role, propertyFilter:H.state.propertyFilter}));
+H.state = { repairs:[], properties:[], metrics:null, integrations:[], actor:null, role: window.HANDY_ROLE || 'owner', propertyFilter: saved.propertyFilter || 'all', busy:false, error:null, loaded:false };
+H.saveUi = () => localStorage.setItem('handy-ui', JSON.stringify({propertyFilter:H.state.propertyFilter}));
+/* Two separate apps: owner.html sets window.HANDY_ROLE='owner', manager.html sets 'manager'. The role is fixed per app. */
+H.ROLE = H.state.role;
+H.isManager = () => H.ROLE === 'manager';
+/* Repairs this app shows: homeowners see their one home (p1, Maple House); managers see every property. */
+H.myRepairs = () => H.isManager() ? H.state.repairs : H.state.repairs.filter(r => r.property === 'p1');
 H.refresh = async () => {
   try { Object.assign(H.state, await H.api('GET','/api/bootstrap'), {error:null, loaded:true}); }
   catch (e) { H.state.error = e.message; H.state.loaded = true; }
@@ -115,11 +123,31 @@ H.mutate = async (id, action, body = {}) => {
   }
 };
 
+/* ---------- Autopilot (user feedback: fully autonomous after Send; one tap on Yes books it) ----------
+   H.autopilot(repair)      → after a report is created: if not a hazard, immediately requests prices (POST quotes). Returns latest repair.
+   H.approveAndBook(r, q, access='') → approve quote q with consent, then book the earliest future window q offers. Returns booked repair or null.
+   Both use H.api directly (not H.mutate) so they can chain; they set H.state.busy/H.state.error and upsert each step. */
+H.autopilot = async repair => {
+  if (!repair || repair.status !== 'assessment') return repair;
+  try { const { repair: r } = await H.api('POST', `/api/repairs/${repair.id}/quotes`, {}); H.upsert(r); return r; }
+  catch (e) { H.state.error = e.message; H.render(); H.toast(e.message); return repair; }
+};
+H.approveAndBook = async (r, q, access = '') => {
+  if (H.state.busy) return null;
+  H.state.busy = true; H.state.error = null;
+  try {
+    let { repair } = await H.api('POST', `/api/repairs/${r.id}/approve`, { quoteId: q.id, amountCents: q.amountCents, consent: true });
+    const win = (q.windows || []).filter(w => Date.parse(w.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start))[0];
+    if (win) ({ repair } = await H.api('POST', `/api/repairs/${r.id}/book`, { windows: [win], access }));
+    H.state.busy = false; H.upsert(repair); return repair;
+  } catch (e) { H.state.busy = false; H.state.error = e.message; H.render(); H.toast(e.message); return null; }
+};
+
 /* ---------- Parts registry ---------- */
 H.parts = {};
 H.part = (name, def) => { H.parts[name] = def; };
 const ORDER = ['intake','assessment','quotes','scheduling','booked'];
-H.ui = {};
+H.ui = { dashboard: {} };
 
 /* ---------- Timers ---------- */
 let timers = [];
@@ -178,10 +206,11 @@ H.render = () => {
     H.api('GET', `/api/repairs/${route.id}`).then(d => H.upsert(d.repair)).catch(() => H.render());
     center = header('Handy', 'Your repair helper', true) + `<div class="loading">${H.typing()} Opening your repair…</div>`;
   } else if (route.name === 'repair') center = header('Handy', 'Your repair helper', true) + `<div class="page"><h1>We couldn’t find that repair</h1><p class="lead">It may have been removed when the demo was reset.</p><button class="btn" data-nav="#/">Back to your repairs</button></div>`;
-  else center = header('Handy', 'Your repair helper', false) + errorBox() + (H.ui.home ? safe(() => H.ui.home.render(S)) : '');
+  else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; center = header('Handy', H.isManager() ? 'Property manager' : 'Your repair helper', false) + errorBox() + (dash ? safe(() => dash.render(S)) : ''); }
   const showDetails = !!repair && !!H.ui.details;
   root.className = 'shell' + (showDetails ? '' : ' no-details');
-  root.dataset.pane = route.name === 'home' ? 'list' : 'main';
+  /* Phones show one pane: the role's dashboard on #/ (it lists the repairs), otherwise the selected screen */
+  root.dataset.pane = route.name === 'home' && !(H.ui.dashboard && H.ui.dashboard[H.ROLE]) ? 'list' : 'main';
   root.innerHTML = `
     <nav class="rail" aria-label="Your repairs">${H.ui.rail ? safe(() => H.ui.rail.render(S)) : ''}</nav>
     <main class="center"><div class="center-inner">${center}</div></main>
@@ -196,7 +225,7 @@ H.render = () => {
     ORDER.forEach(n => H.parts[n] && H.parts[n].bind && safe(() => H.parts[n].bind(center$, repair)));
     if (showDetails && H.ui.details.bind) safe(() => H.ui.details.bind(det, repair));
     H.scrollToEnd();
-  } else safe(() => H.ui.home && H.ui.home.bind && H.ui.home.bind(center$));
+  } else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; safe(() => dash && dash.bind && dash.bind(center$)); }
   const focusHeading = () => { const h = center$.querySelector('h1, .hd .n'); if (h) { h.tabIndex = -1; h.focus({preventScroll:true}); } };
   if (H._lastRoute !== location.hash) { H._lastRoute = location.hash; focusHeading(); }
   else if (hadFocus && !(document.activeElement && root.contains(document.activeElement) && document.activeElement !== root)) {

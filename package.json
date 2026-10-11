@@ -11,6 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "smoke:dial": "tsx --env-file=.env.local scripts/smoke-live-quote.ts",
+    "smoke:booking": "tsx --env-file=.env.local scripts/smoke-live-booking.ts",
     "prototype:darwin": "tsx prototypes/darwin-discovery/run.ts",
     "test:darwin": "vitest run --config prototypes/darwin-discovery/vitest.config.ts",
     "seed:keewano": "tsx --env-file=.env.local scripts/seed-keewano.ts",

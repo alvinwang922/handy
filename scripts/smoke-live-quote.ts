@@ -5,6 +5,8 @@ import { DialClient } from "@getdial/sdk";
 import { getProvider, getRequest, listRequests, nowIso, saveRequest } from "../lib/store";
 import { refresh, startQuoteCalls } from "../lib/orchestrator";
 import type { RepairRequest } from "../lib/types";
+import { buildRepairPacket } from "../lib/communications/packet";
+import type { MessageDeliveryState, PhotoReviewState } from "../lib/communications/types";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const emit = (event: string, details: Record<string, unknown> = {}) =>
@@ -14,6 +16,66 @@ const providerOverridesPath = path.join(dataDir, "providers.local.json");
 const restorePath = path.join(dataDir, "live-smoke-restore.local.json");
 
 class SmokeError extends Error {}
+
+interface PhotoSendResult {
+  messageId: string;
+  dialMessageId: string | null;
+  dispatchState: string;
+  deliveryState: MessageDeliveryState;
+  photoReviewState: PhotoReviewState;
+  mode: "live" | "mock";
+}
+
+function localAppUrl(): URL {
+  const url = new URL(required("HANDY_APP_URL"));
+  if (url.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+    || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new SmokeError("HANDY_APP_URL must be a local HTTP origin for the same checkout.");
+  }
+  return url;
+}
+
+function approvedPhotoPath(): string | null {
+  const argument = process.argv.find((value) => value.startsWith("--photo="));
+  if (!argument) return null;
+  const photoPath = fs.realpathSync(path.resolve(argument.slice("--photo=".length)));
+  const uploadRoot = fs.realpathSync(path.join(dataDir, "uploads"));
+  const relative = path.relative(uploadRoot, photoPath);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative) || !fs.statSync(photoPath).isFile()) {
+    throw new SmokeError("--photo must be an approved JPEG/PNG file inside this checkout's data/uploads directory.");
+  }
+  return path.relative(process.cwd(), photoPath);
+}
+
+async function sendPhotoDuringCall(request: RepairRequest, providerId: string, callId: string): Promise<PhotoSendResult> {
+  const origin = localAppUrl();
+  const route = `/api/requests/${encodeURIComponent(request.id)}`;
+  const previewResponse = await fetch(new URL(`${route}/packet?providerId=${encodeURIComponent(providerId)}`, origin), {
+    signal: AbortSignal.timeout(15_000),
+  });
+  const preview = await previewResponse.json() as { requestId?: string; packetVersion?: string; canSend?: boolean };
+  const localPacket = buildRepairPacket(request);
+  if (!previewResponse.ok || !preview.canSend || preview.requestId !== request.id || preview.packetVersion !== localPacket.packetVersion) {
+    throw new SmokeError("The local server did not approve the exact saved photo packet; nothing was sent.");
+  }
+  // One request, one stable key. A timeout is uncertain and must not automatically resend.
+  const response = await fetch(new URL(`${route}/share-packet`, origin), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": `handy-smoke:${request.id}:${preview.packetVersion}` },
+    body: JSON.stringify({ providerId, packetVersion: preview.packetVersion, callId }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const sent = await response.json() as Partial<PhotoSendResult> & { id?: string };
+  if (!sent.id || !sent.dispatchState || !sent.deliveryState || !sent.photoReviewState || !sent.mode) {
+    throw new SmokeError("Photo endpoint did not return a valid send record; inspect private message state before retrying.");
+  }
+  const result: PhotoSendResult = {
+    messageId: sent.id, dialMessageId: sent.dialMessageId ?? null, dispatchState: sent.dispatchState,
+    deliveryState: sent.deliveryState, photoReviewState: sent.photoReviewState, mode: sent.mode,
+  };
+  emit("photo_message_result", { requestId: request.id, ...result });
+  return result;
+}
 
 interface RecoveryRecord {
   schemaVersion: 1;
@@ -103,8 +165,17 @@ async function main() {
   if (process.env.HANDY_LIVE_DEMO !== "1") {
     throw new SmokeError("Set HANDY_LIVE_DEMO=1 to acknowledge one controlled Dial-to-Dial test call.");
   }
-  if (process.env.MOCK_DIAL === "1" || process.env.MOCK_CLAUDE !== "1") {
-    throw new SmokeError("The smoke test requires live Dial and the deterministic extractor (MOCK_DIAL=0, MOCK_CLAUDE=1).");
+  const liveExtraction = process.argv.includes("--live-extraction");
+  if (["1", "true"].includes(process.env.MOCK_DIAL ?? "")) {
+    throw new SmokeError("The smoke test requires live Dial (MOCK_DIAL=0).");
+  }
+  if (liveExtraction) {
+    if ([process.env.MOCK_CLAUDE, process.env.MOCK_CLAUDE_EXTRACT].some((value) => value === "1" || value === "true")) {
+      throw new SmokeError("--live-extraction requires MOCK_CLAUDE=0 and MOCK_CLAUDE_EXTRACT=0.");
+    }
+    required("ANTHROPIC_API_KEY");
+  } else if (process.env.MOCK_CLAUDE !== "1") {
+    throw new SmokeError("Use MOCK_CLAUDE=1 for deterministic extraction or explicitly opt into --live-extraction.");
   }
 
   const apiKey = required("DIAL_API_KEY");
@@ -128,6 +199,10 @@ async function main() {
     return;
   }
   if (fs.existsSync(restorePath)) throw new SmokeError("Recover the interrupted smoke test with --recover before placing another call.");
+  const photoPath = approvedPhotoPath();
+  const sendPhoto = process.argv.includes("--send-photo");
+  if (sendPhoto && !photoPath) throw new SmokeError("--send-photo requires an explicitly approved --photo=data/uploads/... path.");
+  if (sendPhoto) localAppUrl();
   const numbers = await client.listNumbers();
   const coordinator = numbers.find((number) => number.id === coordinatorId);
   const receiver = numbers.find((number) => number.id === providerNumberId);
@@ -157,7 +232,7 @@ async function main() {
     propertyId: "p1",
     unit: "Main home",
     room: "Kitchen",
-    photoPath: null,
+    photoPath,
     status: "diagnosed",
     diagnosis: {
       title: "Possible sink drain connection leak",
@@ -184,22 +259,32 @@ async function main() {
     createdAt: nowIso(),
   };
 
+  if (photoPath && !buildRepairPacket(request).canSend) {
+    fs.rmSync(restorePath);
+    throw new SmokeError("The approved photo does not meet the JPEG/PNG and 1 MB packet requirements; no call was placed.");
+  }
+
   const persona = [
     "You are the AI receptionist for a fictional plumbing company in an authorized agent-to-agent test. Briefly disclose that you are an AI receptionist.",
     "The caller is Handy collecting a hypothetical quote. This is not a real work order. Be concise, answer the questions directly, confirm a correct readback, then say goodbye and end the call.",
     "Quote USD 220 flat to repair the standard sink drain connection, including labor and standard fittings. There is no visit fee. The estimate is subject to confirmation on arrival and extra work needs approval.",
     "Offer October 13, 2026 from 9 to 11 AM Pacific or October 14, 2026 from 1 to 3 PM Pacific. State a 90-day workmanship warranty.",
-    "You have not reviewed photos. Do not request an address, payment, or appointment.",
+    sendPhoto
+      ? "A clearly labeled synthetic repair illustration may arrive by MMS during this test call. Only claim to have reviewed it if your actual tools expose the media to you. If the voice agent cannot access it, explicitly say you cannot view the image; do not infer image contents from the caller. Continue providing the provisional quote even if the image is unavailable."
+      : "You have not reviewed photos.",
+    "Do not request an address, payment, or appointment.",
   ].join("\n");
 
   let activeCallId: string | null = null;
+  let photoAttempted = false;
+  let photoResult: PhotoSendResult | null = null;
   try {
     writePrivate(providerOverridesPath, { [providerId]: receiver.number });
     saveRequest(request);
     await client.setNumberProperties(providerNumberId, { inboundInstruction: persona });
     const provider = getProvider(providerId);
     if (!provider?.contactVerified) throw new SmokeError("Controlled provider override was not loaded.");
-    emit("preflight_passed", { requestId, providerId, controlledNumbersVerified: true });
+    emit("preflight_passed", { requestId, providerId, controlledNumbersVerified: true, liveExtraction, photoAttached: Boolean(photoPath), sendPhoto });
     await startQuoteCalls(request, [provider]);
 
     const deadline = Date.now() + 300_000;
@@ -214,16 +299,29 @@ async function main() {
         lastState = currentState;
         emit("app_call_state", { requestId, state: currentState });
       }
+      if (sendPhoto && !photoAttempted && call.state === "In-Progress") {
+        photoAttempted = true;
+        photoResult = await sendPhotoDuringCall(updated!, providerId, call.id);
+        if (photoResult.mode !== "live" || photoResult.dispatchState !== "accepted") {
+          throw new SmokeError("Photo was not accepted as a live message; inspect the saved message before another attempt.");
+        }
+      }
       if (updated?.status === "quotes_ready" && call.quoteResult) {
         if (call.quoteResult.outcome !== "quote_received" || call.quoteResult.quote.priceLowUsd !== 220) {
           throw new SmokeError("The completed call did not produce the expected controlled quote.");
         }
+        if (sendPhoto && !photoAttempted) throw new SmokeError("Quote succeeded, but no In-Progress interval was observed for the requested photo send.");
         emit("smoke_passed", {
           requestId,
           outcome: call.quoteResult.outcome,
           priceLowUsd: call.quoteResult.quote.priceLowUsd,
           visitFeeUsd: call.quoteResult.quote.visitFeeUsd,
           evidenceCount: call.quoteResult.evidence.length,
+          liveExtraction,
+          photoAttempted,
+          photoAccepted: photoResult?.mode === "live" && photoResult.dispatchState === "accepted",
+          photoDeliveryState: photoResult?.deliveryState ?? null,
+          photoReviewState: call.quoteResult.photoReviewState,
         });
         activeCallId = null;
         return;

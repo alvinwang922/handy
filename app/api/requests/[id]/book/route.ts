@@ -32,8 +32,11 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     const provider = getProvider(body.providerId!);
     const quoteCall = req.calls.find((c) => c.purpose === "quote" && c.providerId === body.providerId);
     if (!provider || !quoteCall) return { status: 400, body: { error: "provider was not part of this request's outreach" } };
-
+    // Only a provider who actually quoted can be approved and booked (no "callback" to someone who never answered).
     const quote = quoteCall.quote;
+    if (quoteCall.terminationType !== "completed" || !quote || (quote.priceLowUsd == null && quote.visitFeeUsd == null)) {
+      return { status: 409, body: { error: "This provider has no quote to approve" } };
+    }
     req.approval = {
       providerId: provider.id,
       amountUsd: quote?.priceHighUsd ?? quote?.priceLowUsd ?? null,

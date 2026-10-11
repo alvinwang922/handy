@@ -35,7 +35,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 - Property ids `p1`–`p3` match the prototype UI.
 
 ## Rules that protect the demo
-1. **No secrets or real phone numbers in git.** Keys go in `.env.local`; teammates' numbers go in `data/providers.local.json` (both gitignored, and the repo is public). Never `cat`/print them in a session: Alike uploads tool output.
+1. **No secrets or real phone numbers in git.** Keys go in `.env.local`; teammates' numbers go in `data/providers.local.json` (both gitignored, and the repo is public). Never print them in a session: Alike uploads tool output unredacted. `.claude/settings.json` denies reading these files; don't work around it (no `printenv`, no `grep KEY`).
 2. Every voice call discloses it is an AI. Quote calls never book, commit or give the exact address. No booking call without the approval record the book route writes.
 3. Never call real businesses with fake jobs. Demo providers are teammates plus our AI-receptionist number. Label simulated or seeded data in the UI and the video.
 4. Emergencies (gas, fire, sparks, flooding) exit the flow with safety guidance.
@@ -46,6 +46,9 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 ## Git
 Commit small and often. Run `git pull --rebase` before every push. Never force-push `main`.
 
+## Alike (team coordination for our coding agents)
+If the `alike` MCP server is connected: at session start, link the session to your branch or module (`resolve_work_item`). When you change a contract in `lib/types.ts`, `lib/schemas.ts` or the API, call `record_decision` with a `paths` anchor and tell the affected owner via `inform_colleague`. Ask blocking cross-module questions with `ask_colleague`. Always confirm with your human before sending anything to a teammate.
+
 ## Partner prizes (status)
-Dial and Keewano are core and must stay load-bearing. Alike: every teammate installs it (we use it for team coordination).
-Sparta is an isolated experiment outside this repo (go/no-go 2:05 PM). Darwin is skipped unless its "Act" access is granted.
+Dial and Keewano are core and must stay load-bearing; the Keewano event registry lives in `EVENTS` in `lib/keewano.ts` and is append-only.
+Alike: team coordination (above). Sparta is an isolated experiment outside this repo (go/no-go 2:05 PM). Darwin is skipped unless its "Act" access is granted.

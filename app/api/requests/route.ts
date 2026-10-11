@@ -10,13 +10,19 @@ export async function GET() {
   return NextResponse.json(listRequests());
 }
 
+// Claude vision accepts only these; the UI should convert HEIC and downscale to ~1568px JPEG.
 const EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/gif": "gif",
-  "image/heic": "heic",
 };
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+// Deterministic backstop (CLAUDE.md rule 4): these exit the flow no matter what the model says.
+const EMERGENCY = /\bgas\b[^.]{0,40}\b(leak|smell)|smell\w*\s+(of\s+|like\s+)?gas\b|\bspark|\bsmoke\b|\bfire\b|\bflood|\bburst\b|sewage backup|carbon monoxide/i;
+const SAFETY_NOTICE =
+  "Possible emergency (gas, fire, smoke, sparks or flooding). If anyone is in danger, leave and call 911; for gas or power, call your utility's emergency line. Handy does not dispatch emergency repairs.";
 
 // multipart: photo?, title?, description, propertyId, unit?, room?, userActiveSec?
 export async function POST(request: Request) {
@@ -35,9 +41,15 @@ export async function POST(request: Request) {
   let photoPath: string | null = null;
   const file = form.get("photo");
   if (file instanceof File && file.size > 0) {
-    photo = Buffer.from(await file.arrayBuffer());
     mediaType = file.type || mediaType;
-    const name = `${id}.${EXT[mediaType] ?? "bin"}`;
+    if (!EXT[mediaType]) {
+      return NextResponse.json({ error: `Unsupported photo type ${mediaType}: send JPEG, PNG, WebP or GIF (convert HEIC first)` }, { status: 415 });
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      return NextResponse.json({ error: "Photo is over 5 MB: downscale it (about 1568px) before uploading" }, { status: 413 });
+    }
+    photo = Buffer.from(await file.arrayBuffer());
+    const name = `${id}.${EXT[mediaType]}`;
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     fs.writeFileSync(path.join(UPLOAD_DIR, name), photo);
     photoPath = `data/uploads/${name}`;
@@ -75,11 +87,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Diagnosis failed: ${(e as Error).message}` }, { status: 502 });
   }
   // Recurring-issue check needs the trade, so it runs after diagnosis; it shapes the quote-call script.
+  if (EMERGENCY.test(`${title} ${description}`)) req.diagnosis.urgency = "emergency";
+  if (req.diagnosis.urgency === "emergency") req.notice = SAFETY_NOTICE;
   req.unitInsight = await keewano.unitInsight(propertyId, unit, req.diagnosis.trade).catch(() => null);
   req.status = req.diagnosis.urgency === "emergency" ? "emergency" : "diagnosed";
   req.timeline.push({ status: req.status, at: nowIso() });
 
-  void keewano.track({ kind: "request", id }, [{ name: "Channel", value: "handled" }]);
+  void keewano.track({ kind: "request", id }, [
+    { name: "DataSource", value: "live" },
+    { name: "Channel", value: "handled" },
+  ]);
   void keewano.track({ kind: "unit", id: `${propertyId}/${unit}` }, [{ name: "IssueReported", value: req.diagnosis.trade }]);
   saveRequest(req);
   return NextResponse.json(req, { status: 201 });

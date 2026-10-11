@@ -208,21 +208,7 @@ metrics(): Promise<{ medianMinutesToBook: { manual: number; handled: number } }>
 
 Ingest via REST `POST https://api.keewano.com/event/ingress/v1/json/{custom|in}` (`k-token` = project API key); entity `installId` = UUIDv5 of `provider:<id>` / `unit:<propertyId>/<unit>` / `request:<id>`. Query via `pg`: `pgsql.keewano.com:27543`, user = signup email, password = PAT, db = project UUID, `sslmode=require`, single `events` table, no JOINs.
 
-| ID | Event | Type | Entity | Sent when |
-|---|---|---|---|---|
-| 2000 | `Trade` | string | provider | context, first event |
-| 2001 | `QuoteRequested` | none* | provider | quote call placed |
-| 2002 | `CallAnswered` | bool | provider | quote call ends |
-| 2003 | `QuotePriceCents` | price_usd_cent | provider | quote extracted |
-| 2004 | `JobBooked` | none* | provider | booking confirmed |
-| 2005 | `ArrivedOnTime` | bool | provider | seed only |
-| 2006 | `QuoteAccuracyPct` | uint | provider | seed only (final ÷ quote × 100) |
-| 2010 | `IssueReported` | string (trade) | unit | request diagnosed |
-| 2020 | `Channel` | string (`manual`/`handled`) | request | context, first event |
-| 2021 | `MinutesToBook` | uint | request | scheduled |
-| 2022 | `UserActiveSec` | uint | request | scheduled |
-
-\* confirm exact `dataType` names in the Swagger UI before registering — registered types can't change (add new IDs instead).
+**Source of truth: `EVENTS` in `lib/keewano.ts` (append-only; ids 2000–2023).** Outcomes are separate `none` events (`CallAnswered` / `CallMissed`, `ArrivedOnTime` / `ArrivedLate`) because Keewano columns hold their value forward; `count()` per entity then gives clean rates. Every entity's first event is `DataSource` (`seed` | `live`), so a judge can query exactly how much data is seeded.
 
 Decisions driven by queries (load-bearing): **provider ranking** (who gets called, in what order) and **unit insight** (adds the replacement-quote question). Before/after: median `MinutesToBook` by `Channel`. Seed history: ~8 providers × 60 days, ~40 units, ~120 requests (`manual` channel, long phone-tag times) — **labeled seeded**. Events take ~5 min to become queryable → seed by 1:30.
 

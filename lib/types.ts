@@ -94,6 +94,7 @@ export interface CallRecord {
   startedAt: string | null;
   endedAt: string | null;
   error: string | null;            // last placement error (e.g. Dial 402/429), shown in UI
+  extractAttempts?: number;        // transcript → quote/booking extraction tries (capped at 3)
 }
 
 export type RequestStatus =

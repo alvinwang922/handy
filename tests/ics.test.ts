@@ -13,6 +13,18 @@ describe("parseSlotStart", () => {
     expect(parseSlotStart("Tue 2 to 4pm", sunday).getHours()).toBe(14);
   });
 
+  it.each([
+    ["Tue 11–1pm", 2, 11],                    // range crossing noon: start is AM
+    ["Tuesday, October 13, 9–11 AM", 2, 9],  // date number and uppercase meridiem
+    ["Tuesday 10/13 9-11am", 2, 9],          // numeric date before the range
+    ["Wednesday 2 to 4 with Sam", 3, 14],     // no meridiem; "Sam" must not read as "am"
+    ["Wednesday 1–3pm", 3, 13],
+    ["Thu 12–2pm", 4, 12],
+  ])("parses %s", (slot, weekday, hour) => {
+    const d = parseSlotStart(slot as string, sunday);
+    expect([d.getDay(), d.getHours()]).toEqual([weekday, hour]);
+  });
+
   it("falls back to tomorrow 9am for unparseable slots", () => {
     const d = parseSlotStart("whenever works", sunday);
     expect([d.getDate(), d.getHours()]).toEqual([12, 9]);

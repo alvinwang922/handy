@@ -19,3 +19,7 @@ data/providers.local.json
 npm-debug.log*
 /coverage
 .vercel
+# personal agent files (never commit: may hold teammates' numbers or notes)
+CLAUDE.local.md
+.claude/settings.local.json
+data/db.json.tmp

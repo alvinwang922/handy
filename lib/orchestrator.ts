@@ -12,6 +12,7 @@ import type { CallPurpose, CallRecord, Provider, ProviderScore, RepairRequest, T
 const ACTIVE = new Set(["Queued", "Ringing", "In-Progress"]);
 const TRANSCRIPT_WAIT_MS = 60_000;
 const QUOTE_FANOUT = 3;
+const MAX_EXTRACT_ATTEMPTS = 3;
 
 // Kept on globalThis so all route handlers share one lock table in `next dev`.
 const g = globalThis as unknown as { __handyLocks?: Map<string, Promise<unknown>> };
@@ -32,16 +33,18 @@ export const isLocked = (id: string) => locks.has(id);
 
 // ---- Provider selection ------------------------------------------------------------------
 
+// Ranks the trade's providers (Keewano history, falling back to ratings) and picks the top ones
+// that this request hasn't called yet, so a retry after "nobody answered" reaches new providers.
 export async function rankForRequest(req: RepairRequest): Promise<{ ranked: ProviderScore[]; providers: Provider[] }> {
-  const trade = req.diagnosis!.trade;
-  const pool = providersFor(trade);
+  const pool = providersFor(req.diagnosis!.trade);
+  const poolTrade = pool[0]?.trade ?? req.diagnosis!.trade;
   let ranked: ProviderScore[];
   try {
-    ranked = (await keewano.rankProviders(trade)).filter((s) => pool.some((p) => p.id === s.providerId));
+    ranked = (await keewano.rankProviders(poolTrade)).filter((s) => pool.some((p) => p.id === s.providerId));
     if (!ranked.length) throw new Error("no ranked providers");
   } catch (e) {
     req.notice = `Keewano ranking unavailable (${(e as Error).message}); using ratings.`;
-    ranked = pool
+    ranked = [...pool]
       .sort((a, b) => b.rating - a.rating)
       .map((p) => ({
         providerId: p.id,
@@ -52,7 +55,9 @@ export async function rankForRequest(req: RepairRequest): Promise<{ ranked: Prov
         reason: `Rated ${p.rating} (${p.reviewCount} reviews)`,
       }));
   }
+  const alreadyCalled = new Set(req.calls.filter((c) => c.purpose === "quote").map((c) => c.providerId));
   const providers = ranked
+    .filter((s) => !alreadyCalled.has(s.providerId))
     .slice(0, QUOTE_FANOUT)
     .map((s) => pool.find((p) => p.id === s.providerId)!)
     .filter(Boolean);
@@ -82,6 +87,7 @@ function newCall(providerId: string, purpose: CallPurpose): CallRecord {
     startedAt: null,
     endedAt: null,
     error: null,
+    extractAttempts: 0,
   };
 }
 
@@ -98,6 +104,8 @@ export async function startBookingCall(
   slots: string[],
   accessNote: string,
 ): Promise<RepairRequest> {
+  // Defense in depth for PRD principle 1: never place a booking call without a matching approval.
+  if (req.approval?.providerId !== providerId) throw new Error("No approval recorded for this provider");
   req.selectedProviderId = providerId;
   req.offeredSlots = slots;
   req.accessNote = accessNote;
@@ -115,7 +123,7 @@ async function pump(req: RepairRequest) {
     if (active >= config.maxConcurrentCalls) break;
     const provider = getProvider(call.providerId);
     if (!provider) {
-      Object.assign(call, { state: "Terminated", terminationType: "failed", error: "Unknown provider" });
+      Object.assign(call, { state: "Terminated", terminationType: "failed", error: "Unknown provider", endedAt: nowIso() });
       continue;
     }
     try {
@@ -132,9 +140,10 @@ async function pump(req: RepairRequest) {
       const status = e instanceof dial.DialError ? e.status : 0;
       call.error = (e as Error).message;
       req.notice = `Couldn't call ${provider.name}: ${call.error}`;
-      // Out of credit / concurrency cap: leave it queued and retry on the next refresh.
+      // POST /calls is not idempotent, so a failed placement is final: never retried on later polls.
+      Object.assign(call, { state: "Terminated", terminationType: "failed", endedAt: nowIso() });
+      // Out of credit / at the concurrency cap: stop placing the rest in this pass too.
       if (status === 402 || status === 429) break;
-      Object.assign(call, { state: "Terminated", terminationType: "failed" });
     }
   }
 }
@@ -150,37 +159,41 @@ function instructionFor(req: RepairRequest, call: CallRecord, provider: Provider
 const transcriptTimedOut = (c: CallRecord) =>
   c.endedAt != null && Date.now() - Date.parse(c.endedAt) > TRANSCRIPT_WAIT_MS;
 
+// The call is over and its transcript has arrived (or never will).
 const settled = (c: CallRecord) =>
   c.state === "Terminated" && (c.terminationType !== "completed" || c.transcript !== null || transcriptTimedOut(c));
 
-// Polls Dial for every unsettled call, extracts quotes/bookings once transcripts land, places
-// queued calls as capacity frees up, then advances the request status.
+const hasResult = (c: CallRecord) => (c.purpose === "quote" ? c.quote !== null : c.booking !== null);
+
+// A transcript is waiting to be read and we still have extraction attempts left.
+const extractionPending = (c: CallRecord) =>
+  c.transcript !== null && !hasResult(c) && (c.extractAttempts ?? 0) < MAX_EXTRACT_ATTEMPTS;
+
+// Polls Dial for every unsettled call, extracts (and retries extracting) quotes/bookings once
+// transcripts land, places queued calls as capacity frees up, then advances the request status.
 export async function refresh(id: string): Promise<RepairRequest | null> {
   const req = getRequest(id);
   if (!req) return null;
   for (const call of req.calls) {
-    if (!call.dialCallId || settled(call)) continue;
-    let snap: dial.CallSnapshot;
-    try {
-      snap = await dial.getCall(call.dialCallId);
-    } catch (e) {
-      call.error = (e as Error).message;
-      continue;
-    }
-    const justEnded = snap.state === "Terminated" && call.state !== "Terminated";
-    Object.assign(call, { state: snap.state, terminationType: snap.terminationType, durationSec: snap.durationSec });
-    if (justEnded) {
-      call.endedAt = nowIso();
-      if (call.purpose === "quote") {
-        void keewano.track({ kind: "provider", id: call.providerId }, [
-          { name: "CallAnswered", value: snap.terminationType === "completed" },
-        ]);
+    if (call.dialCallId && !settled(call)) {
+      try {
+        const snap = await dial.getCall(call.dialCallId);
+        const justEnded = snap.state === "Terminated" && call.state !== "Terminated";
+        Object.assign(call, { state: snap.state, terminationType: snap.terminationType, durationSec: snap.durationSec });
+        if (justEnded) {
+          call.endedAt = nowIso();
+          if (call.purpose === "quote") {
+            void keewano.track({ kind: "provider", id: call.providerId }, [
+              { name: snap.terminationType === "completed" ? "CallAnswered" : "CallMissed" },
+            ]);
+          }
+        }
+        if (snap.transcript && !call.transcript) call.transcript = snap.transcript;
+      } catch (e) {
+        call.error = (e as Error).message;
       }
     }
-    if (snap.transcript && !call.transcript) {
-      call.transcript = snap.transcript;
-      await extract(req, call);
-    }
+    if (extractionPending(call)) await extract(req, call);
   }
   await pump(req);
   advanceStatus(req);
@@ -188,6 +201,7 @@ export async function refresh(id: string): Promise<RepairRequest | null> {
 }
 
 async function extract(req: RepairRequest, call: CallRecord) {
+  call.extractAttempts = (call.extractAttempts ?? 0) + 1;
   try {
     if (call.purpose === "quote") {
       call.quote = await claude.extractQuote({ transcript: call.transcript!, diagnosis: req.diagnosis! });
@@ -199,20 +213,37 @@ async function extract(req: RepairRequest, call: CallRecord) {
     } else {
       call.booking = await claude.extractBooking({ transcript: call.transcript!, offeredSlots: req.offeredSlots });
     }
+    call.error = null;
   } catch (e) {
-    call.error = `Extraction failed: ${(e as Error).message}`;
+    call.error = `Extraction attempt ${call.extractAttempts}/${MAX_EXTRACT_ATTEMPTS} failed: ${(e as Error).message}`;
   }
 }
 
 function advanceStatus(req: RepairRequest) {
-  if (req.status === "quoting" && req.calls.filter((c) => c.purpose === "quote").every(settled)) {
-    setStatus(req, "quotes_ready");
+  if (req.status === "quoting") {
+    const quoteCalls = req.calls.filter((c) => c.purpose === "quote");
+    if (!quoteCalls.every((c) => settled(c) && !extractionPending(c))) return;
+    if (quoteCalls.some((c) => c.quote !== null)) {
+      setStatus(req, "quotes_ready");
+    } else {
+      req.notice = "No provider gave a quote. Start outreach again to try the next providers.";
+      setStatus(req, "failed");
+    }
+    return;
   }
+
   if (req.status === "booking") {
     const booking = req.calls.filter((c) => c.purpose === "booking").at(-1);
     if (!booking || !settled(booking)) return;
+    if (extractionPending(booking)) {
+      // Never fall back to "not confirmed" while the transcript is still being read: that would
+      // invite a second booking call to a provider who may already have said yes.
+      req.notice = "Booking call ended; reading the result…";
+      return;
+    }
     if (booking.booking?.confirmed) {
-      req.scheduledSlot = booking.booking.slot;
+      req.scheduledSlot = booking.booking.slot ?? req.offeredSlots[0] ?? null;
+      req.notice = null;
       setStatus(req, "scheduled");
       const minutesToBook = Math.round((Date.now() - Date.parse(req.createdAt)) / 60000);
       void keewano.track({ kind: "request", id: req.id }, [
@@ -220,9 +251,15 @@ function advanceStatus(req: RepairRequest) {
         { name: "UserActiveSec", value: Math.round(req.userActiveSec) },
       ]);
       void keewano.track({ kind: "provider", id: booking.providerId }, [{ name: "JobBooked" }]);
-    } else {
-      req.notice = "The provider didn't confirm a time. Pick other windows or another provider.";
-      setStatus(req, "quotes_ready");
+      return;
     }
+    req.notice = booking.terminationType === "failed" && booking.error
+      ? `Booking call failed: ${booking.error}`
+      : booking.terminationType !== "completed"
+        ? `Booking call ${booking.terminationType ?? "ended"}: the provider didn't pick up. Try again or choose another provider.`
+        : booking.booking === null
+          ? "Couldn't read the booking call. Check the transcript before calling again."
+          : "The provider didn't confirm a time. Pick other windows or another provider.";
+    setStatus(req, "quotes_ready");
   }
 }

@@ -13,11 +13,13 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     if (req.status === "emergency") {
       return { status: 409, body: { error: "Emergency issues are out of scope: contact emergency services or the utility." } };
     }
-    if (req.status !== "diagnosed" || !req.diagnosis) {
-      return { status: 409, body: { error: `Outreach can only start from 'diagnosed' (currently '${req.status}')` } };
+    // "failed" = nobody quoted last round: retrying reaches the next-ranked providers.
+    if ((req.status !== "diagnosed" && req.status !== "failed") || !req.diagnosis) {
+      return { status: 409, body: { error: `Outreach can only start from 'diagnosed' or 'failed' (currently '${req.status}')` } };
     }
     const { ranked, providers } = await rankForRequest(req);
     req.rankedProviders = ranked;
+    if (!providers.length) return { status: 409, body: { error: "Every matching provider has already been called" } };
     return { status: 200, body: await startQuoteCalls(req, providers) };
   });
   return NextResponse.json(result.body, { status: result.status });

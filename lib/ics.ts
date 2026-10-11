@@ -3,15 +3,40 @@
 
 const DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+const DATE_TOKENS =
+  /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/g;
+const RANGE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::\d{2})?\s*(am|pm)?\b/;
+const SINGLE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/;
+const BARE = /\b(\d{1,2})(?::(\d{2}))?\b/;
+
 export function parseSlotStart(slot: string, now = new Date()): Date {
-  const s = slot.toLowerCase();
-  const day = DAYS.findIndex((d) => new RegExp(`\\b${d}`).test(s));
-  const hourMatch = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
-  let hour = hourMatch ? Number(hourMatch[1]) : 9;
-  const minute = hourMatch?.[2] ? Number(hourMatch[2]) : 0;
-  // "2 to 4pm" → the meridiem appears after the end time; fall back to the first am/pm in the string.
-  const meridiem = hourMatch?.[3] ?? s.match(/(am|pm)/)?.[1];
+  const lower = slot.toLowerCase();
+  const day = DAYS.findIndex((d) => new RegExp(`\\b${d}`).test(lower));
+  // Drop calendar dates ("10/13", "October 13") so their numbers aren't read as the hour.
+  const s = lower.replace(DATE_TOKENS, " ");
+
+  let hour = 9;
+  let minute = 0;
+  let meridiem: string | undefined;
+  const range = s.match(RANGE);
+  const single = s.match(SINGLE);
+  const bare = s.match(BARE);
+  if (range) {
+    hour = Number(range[1]);
+    minute = range[2] ? Number(range[2]) : 0;
+    const endHour = Number(range[4]);
+    // "2 to 4pm" shares the end's meridiem; "11–1pm" crosses noon, so the start is AM.
+    meridiem = range[3] ?? (range[5] === "pm" && hour > endHour && hour !== 12 ? "am" : range[5]);
+  } else if (single) {
+    hour = Number(single[1]);
+    minute = single[2] ? Number(single[2]) : 0;
+    meridiem = single[3];
+  } else if (bare) {
+    hour = Number(bare[1]);
+    minute = bare[2] ? Number(bare[2]) : 0;
+  }
   if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
   if (!meridiem && hour < 7) hour += 12; // "1–3" for a repair visit means afternoon
 
   const start = new Date(now);

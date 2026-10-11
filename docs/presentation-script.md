@@ -12,7 +12,7 @@ Here's my faucet spraying water sideways. I upload the photo and describe what's
 
 Now, who should I call? This is where Keewano comes in. Handy uses its history of provider responses, punctuality, and quote accuracy to rank the options. Keewano also helps spot repeat problems at a property, so the agent can ask about replacement as well as repair. For this demo, we're using sample history and test providers.
 
-I tap to request quotes, and Dial takes over the phone calls. Its AI agent explains the repair brief and asks about price, fees, and availability. Dial also sends the repair photo by message to give the provider more context. Claude turns the conversation into a quote I can compare. I can see what's included, what might cost extra, and the transcript behind it. I get to make the decision without repeating the same explanation on every call.
+I tap to request quotes, and Dial takes over the phone calls. Its AI agent explains the repair brief and asks about price, fees, and availability. Dial also sends the repair photo by message to give the provider more context. Handy brings back the quotes, including pricing, fees, and availability, so I can compare my options in one place.
 
 Then I choose a quote and provide times that work for me. Only after I approve does Dial call the provider again to schedule. It asks for a time within my windows and brings back the confirmation. The appointment stays attached to the right property and unit.
 

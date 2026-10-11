@@ -47,6 +47,31 @@ export const QuoteSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
+export const PartOptionSchema = z.object({
+  rank: z.number().int().min(1).max(3),
+  label: z.string(),
+  partName: z.string(),
+  product: z.string(),
+  brand: z.string().nullable(),
+  seller: z.string(),
+  url: z.url({ protocol: /^https$/ }),
+  priceUsd: z.number().positive().nullable(),
+  delivery: z.string().nullable(),
+  returnPolicy: z.string().nullable(),
+  rating: z.number().min(0).max(5).nullable(),
+  reviewCount: z.number().int().min(0).nullable(),
+  fitNote: z.string(),
+});
+
+export const PartSearchSchema = z.object({
+  status: z.enum(["searching", "ready", "failed"]),
+  partName: z.string(),
+  options: z.array(PartOptionSchema).max(3),
+  searchedAt: z.string().nullable(),
+  source: z.enum(["claude", "mock"]),
+  error: z.string().nullable(),
+});
+
 export const BookingResultSchema = z.object({
   confirmed: z.boolean(),
   slot: z.string().nullable(),

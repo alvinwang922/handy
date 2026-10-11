@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import * as claude from "@/lib/claude";
 import * as keewano from "@/lib/keewano";
+import { searchPartsForRequest } from "@/lib/orchestrator";
+import { searchingPartSearch } from "@/lib/parts";
 import { getProperty, listRequests, newId, nowIso, saveRequest, UPLOAD_DIR } from "@/lib/store";
 import type { RepairRequest } from "@/lib/types";
 
@@ -102,6 +104,12 @@ export async function POST(request: Request) {
     { name: "Channel", value: "handled" },
   ]);
   void keewano.track({ kind: "unit", id: `${propertyId}/${unit}` }, [{ name: "IssueReported", value: req.diagnosis.trade }]);
+  // DIY: search for the part after responding (web search takes ~20–60 s); the UI's 3 s poll picks it up.
+  const diyPart = req.diagnosis.fixPath === "diy" ? req.diagnosis.diyPlan?.parts[0] : undefined;
+  if (diyPart) {
+    req.partSearch = searchingPartSearch(diyPart.name);
+    after(() => searchPartsForRequest(id));
+  }
   saveRequest(req);
   return NextResponse.json(req, { status: 201 });
 }

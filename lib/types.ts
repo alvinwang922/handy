@@ -55,6 +55,32 @@ export interface DiyPlan {
   stopIf: string;                  // when to stop and call a pro instead
 }
 
+// Part-search agent (lib/parts.ts): the best purchase options for diyPlan.parts[0]. Search only, never an order.
+export interface PartOption {
+  rank: number;                    // 1..3
+  label: string;                   // "Best match" | "Lowest price" | "Fastest to get"
+  partName: string;                // which diyPlan part this answers
+  product: string;                 // exact listing title incl. size/variant
+  brand: string | null;
+  seller: string;                  // e.g. "Home Depot"
+  url: string;                     // product page; verified to appear in the agent's search results
+  priceUsd: number | null;         // as shown by the seller; null → "Check price at seller"
+  delivery: string | null;         // e.g. "Pickup today", "Ships in 2 days"
+  returnPolicy: string | null;
+  rating: number | null;           // 0–5
+  reviewCount: number | null;
+  fitNote: string;                 // why it should fit + what the user must still check (never "confirmed")
+}
+
+export interface PartSearch {
+  status: "searching" | "ready" | "failed";
+  partName: string;
+  options: PartOption[];           // 0–3, ranked
+  searchedAt: string | null;
+  source: "claude" | "mock";       // label mock results in the UI
+  error: string | null;
+}
+
 export interface UnitInsight {
   priorIssuesSameTrade180d: number;
   recommendReplaceQuote: boolean;
@@ -144,4 +170,5 @@ export interface RepairRequest {
   timeline: { status: RequestStatus; at: string }[];
   userActiveSec: number;           // client-measured: form time + review/approve time
   createdAt: string;
+  partSearch?: PartSearch | null;  // set for DIY diagnoses; filled in the background by lib/parts.ts
 }

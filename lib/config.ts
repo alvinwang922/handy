@@ -7,6 +7,8 @@ export const config = {
   mockClaude: flag("MOCK_CLAUDE"),
   // Real diagnosis + mock transcript extraction until extractQuote/extractBooking land.
   mockClaudeExtract: flag("MOCK_CLAUDE") || flag("MOCK_CLAUDE_EXTRACT"),
+  // Part-search agent (Claude web search) for DIY diagnoses.
+  mockParts: flag("MOCK_CLAUDE") || flag("MOCK_PARTS"),
   mockKeewano: flag("MOCK_KEEWANO"),
   maxConcurrentCalls: Number(process.env.MAX_CONCURRENT_CALLS ?? 2),
   companyName: process.env.COMPANY_NAME ?? "Maple Property Management",

@@ -9,9 +9,9 @@ import type { BookingResult, Diagnosis, Quote, Trade, UnitInsight } from "./type
 export const MODEL_DIAGNOSE = "claude-opus-5-5";
 export const MODEL_EXTRACT = "claude-sonnet-5-5";
 
-// Created on first real call, so mock mode never needs ANTHROPIC_API_KEY.
+// Created on first real call, so mock mode never needs ANTHROPIC_API_KEY. Shared with lib/parts.ts.
 let client: Anthropic | null = null;
-const anthropic = () => (client ??= new Anthropic());
+export const anthropic = () => (client ??= new Anthropic());
 
 // ---- Diagnosis agent: photo + description → Diagnosis -----------------------------------
 

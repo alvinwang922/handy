@@ -10,15 +10,17 @@
 
 **Say:**
 
-> Imagine I've just moved into my first house. The faucet leaks. The toilet won't flush. There's water under the kitchen sink.
+> Imagine I'm a new homeowner moving into a house. There's a leaky faucet, a toilet that isn't working, and water under the kitchen sink.
 >
-> Now I need to figure out what's wrong, research providers and prices, explain the problem, and coordinate a visit.
+> Before I can get anything fixed, I need to figure out what's wrong, research prices, find handymen, and contact them for quotes.
 >
-> Research shows how much work that can be: a 2021 Modernize survey found that 56 percent of homeowners spent one to five hours researching their project before even requesting a quote.
+> Research shows that 56 percent of surveyed homeowners spent one to five hours researching their home-improvement project before even requesting a quote. [Modernize, 2021](https://investor.quinstreet.com/node/16861/pdf)
 >
-> Handy takes on the coordination. I start with a photo, then review and approve the next step.
+> Then I still have to compare the quotes and find a time for someone to come over.
+>
+> With Handy, I start with a photo, review the options, and approve the next step.
 
-**Research attribution:** This statistic concerns surveyed home-improvement projects, not every small repair. [Modernize / QuinStreet, May 2021](https://investor.quinstreet.com/node/16861/pdf). Keep “2021 survey · 56% of respondents · home-improvement projects” visible on the slide. This sentence paraphrases the source; it is not a verbatim quotation from the report.
+**On screen:** Keep the source citation visible beside the statistic. Citations in the script are not spoken aloud.
 
 ## 0:45–1:20 · One photo becomes a repair brief
 
@@ -100,15 +102,15 @@
 
 **Say:**
 
-> Imagine I manage a portfolio of rental homes. Before my morning is over, one tenant reports a leak, another says the toilet won't flush, and a third sends an appliance photo.
+> Imagine I'm a property manager. One tenant reports a leak, another says the toilet won't flush, and a third sends an appliance photo.
 >
-> Sometimes I visit just to understand the issue. Then I research providers and prices, repeat the details, and coordinate the tenant, handyman, and access.
+> I may need to travel to the property to check the issue. Then I research prices, contact handymen, explain the problem, and coordinate the visit with the tenant.
 >
-> Research shows that coordination adds up: ArcSite's 2022 survey report found most homeowners spend one or two hours researching contractors, and 95 percent seek multiple bids. Managers repeat that process across units.
+> Research shows most surveyed homeowners spend one or two hours researching contractors, and 95 percent seek multiple bids. As a manager, I repeat that process across units. [ArcSite, 2022](https://www.arcsite.com/blog/2022-homeowner-survey-report)
 >
 > With Handy, the tenant starts with a photo. I review the options and approve the next step.
 
-**Research attribution:** ArcSite's report is based on over 1,000 homeowners surveyed in late 2021. It is not a direct measurement of property-manager work or travel. [ArcSite, January 2022](https://www.arcsite.com/blog/2022-homeowner-survey-report). Keep the attribution visible. The statement above is a paraphrase, not a verbatim report quotation.
+**On screen:** Cite ArcSite beside the statistic and label it as a homeowner survey. It does not measure property-manager travel time.
 
 **Transition:** “Let's follow one leaking-sink report.” Continue with the photo scene. Do not invent a commuting-hours benchmark; use a manager's documented travel logs if we later obtain them.
 

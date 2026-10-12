@@ -36,7 +36,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 
 ## Rules that protect the demo
 1. **No secrets or real phone numbers in git.** Keys go in `.env.local`; teammates' numbers go in `data/providers.local.json` (both gitignored, and the repo is public). Never print them in a session: Alike uploads tool output unredacted. `.claude/settings.json` denies reading these files; don't work around it (no `printenv`, no `grep KEY`).
-2. Every voice call discloses it is an AI. Quote calls never book, commit or give the exact address. No booking call without the approval record the book route writes.
+2. Every voice call discloses it is an AI and that it is recorded and transcribed, in its first sentence; if the other side objects to the recording, the agent ends the call. Quote calls never book, commit or give the exact address. No booking call without the approval record the book route writes.
 3. Never call real businesses with fake jobs. Demo providers are teammates plus our AI-receptionist number. Label simulated or seeded data in the UI and the video.
 4. Emergencies (gas, fire, sparks, flooding) exit the flow with safety guidance.
 5. Dial: the free tier allows 5-min calls and 2 concurrent calls. SMS is limited to controlled Dial-to-Dial recipients in this demo. Persist the call attempt and send its `Idempotency-Key`; the current SDK supports this header. Retry an ambiguous POST at most once with exactly the same key and body. Unresolved attempts stay `send_unknown` and require reconciliation before another booking.

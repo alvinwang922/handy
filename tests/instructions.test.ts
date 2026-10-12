@@ -15,6 +15,19 @@ const quote: Quote = {
   needsInspection: true, scope: null, warranty: null, conditions: null, notes: "", confidence: 0.9,
 };
 
+describe("call disclosure", () => {
+  it("says the call is recorded in both call scripts, and ends the call if they object", () => {
+    const scripts = [
+      quoteInstruction(provider, diagnosis, null, "Maple PM"),
+      bookingInstruction(provider, diagnosis, null, ["Tue 9-11am"], "Side door", "Maple PM"),
+    ];
+    for (const text of scripts) {
+      expect(text).toContain("Hi, this is an AI assistant calling on behalf of Maple PM. This call is recorded and transcribed.");
+      expect(text).toMatch(/object to the recording.*end the call without discussing the job/);
+    }
+  });
+});
+
 describe("quoteInstruction", () => {
   it("discloses the AI, never commits, and withholds the address", () => {
     const text = quoteInstruction(provider, diagnosis, null, "Maple PM");

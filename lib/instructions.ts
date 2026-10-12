@@ -4,8 +4,10 @@ import type { Diagnosis, FeeTreatment, Provider, Quote, Trade, UnitInsight } fro
 // Non-negotiables (spec §8): disclose AI up front, never commit on a quote call, never give the
 // exact address on a quote call.
 
+// Dial records and transcribes every call. California and other all-party-consent states require
+// saying so up front, so the recording notice is part of the first sentence, before any job details.
 const disclosure = (company: string) =>
-  `Open with: "Hi, this is an AI assistant calling on behalf of ${company}." If anyone asks, confirm you are an AI assistant.`;
+  `Open with: "Hi, this is an AI assistant calling on behalf of ${company}. This call is recorded and transcribed." If anyone asks, confirm you are an AI assistant. If they object to the recording, apologize, say the customer will follow up another way, and end the call without discussing the job.`;
 
 // Untrusted text (the customer's words, model output derived from them, the provider's own words)
 // enters the voice agent's system prompt only as quoted, single-line, length-capped data.

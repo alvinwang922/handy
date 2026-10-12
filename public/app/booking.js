@@ -140,7 +140,7 @@ function story(r) {
 /* ---------- Note for the pro (client-side only, per repair) ---------- */
 const noteKey = id => `handy-pro-note:${id}`;
 const getNote = id => { try { return localStorage.getItem(noteKey(id)) || ''; } catch { return ''; } };
-const setNote = (id, text) => { try { text ? localStorage.setItem(noteKey(id), text) : localStorage.removeItem(noteKey(id)); } catch {} };
+const setNote = (id, text) => { try { if (text) localStorage.setItem(noteKey(id), text); else localStorage.removeItem(noteKey(id)); } catch {} };
 /* The note on this device wins; otherwise show any access text already stored with the booking. */
 const noteOf = r => getNote(r.id) || (r.booking && r.booking.access) || '';
 

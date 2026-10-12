@@ -37,15 +37,21 @@ When something breaks at home, the repair itself is rarely the slow part. Findin
 
 ```mermaid
 flowchart TD
-  A["📷 Photo + description"] --> B["<b>Claude Opus 5.5</b> vision<br/>diagnosis, trade, urgency, cost range, provider brief<br/>(+ DIY plan when safe)"]
-  B -- "gas, fire, sparks, flooding" --> X["🚨 Stop with safety guidance"]
-  B --> C["<b>Keewano</b> ranks providers from event history<br/>answer rate, on-time rate, final bill vs quote<br/>+ the unit's repair history (3rd plumbing issue → also ask for a replacement quote)"]
-  C --> D["<b>Dial</b> AI quote calls to the top-ranked providers<br/>up to 2 at once, each discloses it is an AI, never commits"]
-  D --> E["<b>Claude Sonnet 5.5</b><br/>transcript → structured quote: price, fee treatment, availability, scope<br/>checked against the provider's own words"]
-  E --> F{"You compare and<br/>explicitly approve"}
-  F -- "approved quote" --> G["<b>Dial</b> booking call"]
-  G --> H["📅 Scheduled + calendar invite (.ics)"]
+  A["📷 Photo + description"] --> B["<b>Claude Opus 5.5</b><br/>diagnoses the photo"]
+  B -- "gas, fire, sparks, flooding" --> X["🚨 Safety guidance;<br/>the flow stops"]
+  B --> C["<b>Keewano</b><br/>ranks providers"]
+  C --> D["<b>Dial</b><br/>AI quote calls"]
+  D --> E["<b>Claude Sonnet 5.5</b><br/>transcript → quote"]
+  E --> F{"You approve<br/>one quote"}
+  F --> G["<b>Dial</b><br/>booking call"]
+  G --> H["📅 Scheduled + .ics"]
 ```
+
+- **Diagnosis:** trade, urgency, cost range and a brief for providers, plus a DIY plan when it's safe. A deterministic gate stops emergencies whatever the model says.
+- **Ranking:** answer rate, on-time rate and final bill vs quote from event history, plus the unit's repair history ("3rd plumbing issue → also ask for a replacement quote").
+- **Quote calls:** the top-ranked providers, up to 2 at once. Every call says it is an AI and never commits.
+- **Extraction:** price, fee treatment, availability and scope, each checked against the provider's own words.
+- **Booking:** only after you approve that exact quote; the confirmed slot exports to your calendar.
 
 ## What's real vs simulated
 

@@ -82,7 +82,7 @@ Anything simulated or seeded is labeled in the app and in the demo video.
 
 - **You approve every commitment.** No booking call goes out without a recorded approval tied to a specific quote (`Approval.quoteCallId`). An inspection-only offer approves the visit fee, never an invented repair total.
 - **Unknown is not zero.** A missing price stays `null`, and "$89 fee waived if hired" is not an extra $89 (`feeTreatment`).
-- **Calls are honest and bounded.** Every call opens with an AI disclosure. Quote calls never book, commit or share the exact address. Placing a call is idempotent and never auto-retried blindly.
+- **Calls are honest and bounded.** Every call opens by saying it is an AI assistant and that the call is recorded and transcribed; if the other side objects to the recording, the agent ends the call. Quote calls never book, commit or share the exact address. Placing a call is idempotent and never auto-retried blindly.
 - **Emergencies exit the flow.** A deterministic keyword gate runs regardless of the model's label.
 - **No secrets in the repo.** Keys stay in `.env.local` and teammates' numbers in `data/providers.local.json` (both gitignored). Agents are denied reading them (`.claude/settings.json`).
 

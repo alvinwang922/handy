@@ -37,14 +37,14 @@ When something breaks at home, the repair itself is rarely the slow part. Findin
 
 ```mermaid
 flowchart TD
-  A["📷 Photo + description"] --> B["<b>Claude Opus 5.5</b><br/>diagnoses the photo"]
-  B -- "gas, fire, sparks, flooding" --> X["🚨 Safety guidance;<br/>the flow stops"]
-  B --> C["<b>Keewano</b><br/>ranks providers"]
-  C --> D["<b>Dial</b><br/>AI quote calls"]
-  D --> E["<b>Claude Sonnet 5.5</b><br/>transcript → quote"]
+  A["Photo + description"] --> B["Claude Opus 5.5<br/>diagnoses the photo"]
+  B -- "gas, fire, sparks, flooding" --> X["Safety guidance;<br/>the flow stops"]
+  B --> C["Keewano<br/>ranks providers"]
+  C --> D["Dial<br/>AI quote calls"]
+  D --> E["Claude Sonnet 5.5<br/>transcript → quote"]
   E --> F{"You approve<br/>one quote"}
-  F --> G["<b>Dial</b><br/>booking call"]
-  G --> H["📅 Scheduled + .ics"]
+  F --> G["Dial<br/>booking call"]
+  G --> H["Scheduled + .ics"]
 ```
 
 - **Diagnosis:** trade, urgency, cost range and a brief for providers, plus a DIY plan when it's safe. A deterministic gate stops emergencies whatever the model says.

@@ -37,12 +37,12 @@ When something breaks at home, the repair itself is rarely the slow part. Findin
 
 ```mermaid
 flowchart TD
-  A["Photo + description"] --> B["Claude Opus 5.5<br/>diagnoses the photo"]
+  A["Photo +<br/>description"] --> B["Claude Opus 5.5<br/>diagnosis"]
   B -- "gas, fire, sparks, flooding" --> X["Safety guidance;<br/>the flow stops"]
   B --> C["Keewano<br/>ranks providers"]
   C --> D["Dial<br/>AI quote calls"]
-  D --> E["Claude Sonnet 5.5<br/>transcript → quote"]
-  E --> F{"You approve<br/>one quote"}
+  D --> E["Claude<br/>Sonnet 5.5<br/>extracts quotes"]
+  E --> F(["You approve<br/>one quote"])
   F --> G["Dial<br/>booking call"]
   G --> H["Scheduled + .ics"]
 ```

@@ -126,7 +126,6 @@ if (!document.getElementById('css-dash-owner')) {
   const s = document.createElement('style'); s.id = 'css-dash-owner'; s.textContent = css; document.head.appendChild(s);
 }
 
-const SAMPLE = '/assets/sample-sink.svg';
 const STEPS = ['Guess', 'Prices', 'Booked'];
 let animated = false;
 

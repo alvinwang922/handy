@@ -99,7 +99,7 @@ H.screen('reschedule', {
   after(root, S){
     root.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => { S._resched = b.dataset.slot; rerender(); }));
     const ask = root.querySelector('[data-act="ask"]');
-    ask && ask.addEventListener('click', () => { S.confirmedSlot = S._resched; delete S._resched; H.save(); H.toast('Clearwater said yes to the new time.'); H.go('booked'); });
+    ask?.addEventListener('click', () => { S.confirmedSlot = S._resched; delete S._resched; H.save(); H.toast('Clearwater said yes to the new time.'); H.go('booked'); });
   }
 });
 

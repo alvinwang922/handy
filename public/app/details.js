@@ -215,7 +215,6 @@ const summary = r => {
   const p = H.prop(r.property);
   const step = H.statusStep[r.status] || 1;
   const place = [p && p.name, p && p.unit, r.room !== 'Other' && r.room].filter(Boolean).join(' · ');
-  const urg = r.urgency === 'Urgent' ? 'tag amber' : 'tag';
   const word = H.statusWords[r.status] || humanize(r.status);
   const statusTag = r.status === 'hazard' ? `<span class="tag red">${H.icon('alert')} ${esc(word)}</span>` : `<span class="tag">${esc(word)}</span>`;
   return `<h3>${esc(r.title)}</h3>

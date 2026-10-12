@@ -379,7 +379,7 @@ const confirmReopen = async r0 => {
       go.disabled = true; go.textContent = 'Asking again…';
       let res = null;
       H.state.busy = true; H.state.error = null;
-      try { ({ repair: res } = await H.api('POST', `/api/repairs/${encodeURIComponent(r.id)}/reopen`, {})); } catch (e) { H.state.error = null; }
+      try { ({ repair: res } = await H.api('POST', `/api/repairs/${encodeURIComponent(r.id)}/reopen`, {})); } catch { H.state.error = null; }
       H.state.busy = false;
       if (!res) { showErr(d, 'Couldn’t ask for new prices. Please try again.'); go.disabled = false; go.innerHTML = `${icon('refresh')} Yes, get new prices`; return; }
       /* The new round animates its calls: clear its seen flag. */

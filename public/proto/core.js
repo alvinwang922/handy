@@ -130,7 +130,7 @@ function render(){
   window.scrollTo(0,0);
   const th = root.querySelector('.thread'); if (th) th.scrollTop = th.scrollHeight;
   const h = root.querySelector('h1,.hd .n'); if (h && document.activeElement===document.body) { h.setAttribute('tabindex','-1'); }
-  parent !== window && parent.postMessage({handyScreen:id}, '*');
+  if (parent !== window) parent.postMessage({handyScreen:id}, '*');
 }
 window.addEventListener('hashchange', render);
 document.addEventListener('DOMContentLoaded', render);

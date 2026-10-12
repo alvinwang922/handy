@@ -19,7 +19,7 @@ const diagMsg = () => {
     <p>A plumber usually charges <b>$${d.cost[0]}–$${d.cost[1]}</b> for this. It’s not an emergency, but best fixed this week.</p>`);
 };
 
-H.screen('home', { render: S => `
+H.screen('home', { render: () => `
   ${H.header({action:`<button class="act" data-go="welcome">${icon('info')} How it works</button>`})}
   <div class="page">
     <h1>Hi Jamie</h1>
@@ -34,7 +34,7 @@ H.screen('home', { render: S => `
     <p style="margin-top:16px">${H.demo()}</p>
   </div>`});
 
-H.screen('new-photo', { render: S => `
+H.screen('new-photo', { render: () => `
   ${H.header({back:true, sub:'New repair'})}
   <div class="thread">
     ${H.h(`<p>Hi Jamie. What needs fixing?</p><p>Send me a photo of the problem. Get close, and show any water or damage.</p>`)}
@@ -105,7 +105,7 @@ const callRow = (p, st) => {
 const PLAN = [ ['ring','wait','wait'], ['talk','ring','wait'], ['talk','talk','ring'], ['done','talk','talk'], ['done','done','talk'], ['done','done','done'] ];
 
 H.screen('calling', {
-  render: S => `
+  render: () => `
   ${H.header({back:true})}
   ${sinkPin('Getting prices · 0 of 3 in', 2)}
   <div class="thread">${diagMsg()}
@@ -139,7 +139,7 @@ const quoteCard = (p, primary=true) => `
 const bindChoose = root => root.querySelectorAll('[data-choose]').forEach(b => b.onclick = () => { H.S.providerId = b.dataset.choose; H.go('approve'); });
 
 H.screen('quotes', {
-  render: S => `
+  render: () => `
   ${H.header({back:true})}
   ${sinkPin('Prices are in · 3 of 3', 2)}
   <div class="thread">
@@ -150,7 +150,7 @@ H.screen('quotes', {
   ${H.dock(H.chips([['Compare all 3','quotes-all'],['What did they say?','transcript'],['One price is unclear','quote-unclear']]))}`,
   after: bindChoose});
 
-H.screen('approve', { render: S => { const p = P(); return `
+H.screen('approve', { render: () => { const p = P(); return `
   ${H.header({back:true, sub:'Check before you say yes'})}
   <div class="page">
     <h1>Book ${p.name} for $${p.price}?</h1>
@@ -196,7 +196,7 @@ H.screen('schedule', {
   }});
 
 H.screen('booking', {
-  render: S => `
+  render: () => `
   ${H.header({back:true})}
   ${sinkPin('Booking ' + P().name, 3)}
   <div class="thread">

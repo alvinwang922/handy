@@ -16,10 +16,10 @@ One run through the web UI (`public/index.html`) with every mock flag off:
 
 Providers and their history are fictional and seeded, and labeled as such. No real business was called.
 
-| Keewano decides who gets called | Dial's real call transcript | Booked on a live call |
+| Keewano decides who gets called | Dial's real booking call | Booked on a live call |
 |---|---|---|
-| ![Quote card with Keewano's reason, the unit's repair history, and Mission Pipe Pros marked "Not called"](docs/screenshots/1-keewano-ranking.jpg) | ![Live Dial transcript: the agent opens with "Hi, this is an AI assistant calling on behalf of Maple Property Management"](docs/screenshots/2-dial-live-transcript.jpg) | ![Confirmation: "Confirmed on a live call with Bay Area Rooter", Tue Oct 13, 9 am–12 pm, $180–$250](docs/screenshots/3-booked-on-live-call.jpg) |
-| Rooter's reliability record, the unit's repeat-plumbing history (adds a replacement-quote question), and why Mission Pipe Pros was skipped | The agent discloses it is an AI in its first sentence; every turn is speaker-separated | The provider confirmed one of the offered windows; export to calendar with `.ics` |
+| ![Quote card with Keewano's reason, the unit's repair history, and Mission Pipe Pros marked "Not called"](docs/screenshots/1-keewano-ranking.jpg) | ![Live Dial booking-call transcript: the agent discloses it is an AI, restates the approved $180–$250 quote and offers two windows; the provider confirms Tuesday, October 13, 9 AM–12 PM](docs/screenshots/2-dial-live-transcript.jpg) | ![Confirmation: "Confirmed on a live call with Bay Area Rooter", Tue Oct 13, 9 am–12 pm, $180–$250](docs/screenshots/3-booked-on-live-call.jpg) |
+| Rooter's reliability record, the unit's repeat-plumbing history (adds a replacement-quote question), and why Mission Pipe Pros was skipped | The agent discloses it is an AI, restates the exact approved quote, and books only a window you offered | The provider confirmed one of the offered windows; export to calendar with `.ics` |
 
 ## The problem
 

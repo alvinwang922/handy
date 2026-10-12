@@ -14,14 +14,26 @@ const MONTH_DAY = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\
 const to24 = (hour: number, meridiem: string | undefined) =>
   meridiem === "pm" && hour < 12 ? hour + 12 : meridiem === "am" && hour === 12 ? 0 : hour;
 
+// "9 to 11 a.m." → "9 to 11 am": providers' spoken times often carry dots.
+const normalize = (slot: string) => slot.toLowerCase().replace(/\b([ap])\.\s?m\b\.?/g, "$1m");
+
 export function parseSlotStart(slot: string, now = new Date()): Date {
   return parseSlot(slot, now).start;
+}
+
+// True when a slot names a day (weekday, calendar date or "tomorrow") and a time. parseSlot falls back
+// to defaults otherwise, which must never become a bookable window nobody offered.
+export function isSpecificSlot(slot: string): boolean {
+  const lower = normalize(slot);
+  const day = DAYS.some((d) => new RegExp(`\\b${d}`).test(lower)) || MONTH_DAY.test(lower) || /\btomorrow\b/.test(lower);
+  const s = lower.replace(DATE_TOKENS, " ");
+  return day && (RANGE.test(s) || SINGLE.test(s));
 }
 
 // Start and end of a human-readable slot. An explicit calendar date ("Oct 20", "10/20") wins over the
 // weekday; the end is the range's own end time, else start + 2 h.
 export function parseSlot(slot: string, now = new Date()): { start: Date; end: Date } {
-  const lower = slot.toLowerCase();
+  const lower = normalize(slot);
   const day = DAYS.findIndex((d) => new RegExp(`\\b${d}`).test(lower));
   const date = lower.match(MONTH_DAY);
   // Drop calendar dates ("10/13", "October 13") so their numbers aren't read as the hour.

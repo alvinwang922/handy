@@ -140,6 +140,7 @@ const dayNum = iso => new Date(iso).getDate();
 const timeRange = w => H.when(w.start, w.end).split(' · ')[1] || '';
 const statusTag = r => {
   if (r.status === 'hazard') return `<span class="md-st red">${H.esc(H.statusWords.hazard)}</span>`;
+  if (r.status === 'quoting' || r.status === 'booking') return `<span class="md-st">${H.esc(H.statusWords[r.status])}</span>`;
   if (r.status === 'quotes') return `<span class="md-st amber">${H.esc(H.statusWords.quotes)}</span>`;
   if (r.status === 'scheduling') return `<span class="md-st amber">${H.esc(r.approval && r.booking ? 'New time needed' : H.statusWords.scheduling)}</span>`;
   if (r.status === 'scheduled') { const w = visitOf(r); return `<span class="md-st green">${H.esc(w ? 'Booked · ' + new Date(w.start).toLocaleDateString('en-US', {weekday:'short'}) + ' ' + H.time(w.start).replace(':00','') : H.statusWords.scheduled)}</span>`; }
@@ -231,7 +232,7 @@ const spendSection = (props, repairs) => {
   const max = Math.max(0, ...rows.map(x => x.cents)), total = rows.reduce((s, x) => s + x.cents, 0);
   return `<section class="md-sec md-panel" aria-labelledby="md-sp-h">
     <h2 id="md-sp-h">Spend</h2>
-    <div class="md-cap">Approved and booked prices per property ${H.demo('Demo · simulated prices')}</div>
+    <div class="md-cap">Approved and booked prices per property ${H.modeTag('Demo · simulated prices')}</div>
     <p class="md-tot"><b>${H.esc(H.money(total) || '$0')}</b>approved in total</p>
     <ul class="md-bars" role="list">${rows.map(x => {
       const pct = max ? Math.max(2, Math.round(x.cents / max * 100)) : 0;
@@ -249,7 +250,7 @@ const funnelSection = (m, filtered) => {
   const max = Math.max(0, ...steps.map(s => s[1] || 0));
   return `<section class="md-sec md-panel" aria-labelledby="md-fn-h">
     <h2 id="md-fn-h">From report to booked</h2>
-    <div class="md-cap">Repairs at each step${filtered ? ', all properties' : ''} ${H.demo('Demo · local events')}</div>
+    <div class="md-cap">Repairs at each step${filtered ? ', all properties' : ''} ${H.modeTag('Demo · local events')}</div>
     ${m ? `<ul class="md-bars fun" role="list">${steps.map(([label, n]) => {
       const v = n || 0, pct = max ? Math.max(2, Math.round(v / max * 100)) : 0;
       return `<li title="${H.esc(`${label}: ${plural(v, 'repair')}`)}"><span class="lb">${H.esc(label)}</span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIcs, parseSlot, parseSlotStart } from "../lib/ics";
+import { buildIcs, isSpecificSlot, parseSlot, parseSlotStart } from "../lib/ics";
 
 const sunday = new Date("2026-10-11T12:00:00"); // demo day is a Sunday
 
@@ -36,6 +36,23 @@ describe("parseSlotStart", () => {
     expect(at("Tue 11–1pm")).toEqual([11, 13]);
     expect(at("Wednesday 2 to 4 with Sam")).toEqual([14, 16]);
     expect(at("Tue 9am")).toEqual([9, 11]);
+  });
+
+  it("reads spoken meridiems with dots", () => {
+    const at = (slot: string) => { const { start, end } = parseSlot(slot, sunday); return [start.getDate(), start.getHours(), end.getHours()]; };
+    expect(at("Tuesday, October 13, 9 to 11 a.m.")).toEqual([13, 9, 11]);
+    expect(at("Wednesday, October 14, 1 to 3 p.m.")).toEqual([14, 13, 15]);
+  });
+
+  it.each([
+    ["Tuesday, October 13, 9 to 11 a.m.", true],
+    ["Tue, Oct 13 · 9 am–12 pm", true],
+    ["tomorrow at 2pm", true],
+    ["Wednesday afternoon", false],
+    ["next week sometime", false],
+    ["9 to 11", false],
+  ])("isSpecificSlot(%s) is %s", (slot, specific) => {
+    expect(isSpecificSlot(slot as string)).toBe(specific);
   });
 
   it("falls back to tomorrow 9am for unparseable slots", () => {

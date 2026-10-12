@@ -106,6 +106,8 @@ const fullWhen = iso => {
 const NEXT = {
   hazard: 'Get safe first. Finding pros is paused for this one.',
   assessment: 'Get prices from local pros.',
+  quoting: 'Handy is on the phone with pros. Prices show up here when the calls end.',
+  booking: 'Handy is calling the pro to book one of your times.',
   quotes: 'Compare the prices and say yes to one.',
   scheduling: 'Pick times that work and tell the pro how to get in.',
   scheduled: 'The pro comes by. You can change the time or mark it fixed.',
@@ -116,6 +118,7 @@ const blockerWords = (r, raw) => {
   return (raw || []).map(b => {
     if (/hazard/i.test(b)) return {red:true, text:'Possibly dangerous. Call the right emergency line first.'};
     if (/approval/i.test(b)) {
+      if (r.status === 'quoting' || r.status === 'booking') return {text:'Handy is on a call. Nothing to do yet.'};
       if (r.status === 'quotes') return {text:'Waiting for your yes on a price'};
       if (r.status === 'assessment') return {text:'No prices yet. Nothing gets booked without your yes.'};
       return {text:'Waiting for your yes on a price'};
@@ -129,7 +132,7 @@ const icsStamp = iso => new Date(iso).toISOString().replace(/[-:]/g, '').replace
 const icsText = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const buildIcs = r => {
   const b = r.booking, p = H.prop(r.property) || {}, pro = (r.approval && r.approval.providerName) || proName(r, b.providerId);
-  const desc = [`${r.title}`, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.money(r.approval.amountCents)}` : '', b.access ? `How to get in: ${b.access}` : '', 'Demo booking from Handy. No real pro was contacted.'].filter(Boolean).join('\n');
+  const desc = [`${r.title}`, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.price(r.approval)}` : '', b.access ? `How to get in: ${b.access}` : '', 'Demo booking from Handy. No real pro was contacted.'].filter(Boolean).join('\n');
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//Repair helper (demo)//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT', `UID:${b.id}@handy.local`, `DTSTAMP:${icsStamp(new Date().toISOString())}`,
     `DTSTART:${icsStamp(b.window.start)}`, `DTEND:${icsStamp(b.window.end)}`,
@@ -173,12 +176,12 @@ const timeline = r => {
       case 'call.unanswered': add('phone', `Called ${proName(r, p.providerId)} — no answer`); break;
       case 'quote.received': {
         const prev = items[items.length - 1];
-        if (prev && prev.pid && prev.pid === p.providerId && !prev.sub) prev.sub = H.money(p.amountCents);
-        else add('doc', `Price from ${proName(r, p.providerId)}`, {sub: H.money(p.amountCents)});
+        if (prev && prev.pid && prev.pid === p.providerId && !prev.sub) prev.sub = p.priceText || H.money(p.amountCents);
+        else add('doc', `Price from ${proName(r, p.providerId)}`, {sub: p.priceText || H.money(p.amountCents)});
         break;
       }
       case 'quotes.ready': hadPrices = true; add('list', p.count === 1 ? '1 price ready' : `${p.count ?? 0} prices ready`); break;
-      case 'quote.approved': add('check', `You said yes to ${H.money(p.amountCents)}`, {cls:'yes', sub: `${proName(r, p.providerId)} · nothing was booked before this`}); break;
+      case 'quote.approved': add('check', `You said yes to ${p.priceText || H.money(p.amountCents)}`, {cls:'yes', sub: `${proName(r, p.providerId)} · nothing was booked before this`}); break;
       case 'availability.submitted': { const n = (p.windows || []).length; add('clock', n === 1 ? 'You picked 1 time' : `You picked ${n} times`, {sub: p.accessProvided ? 'Included how to get in' : ''}); break; }
       case 'appointment.confirmed': add('cal', 'Booked', {cls:'done', sub: p.window ? H.when(p.window.start, p.window.end) : ''}); break;
       case 'appointment.reschedule_requested': add('refresh', 'Asked to change the time'); break;
@@ -233,7 +236,7 @@ const approval = (r, S) => {
   const a = r.approval;
   const ev = (r.events || []).find(e => e.type === 'quote.approved' && e.payload && e.payload.approvalId === a.id);
   const who = (ev && ev.actor && ev.actor.name) || (S && S.actor && S.actor.id === a.userId && S.actor.name) || 'you';
-  return `<div class="dt-ok">${H.icon('shield')}<p>You approved <b>${esc(a.providerName)}</b> for <b class="amt">${esc(H.money(a.amountCents))}</b> on ${esc(fullWhen(a.timestamp))}.</p></div>
+  return `<div class="dt-ok">${H.icon('shield')}<p>You approved <b>${esc(a.providerName)}</b> for <b class="amt">${H.price(a)}</b> on ${esc(fullWhen(a.timestamp))}.</p></div>
     <blockquote>“I approve this pro and this provisional price.”</blockquote>
     <p class="dt-sub" style="margin-top:10px">Approved by ${esc(who)}</p>`;
 };
@@ -283,7 +286,7 @@ H.ui.details = {
       section('next', 'Next step', nextStep(r), col, isOpen('next', false))];
     if (r.approval) parts.push(section('approval', 'Your approval', approval(r, S), col, isOpen('approval', false)));
     if (r.booking) parts.push(section('appt', 'Appointment', appointment(r), col, isOpen('appt', false)));
-    parts.push(section('history', 'What happened', timeline(r) + `<div class="dt-foot">${H.demo('Demo · every step stored locally')}</div>`, col, isOpen('history', false)));
+    parts.push(section('history', 'What happened', timeline(r) + `<div class="dt-foot">${H.tag(r, 'Demo · every step stored locally', 'Live · from real calls')}</div>`, col, isOpen('history', false)));
     const hand = handoff(r).replace('data-sec="handoff">', `data-sec="handoff"${isOpen('handoff', false) ? ' open' : ''}>`);
     return `<div class="dt" data-col="${col ? 1 : 0}">${parts.join('')}${hand}</div>`;
   },

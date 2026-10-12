@@ -91,6 +91,8 @@ const shortLine = r => {
   switch (r.status) {
     case 'hazard': return 'Stop and stay safe first';
     case 'assessment': return 'Ready to get prices';
+    case 'quoting': return 'Handy is calling pros';
+    case 'booking': return 'Handy is calling to book';
     case 'quotes': { const n = (r.quotes || []).length; return n ? `${count(n, 'price', 'prices')} to compare` : 'Handy is calling pros'; }
     case 'scheduling': return q ? `You approved ${q.name}` : 'Choose when the pro comes';
     case 'scheduled': return r.booking && r.booking.window ? H.when(r.booking.window.start, r.booking.window.end) : (q ? q.name : '');
@@ -196,7 +198,7 @@ H.ui.rail = {
       <div class="rl-top"><button type="button" class="btn" data-nav="#/new">${H.icon('camera')} Report a problem</button></div>
       ${mgr ? managerRail(S) : ownerRail(S)}
       <div class="rl-foot">
-        <div class="r1">${H.demo('Demo · simulated data')}<button type="button" class="btn plain" data-rl-reset>Reset demo</button></div>
+        <div class="r1">${H.modeTag('Demo · simulated data')}<button type="button" class="btn plain" data-rl-reset>Reset demo</button></div>
         <a class="rl-switch" href="/app/">${H.icon('user')} Switch app</a>
       </div>
     </div>`;

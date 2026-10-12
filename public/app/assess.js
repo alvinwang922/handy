@@ -143,7 +143,7 @@ const hazardHistory = r => `
     ${hazardSteps()}
     <p>${esc(r.assessment?.text || 'Handy cannot dispatch emergency help.')}</p>
   </div>
-  <p class="meta-line as-fine">${H.demo('Demo · rule-based guess')} I spotted words like gas, sparks, smoke or flooding.</p>`;
+  <p class="meta-line as-fine">${H.tag(r, 'Demo · rule-based guess', 'Live · safety check')} I spotted words like gas, sparks, smoke or flooding.</p>`;
 
 const assessmentHistory = r => {
   const a = r.assessment || {};
@@ -156,7 +156,7 @@ const assessmentHistory = r => {
   const sayTrade = !named.test(a.text || '') && !named.test(guess(a).replace(/<[^>]+>/g, ''));
   html += H.h(`<p>${guess(a)}</p>${a.text ? `<p>${esc(a.text)}</p>` : ''}
     <p class="as-trade">${sayTrade ? `The right person for this is ${aOrAn(trade)} <b>${esc(trade)}</b>. ` : ''}${confidenceWords(a.confidence)}</p>`);
-  html += `<p class="meta-line as-fine">${H.demo('Demo · rule-based guess')} ${esc(a.disclaimer || '')}</p>`;
+  html += `<p class="meta-line as-fine">${H.tag(r, 'Demo · rule-based guess', 'Live · Claude assessment')} ${esc(a.disclaimer || '')}</p>`;
   if (r.status === 'assessment' && !stalled(r)) html += H.h(`<p>I’m calling a few ${esc(tradeMany(a.trade))} near you for prices now. I tell each one I’m an AI assistant, and I won’t book anything without your yes.</p>`);
   return html;
 };

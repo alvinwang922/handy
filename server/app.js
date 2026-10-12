@@ -7,10 +7,18 @@ import { AppError, requireCondition } from './validation.js';
 
 const publicRoot = fileURLToPath(new URL('../public', import.meta.url));
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
-const integrations = [
+const demoIntegrations = [
   { name: 'Darwin', mode: 'demo', detail: 'Seeded directory fallback. Capability IDs and revisions retained.' },
   { name: 'Dial', mode: 'demo', detail: 'Scripted calls and transcripts; no provider contacted.' },
   { name: 'Keewano', mode: 'demo', detail: 'Ordered events and metrics in local SQLite; no remote Keewano service.' },
+  { name: 'Alike', mode: 'demo', detail: 'Local repair handoff brief; no Alike API connection.' }
+];
+// Live mode (repairs on Maple House, Oak Street and Cedar Cottage); added houses and samples stay demo.
+const liveIntegrations = [
+  { name: 'Claude', mode: 'live', detail: 'Opus diagnoses the photo and description; Sonnet turns call transcripts into quotes and bookings.' },
+  { name: 'Keewano', mode: 'live', detail: 'Ranks providers from their call history and checks the unit’s repair history.' },
+  { name: 'Dial', mode: 'live', detail: 'Real AI voice calls for quotes and, after your approval, booking. Providers are fictional demo personas on our own numbers.' },
+  { name: 'Provider directory', mode: 'seeded', detail: 'Fictional providers with seeded history; no real business is called.' },
   { name: 'Alike', mode: 'demo', detail: 'Local repair handoff brief; no Alike API connection.' }
 ];
 const maxBodyBytes = 22 * 1024 * 1024;
@@ -33,8 +41,9 @@ async function readJSON(req) {
 
 export function createApp(options = {}) {
   const handy = createHandy(options);
+  const integrations = handy.mode === 'live' ? liveIntegrations : demoIntegrations;
   const enrich = r => ({ ...r, events: handy.timeline(r.id), handoff: handy.handoff(r.id) });
-  const bootstrap = () => ({ repairs: handy.listRepairs().map(enrich), properties: handy.properties(), metrics: handy.metrics(), integrations, actor: demoActor });
+  const bootstrap = async () => { await handy.syncAll(); return { repairs: handy.listRepairs().map(enrich), properties: handy.properties(), metrics: handy.metrics(), integrations, actor: demoActor, mode: handy.mode }; };
   const server = createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -46,28 +55,28 @@ export function createApp(options = {}) {
       requireCondition(/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(host), 'Only local hosts are allowed.', 403);
       requireCondition(!req.headers.origin || req.headers.origin === `http://${host}`, 'Foreign origins are not allowed.', 403);
       const url = new URL(req.url, `http://${host}`), path = url.pathname;
-      if (req.method === 'GET' && path === '/api/health') return json(200, { status: 'ok', mode: 'demo', storage: 'sqlite' });
-      if (req.method === 'GET' && path === '/api/bootstrap') return json(200, bootstrap());
+      if (req.method === 'GET' && path === '/api/health') return json(200, { status: 'ok', mode: handy.mode, storage: 'sqlite' });
+      if (req.method === 'GET' && path === '/api/bootstrap') return json(200, await bootstrap());
       if (req.method === 'GET' && path === '/api/properties') return json(200, { properties: handy.properties() });
       if (req.method === 'POST' && path === '/api/properties') return json(201, { property: handy.addProperty(await readJSON(req)) });
       if (req.method === 'GET' && path === '/api/analytics') return json(200, { metrics: handy.metrics() });
-      if (req.method === 'GET' && path === '/api/repairs') return json(200, { repairs: handy.listRepairs().filter(r => (!url.searchParams.has('property') || r.property === url.searchParams.get('property')) && (!url.searchParams.has('status') || r.status === url.searchParams.get('status'))).map(enrich) });
-      if (req.method === 'POST' && path === '/api/repairs') return json(201, { repair: enrich(handy.createRepair(await readJSON(req))) });
+      if (req.method === 'GET' && path === '/api/repairs') { await handy.syncAll(); return json(200, { repairs: handy.listRepairs().filter(r => (!url.searchParams.has('property') || r.property === url.searchParams.get('property')) && (!url.searchParams.has('status') || r.status === url.searchParams.get('status'))).map(enrich) }); }
+      if (req.method === 'POST' && path === '/api/repairs') return json(201, { repair: enrich(await handy.createRepair(await readJSON(req))) });
       if (req.method === 'POST' && path === '/api/demo/reset') {
         const body = await readJSON(req); requireCondition(body.confirm === 'RESET DEMO', 'Confirm RESET DEMO before replacing local repairs.');
-        handy.resetDemo(); return json(200, bootstrap());
+        handy.resetDemo(); return json(200, await bootstrap());
       }
       const match = path.match(/^\/api\/repairs\/([a-zA-Z0-9-]+)(?:\/(events|handoff|quotes|approve|book|reschedule|complete|reopen))?$/);
       if (match) {
         const [, id, action] = match;
-        if (req.method === 'GET' && !action) return json(200, { repair: enrich(handy.getRepair(id)) });
+        if (req.method === 'GET' && !action) return json(200, { repair: enrich(await handy.sync(id)) });
         if (req.method === 'GET' && action === 'events') return json(200, { events: handy.timeline(id), source: 'demo:keewano-local-sqlite' });
         if (req.method === 'GET' && action === 'handoff') return json(200, { handoff: handy.handoff(id) });
         if (req.method === 'PATCH' && !action) return json(200, { repair: enrich(handy.updateRepair(id, await readJSON(req))) });
         if (req.method === 'POST' && ['quotes', 'approve', 'book', 'reschedule', 'complete', 'reopen'].includes(action)) {
           const body = await readJSON(req);
-          const repair = action === 'quotes' ? handy.getQuotes(id) : action === 'approve' ? handy.approve(id, body)
-            : action === 'book' ? handy.book(id, body) : handy[action](id);
+          const repair = await (action === 'quotes' ? handy.getQuotes(id) : action === 'approve' ? handy.approve(id, body)
+            : action === 'book' ? handy.book(id, body) : handy[action](id));
           return json(200, { repair: enrich(repair) });
         }
         throw new AppError(405, 'Method not allowed.');
@@ -89,6 +98,6 @@ export function createApp(options = {}) {
       if (status === 500) console.error('Handy request failed:', error.name);
     }
   });
-  server.requestTimeout = 30000;
+  server.requestTimeout = handy.mode === 'live' ? 120000 : 30000; // a live diagnosis waits on Claude
   return { server, handy };
 }

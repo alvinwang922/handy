@@ -136,7 +136,7 @@ H.ui.insights = {
     </div>`;
     const m = S.metrics || {};
     const empty = !S.repairs.length && !num(m.issuesSubmitted);
-    const labels = `<div class="labels">${H.demo('Demo · local metrics, simulated calls')}</div>
+    const labels = `<div class="labels">${H.modeTag('Demo · local metrics, simulated calls')}</div>
       ${m.note ? `<p class="src">${H.esc(m.note)}</p>` : ''}`;
     if (empty) return `<div class="page ins empty">
       <h1>No repairs yet</h1>

@@ -1,6 +1,6 @@
 # Handy local app design
 
-> This describes the **Look B demo app** (`public/app/` + `server/`), which runs on simulated stand-ins. The live product (Claude, Keewano, Dial) is the Next.js app; see the [README](../README.md).
+> This describes the **Look B app** (`public/app/` + `server/`). In demo mode (`npm run app:demo`) it runs on the simulated stand-ins below. In live mode (`npm run app:live`), `server/integrations/live.js` sends diagnosis, outreach and booking for the demo properties to the Next.js backend (real Claude, Keewano and Dial); see the [README](../README.md).
 
 Build the PRD's complete repair journey for a local hackathon demo. Preserve the original interface, replace browser-only repair state with a persistent backend, and label every sponsor stand-in as a demo. The original single-file UI is `public/index.html`, now wired to the live Next.js backend.
 

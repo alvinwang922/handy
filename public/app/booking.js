@@ -186,10 +186,10 @@ const fold = line => {
 function buildIcs(r) {
   const b = r.booking, prop = H.prop(r.property) || {}, note = noteOf(r);
   const desc = [
-    `Price: ${H.money(b.amountCents)} (provisional)`,
+    `Price: ${H.price(r.approval || b)} (provisional)`,
     `Warranty: ${warrantyOf(r)}`,
     `How to get in: ${note || 'They will call you on arrival.'}`,
-    'Booked by Handy. Demo: simulated booking, no real appointment was made.'
+    H.isLive(r) ? 'Booked by Handy on a live call with the provider (a fictional demo persona).' : 'Booked by Handy. Demo: simulated booking, no real appointment was made.'
   ].join('\n');
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
@@ -263,7 +263,7 @@ function showTranscript(r) {
     .replace(/\s*quote\s+[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ' the price')
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '').replace(/ {2,}/g, ' ');
   H.sheet('What they said', `<div class="bk-sheet">
-    <p>${H.demo('Demo · simulated call')} My booking call with ${H.esc(pro)}${c && c.durationSeconds ? `, ${H.esc(c.durationSeconds)} seconds` : ''}.</p>
+    <p>${H.tag(r, 'Demo · simulated call', 'Live · recorded by Dial')} My booking call with ${H.esc(pro)}${c && c.durationSeconds ? `, ${H.esc(c.durationSeconds)} seconds` : ''}.</p>
     ${lines.length ? `<ul class="bk-tx">${lines.map(l => `<li class="${l.speaker === 'Handy' ? '' : 'pro'}"><span class="who">${H.esc(l.speaker)}</span><span>${H.esc(plain(l.text))}</span></li>`).join('')}</ul>`
       : '<p>I don’t have the words from this call.</p>'}
     ${c && c.outcome ? `<div class="note">${H.icon('info')}<span>${H.esc(plain(c.outcome))}</span></div>` : ''}
@@ -288,13 +288,20 @@ function startBooking(r, wins) {
     dd.err = errKind(H.state.error); H.state.error = null;
     focusNext[r.id] = dd.err === 'expired' ? '[data-bk-reopen]' : '[data-bk-book]';
     H.render();
-  }, CALL_MS);
+  }, H.isLive(r) ? 0 : CALL_MS);
 }
 
 /* ---------- Part: scheduling (reschedules, or a fallback if the automatic booking didn't go through) ---------- */
 H.part('scheduling', {
-  owns: ['scheduling'],
+  owns: ['scheduling', 'booking'],
   history(r) {
+    if (r.status === 'booking' && r.approval) {
+      const st = r.schedulingCall && r.schedulingCall.liveStage, pro = H.esc(proName(r));
+      const label = st === 'wait' ? `${H.icon('clock')} Waiting` : st === 'ring' ? `${H.icon('phone')} Ringing` : st === 'read' ? `${H.icon('doc')} Reading the call`
+        : '<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span> Talking';
+      return H.h(`<p>Calling ${pro} to book now. I offer the times you picked, then share how to get in.</p>`)
+        + `<div class="call bk-call" role="status"><div class="who"><div class="t">${pro}</div><div class="s">Booking call ${H.tag(r, 'Demo · simulated call', 'Live · real call')}</div></div><span class="st live">${label}</span></div>`;
+    }
     if (r.status !== 'scheduling' || !r.approval) return '';
     const pro = H.esc(proName(r)), d = drafts[r.id];
     let out = '';
@@ -302,20 +309,22 @@ H.part('scheduling', {
       out += H.u('Change the time');
       out += `<div class="bu h" data-bk-ask><p>Same pro, same price. Only the time changes.</p><p>Right now you’re booked for <b>${H.esc(H.when(r.booking.window.start, r.booking.window.end))}</b>. That stays until ${pro} confirms a new time.</p><p>Tap every 2-hour slot you’re free. I’ll book the earliest one.</p></div>`;
     } else {
-      out += `<div class="bu h" data-bk-ask><p>I couldn’t book ${pro} on my own. Tap every 2-hour slot you’re free and I’ll call them to book the earliest.</p></div>`;
+      out += `<div class="bu h" data-bk-ask>${H.isLive(r) && r.live.notice ? `<p>${H.esc(r.live.notice)}</p>` : ''}<p>I couldn’t book ${pro} on my own. Tap every 2-hour slot you’re free and I’ll call them to book the earliest.</p></div>`;
     }
     if (d && d.calling && d.sent) {
       out += H.u(d.sent.length === 1 ? `Book ${H.esc(H.when(d.sent[0].start, d.sent[0].end))}`
         : `I’m free ${d.sent.length} times. The earliest is ${H.esc(H.when(d.sent[0].start, d.sent[0].end))}.`);
       out += H.h(`<p>Calling ${pro} to book…</p>`);
-      out += `<div class="call bk-call" role="status"><div class="who"><div class="t">${pro}</div><div class="s">Booking call ${H.demo('Demo · simulated call')}</div></div>
+      out += `<div class="call bk-call" role="status"><div class="who"><div class="t">${pro}</div><div class="s">Booking call ${H.tag(r, 'Demo · simulated call', 'Live · real call')}</div></div>
         <span class="st live"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span> Talking</span></div>`;
     }
     return out;
   },
   dock(r) {
     const d = draft(r.id), q = quoteOf(r), pro = H.esc(proName(r));
-    if (d.calling) return `<p class="meta-line bk-wait">${H.demo('Demo · simulated call')} Booking with ${pro}. Usually under a minute.</p>
+    if (r.status === 'booking') return `<p class="meta-line bk-wait">${H.tag(r, '', 'Live · real call')} Booking with ${pro}. A real call takes 1–2 minutes. You can leave.</p>
+      <button class="btn block" disabled style="margin-top:10px">${H.icon('phone')} Calling…</button>`;
+    if (d.calling) return `<p class="meta-line bk-wait">${H.tag(r, 'Demo · simulated call', 'Live · real call')} Booking with ${pro}. Usually under a minute.</p>
       <button class="btn block" disabled style="margin-top:10px">${H.icon('phone')} Calling…</button>`;
     if (!q) return `<div class="note amber bk-err" role="alert">${H.icon('alert')}<span>I can’t find the price you approved. Get new prices to keep going.</span></div>
       <button class="btn block" data-bk-reopen>Get new prices</button>`;
@@ -400,11 +409,11 @@ H.part('booked', {
       <p class="bk-said">${s.moved ? `I called ${pro} and they moved you to the new time.` : `I called ${pro} and they confirmed.`}</p>
       <p class="bk-when">${H.esc(H.when(b.window.start, b.window.end))}</p>
       ${s.free ? `<p class="bk-free">${H.icon('clock')}You were free: ${s.free} ${s.free === 1 ? 'slot' : 'slots'}</p>` : ''}
-      <p class="meta-line">${H.esc(H.money(b.amountCents))} · ${H.esc(warrantyOf(r))}</p>
+      <p class="meta-line">${H.price(r.approval || b)} · ${H.esc(warrantyOf(r))}</p>
       ${noteRow}
       <div class="ln"></div>
       <div class="btns"><button class="btn ghost" data-bk-ics>${H.icon('cal')} Add to my calendar</button></div>
-      <div class="bk-foot">${H.demo('Demo · simulated booking')}<button class="bk-link" data-bk-said>What they said</button></div>
+      <div class="bk-foot">${H.tag(r, 'Demo · simulated booking', 'Live · booked on a real call')}<button class="bk-link" data-bk-said>What they said</button></div>
     </div>`;
     out += done
       ? H.h(`<p>Great — marked as fixed. Your ${H.esc(warrantyOf(r))} runs from today.</p>`)
@@ -415,7 +424,7 @@ H.part('booked', {
     if (r.status === 'complete') return `<div class="bk-done"><button class="btn" data-nav="#/new">${H.icon('plus')} Report a new problem</button>
       <button class="btn ghost" data-nav="#/">Back to your repairs</button></div>`;
     return `<div class="bk-dock"><div class="qr" role="group" aria-label="What next">
-      <button type="button" data-bk-move>Change the time</button>
+      ${H.isLive(r) ? '' : '<button type="button" data-bk-move>Change the time</button>'}
       <button type="button" data-bk-fixed>It’s fixed</button>
       <button type="button" data-bk-new>Get new prices</button></div></div>`;
   },

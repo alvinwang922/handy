@@ -58,14 +58,22 @@ H.when = (start, end) => {
   return e ? `${day} · ${t(s)}–${t(e)}` : `${day} · ${t(s)}`;
 };
 H.time = iso => new Date(iso).toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}).replace(' AM',' am').replace(' PM',' pm');
-H.statusWords = {hazard:'Safety first', assessment:'Handy’s best guess', quotes:'Prices are in', scheduling:'Pick a time', scheduled:'Booked', complete:'Fixed'};
-H.statusStep = {hazard:1, assessment:1, quotes:2, scheduling:3, scheduled:3, complete:3};
+H.statusWords = {hazard:'Safety first', assessment:'Handy’s best guess', quoting:'Calling pros for prices', quotes:'Prices are in', scheduling:'Pick a time', booking:'Calling to book', scheduled:'Booked', complete:'Fixed'};
+H.statusStep = {hazard:1, assessment:1, quoting:2, quotes:2, scheduling:3, booking:3, scheduled:3, complete:3};
 
 /* ---------- Small UI helpers ---------- */
 H.h = html => `<div class="bu h">${html}</div>`;
 H.u = html => `<div class="bu u">${html}</div>`;
 H.typing = () => `<div class="typing" role="status" aria-label="Handy is typing"><i></i><i></i><i></i></div>`;
 H.demo = (label='Demo') => `<span class="tag demo">${H.esc(label)}</span>`;
+/* Live mode (server INTEGRATION_MODE=live): repairs with r.live use real Claude, Keewano and Dial calls. */
+H.LIVE_PENDING = ['quoting', 'booking'];
+H.isLive = r => !!(r && r.live);
+H.tag = (r, demoLabel, liveLabel = 'Live · real call') => H.isLive(r) ? `<span class="tag live">${H.esc(liveLabel)}</span>` : (demoLabel ? H.demo(demoLabel) : '');
+/* A quote's or approval's price as safe HTML text: a live range ("$180–$250") or the demo amount. */
+/* App-wide labels: in live mode the lists mix live repairs with the seeded demo samples. */
+H.modeTag = demoLabel => H.state.mode === 'live' ? '<span class="tag live">Live + sample repairs</span>' : H.demo(demoLabel);
+H.price = x => x ? (x.priceText ? H.esc(x.priceText) : H.money(x.amountCents)) : '';
 H.toast = msg => { const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role','status'); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 3000); };
 H.sheet = (title, html, bind) => {
   const d = document.createElement('dialog'); d.className = 'sheet'; d.setAttribute('aria-label', title);
@@ -162,7 +170,7 @@ H.ui = { dashboard: {} };
 /* ---------- Timers ---------- */
 let timers = [];
 H.later = (ms, fn) => { timers.push(setTimeout(fn, ms)); };
-const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+const clearTimers = () => { timers.forEach(clearTimeout); timers = []; H._gen = (H._gen || 0) + 1; };
 
 /* Scroll the conversation to its end so the newest message sits just above the dock (never under it).
    Desktop scrolls the .center pane; phones/tablets scroll the window. Modules may call it after live updates. */
@@ -239,6 +247,18 @@ H.render = () => {
     if (showDetails && H.ui.details.bind) safe(() => H.ui.details.bind(det, repair));
     H.scrollToEnd();
   } else { const dash = H.ui.dashboard && H.ui.dashboard[H.ROLE] || H.ui.home; safe(() => dash && dash.bind && dash.bind(center$)); }
+  /* Live calls take minutes: poll the open repair every 3 s (re-render only on change), or refresh the
+     dashboard every 5 s, while any call runs. H._gen drops polls that a newer render replaced. */
+  const gen = H._gen;
+  if (repair && H.LIVE_PENDING.includes(repair.status)) {
+    const poll = () => H.later(3000, async () => {
+      let fresh = null;
+      try { ({ repair: fresh } = await H.api('GET', `/api/repairs/${repair.id}`)); } catch { /* keep polling */ }
+      if (gen !== H._gen) return;
+      if (fresh && (fresh.revision !== repair.revision || fresh.status !== repair.status)) H.upsert(fresh); else poll();
+    });
+    poll();
+  } else if (route.name === 'home' && S.repairs.some(r => H.LIVE_PENDING.includes(r.status))) H.later(5000, () => { if (gen === H._gen) H.refresh(); });
   const focusHeading = () => { const h = center$.querySelector('h1, .hd .n'); if (h) { h.tabIndex = -1; h.focus({preventScroll:true}); } };
   if (H._lastRoute !== location.hash) { H._lastRoute = location.hash; focusHeading(); }
   else if (hadFocus && !(document.activeElement && root.contains(document.activeElement) && document.activeElement !== root)) {

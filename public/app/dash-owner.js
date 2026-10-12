@@ -150,13 +150,15 @@ const facts = r => {
     const a = r.assessment || {};
     return { tag:['', 'Handy is on it'], fact:`Handy’s best guess: <b>${H.esc(a.title || 'needs a closer look')}</b>. Getting prices next.`, btn:'See Handy’s guess' };
   }
+  if (r.status === 'quoting') return { tag:['', 'Handy is calling'], btn:'See the calls', fact:'Handy is on the phone with pros for prices right now.' };
+  if (r.status === 'booking') return { tag:['', 'Handy is calling'], btn:'See the call', fact:`Calling <b>${H.esc(proName(r))}</b> to book the time you picked.` };
   if (r.status === 'quotes') {
     const q = recommended(r), n = (r.quotes || []).length;
     return { tag:['amber', 'Waiting for you'], btn:'Compare prices', strong:true,
-      fact: q ? `${n} ${n === 1 ? 'price' : 'prices'} — we recommend <b>${H.esc(q.name)} ${H.esc(H.money(q.amountCents))}</b>` : 'Prices are coming in.' };
+      fact: q ? `${n} ${n === 1 ? 'price' : 'prices'} — we recommend <b>${H.esc(q.name)} ${H.price(q)}</b>` : 'Prices are coming in.' };
   }
   if (r.status === 'scheduling') return { tag:['', 'Handy is booking'], btn:'Pick a time', strong:true,
-    fact: `You said yes to <b>${H.esc(proName(r))}${r.approval ? ' ' + H.esc(H.money(r.approval.amountCents)) : ''}</b>. Choosing a time.` };
+    fact: `You said yes to <b>${H.esc(proName(r))}${r.approval ? ' ' + H.price(r.approval) : ''}</b>. Choosing a time.` };
   if (r.status === 'scheduled' && r.booking) return { tag:['', 'Booked'], btn:'See the booking',
     fact: `Booked <b>${H.esc(H.when(r.booking.window.start, r.booking.window.end))}</b> with ${H.esc(proName(r))}` };
   return { tag:['', H.statusWords[r.status] || 'In progress'], fact:'', btn:'Open this repair' };
@@ -167,7 +169,7 @@ const icsStamp = iso => new Date(iso).toISOString().replace(/[-:]/g, '').replace
 const icsText = s => String(s ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const downloadIcs = r => {
   const b = r.booking, p = H.prop(r.property) || {}, pro = proName(r);
-  const desc = [r.title, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.money(r.approval.amountCents)}` : '', b.access ? `How to get in: ${b.access}` : '', 'Demo booking from Handy. No real pro was contacted.'].filter(Boolean).join('\n');
+  const desc = [r.title, `Pro: ${pro}`, r.approval ? `Price you approved: ${H.price(r.approval)}` : '', b.access ? `How to get in: ${b.access}` : '', 'Demo booking from Handy. No real pro was contacted.'].filter(Boolean).join('\n');
   const text = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Handy//Repair helper (demo)//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT', `UID:${b.id}@handy.local`, `DTSTAMP:${icsStamp(new Date().toISOString())}`,
     `DTSTART:${icsStamp(b.window.start)}`, `DTEND:${icsStamp(b.window.end)}`,
@@ -208,7 +210,7 @@ const visit = r => {
   const s = new Date(r.booking.window.start);
   const wd = s.toLocaleDateString('en-US', {weekday:'short'}), d = s.getDate(), m = s.toLocaleDateString('en-US', {month:'short'});
   const time = H.when(r.booking.window.start, r.booking.window.end).split(' · ')[1] || '';
-  const price = r.approval ? H.money(r.approval.amountCents) : '';
+  const price = r.approval ? H.price(r.approval) : '';
   return `<div class="do-visit">
     <div class="do-date" aria-hidden="true"><div class="wd">${H.esc(wd)}</div><div class="d">${d}</div><div class="m">${H.esc(m)}</div></div>
     <div><div class="t">${H.esc(r.title)}</div>
@@ -219,7 +221,7 @@ const visit = r => {
 };
 
 const doneRow = r => {
-  const price = r.approval ? H.money(r.approval.amountCents) : '';
+  const price = r.approval ? H.price(r.approval) : '';
   return `<button class="do-done" data-nav="#/repair/${H.esc(r.id)}"><span class="ok">${H.icon('check')}</span>
     <span class="grow"><span class="t">${H.esc(r.title)}</span><br><span class="s">${multi && houseName(r) ? H.esc(houseName(r)) + ' · ' : ''}Fixed by ${H.esc(proName(r))}${price ? ' · ' + H.esc(price) : ''}</span></span>${H.icon('chev')}</button>`;
 };
@@ -234,7 +236,7 @@ const reportPanel = empty => `<section class="do-report" aria-labelledby="do-rp"
 </section>`;
 
 const statusLine = (active, coming, done, place) => {
-  const hz = active.filter(isHazard), quotes = active.filter(r => r.status === 'quotes'), busy = active.filter(r => ['assessment', 'scheduling'].includes(r.status));
+  const hz = active.filter(isHazard), quotes = active.filter(r => r.status === 'quotes'), busy = active.filter(r => ['assessment', 'quoting', 'scheduling', 'booking'].includes(r.status));
   if (hz.length) return `${hz.length === 1 ? 'One problem needs' : hz.length + ' problems need'} you right away. Please follow the safety steps first.`;
   if (quotes.length === 1) return `Prices are in for “${H.esc(quotes[0].title)}.” Pick one when you’re ready.`;
   if (quotes.length > 1) return `Prices are in for ${quotes.length} repairs. Pick one for each when you’re ready.`;
@@ -296,7 +298,7 @@ H.ui.dashboard.owner = {
     const fixed = `<section class="do-sec" aria-labelledby="do-fx"><h2 id="do-fx">Done</h2>
       ${done.length ? `<div class="do-list">${done.slice(0, 4).map(doneRow).join('')}</div>` : `<p class="do-quiet">Fixed repairs will show up here.</p>`}</section>`;
     const money = `<div class="do-spent"><div class="l"><div>Spent this year</div><div>${paid.length ? `${paid.length} approved ${paid.length === 1 ? 'repair' : 'repairs'}` : 'Nothing approved yet'}</div></div>
-      <div class="v">${H.esc(H.money(spent))}</div>${H.demo('Demo')}</div>`;
+      <div class="v">${H.esc(H.money(spent))}</div>${H.modeTag('Demo')}</div>`;
 
     return `<div class="do${fresh ? ' fresh' : ''}">${hi}${reportPanel(false)}
       <div class="do-grid"><div class="do-col">${now}</div><div class="do-col">${up}${fixed}${money}</div></div></div>`;

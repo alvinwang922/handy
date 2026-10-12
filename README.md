@@ -65,7 +65,7 @@ You compare and explicitly approve  ──► Dial booking call ──► schedu
 | Providers | **Simulated.** The names are fictional, and their phone numbers are teammates' phones and our own AI-receptionist Dial number. We never call real businesses with fake jobs |
 | Web UI | Vanilla-JS app (`public/index.html`) served by Next.js. **API-backed requests now use diagnosis, part search, outreach, quotes, exact-quote approval, booking, and transcripts.** Built-in samples remain simulated; mock flags govern backend behavior. **Verified live end to end on 2026-10-11** (see [above](#verified-live-on-2026-10-11)) |
 | Calendar export | **Real.** `.ics` uses the confirmed slot's explicit date and its own start and end ("Tue, Oct 13 · 9 am–12 pm" → 09:00–12:00) in the property's local time. Times are floating (no time-zone ID yet) |
-| Look B design prototype | `public/app/` with its own demo server (`node server/index.js`, then http://127.0.0.1:4173/app/): homeowner and manager dashboards from the design review. **Simulated:** scripted calls and local SQLite, labeled "Demo · simulated data", and not connected to the live backend |
+| Look B app (homeowner and manager) | `public/app/` with its own server (`server/`, port 4173). **Live mode** (`npm run app:live` next to `npm run dev`): repairs on Maple House, Oak Street and Cedar Cottage run the real flow through the backend above (Claude diagnosis, Keewano ranking, Dial quote and booking calls, the same approval gate), verified end to end on 2026-10-11. Houses added in Settings and the seeded sample repairs stay simulated and are labeled "Demo". Changing the time of a live booking isn’t supported yet. **Demo mode** (`npm run app:demo`): scripted calls only |
 
 Anything simulated or seeded is labeled in the app and in the demo video.
 
@@ -112,7 +112,7 @@ To go live, flip each `MOCK_*` flag to `0` as you add its keys (see `.env.exampl
 
 For the live demo we set `QUOTE_FANOUT=1` (Dial's free tier allows 2 concurrent calls) and map the demo providers to our own Dial numbers in `data/providers.local.json` (gitignored; see `data/providers.local.example.json`).
 
-Look B design prototype (simulated, separate server): `node server/index.js`, then open http://127.0.0.1:4173/app/.
+Look B app: `npm run app:live` (with `npm run dev` running) or `npm run app:demo` (scripted, no keys), then open http://127.0.0.1:4173/app/.
 
 API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /api/requests/:id` → `POST /api/requests/:id/book` → `GET /api/requests/:id/ics`. Also `GET /api/providers` and `GET /api/metrics`.
 
@@ -121,7 +121,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 | Path | What's there |
 |---|---|
 | `public/index.html` | Web UI (live backend) |
-| `public/app/`, `server/` | Look B design prototype and its demo server (simulated) |
+| `public/app/`, `server/` | Look B app and its server; `server/integrations/live.js` connects it to the live backend |
 | `public/proto/`, `docs/design/` | Clickable design prototype, design system, screens and sketches |
 | `app/api/` | Next.js 16 route handlers |
 | `lib/orchestrator.ts` | Call lifecycle: concurrency cap, per-request locking, extraction retries, status machine |
@@ -144,7 +144,7 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 
 ## What's next
 
-- Connect the Look B design (`public/app/`) to the live API, and run several providers' quote calls in parallel live (so far tested in simulation only).
+- Run several providers’ quote calls in parallel live (so far tested in simulation only), and support changing the time of a live booking.
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.
 - Normalized availability windows (start/end plus time zone) end to end, so bookings and calendar invites never depend on phrases like "Tuesday afternoon".
 - Payments: the Sparta-tested deposit agent becomes the post-booking money step.

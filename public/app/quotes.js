@@ -176,7 +176,8 @@ const MAX_SLOTS = 6;
 const futureWins = q => (q.windows || []).filter(w => Date.parse(w.start) > Date.now()).sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 const soonest = q => { const w = futureWins(q)[0]; return w ? Date.parse(w.start) : Infinity; };
 const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
-const win = q => String(q.window || 'soon').toLowerCase();
+/* Live quotes carry real windows (a business name and a spoken time); demo quotes a short phrase. */
+const win = q => q.live && q.windows && q.windows[0] ? H.when(q.windows[0].start, q.windows[0].end) : String(q.window || 'soon').toLowerCase();
 const rating = q => Number(q.rating) || 0;
 const provider = (r, id) => (r.discovery && r.discovery.providers || []).find(p => p.id === id) || {};
 
@@ -254,13 +255,14 @@ const stageAt = (c, i, t) => {
 const starts = {};
 const revealed = new Set();
 const autoRun = new Set();
-const animating = r => r.status === 'quotes' && r.outreach && r.outreach.length && !isSeen(roundKey(r)) && !reduced();
+const animating = r => !H.isLive(r) && r.status === 'quotes' && r.outreach && r.outreach.length && !isSeen(roundKey(r)) && !reduced();
 const elapsed = r => starts[roundKey(r)] ? Date.now() - starts[roundKey(r)] : 0;
 
 const STAGE = {
   wait: ['wait', () => `${icon('clock')} Waiting`],
   ring: ['live', () => `${icon('phone')} Ringing`],
   talk: ['live', () => `<span class="bars" aria-hidden="true"><i></i><i></i><i></i></span> Talking`],
+  read: ['live', () => `${icon('doc')} Reading the call`],
   ok:   ['ok',   () => `${icon('check')} Got a price`],
   bad:  ['bad',  () => `${icon('x')} Didn’t pick up`]
 };
@@ -269,7 +271,7 @@ const stHtml = stage => { const [cls, f] = STAGE[stage]; return `<span class="st
 const callRow = (r, c, i, stage) => {
   const p = provider(r, c.providerId);
   const secs = c.durationSeconds ? ` · ${esc(c.durationSeconds)} sec` : '';
-  const sub = c.status !== 'completed' ? 'No answer'
+  const sub = c.status === 'in_progress' ? 'AI assistant on the line' : c.status !== 'completed' ? 'No answer'
     : (p.rating ? `${icon('star','star')} ${esc(p.rating)} · ${esc(p.reviews)} reviews${secs}` : `Phone call${secs}`);
   const done = stage === 'ok' || stage === 'bad';
   return `<div class="call" data-call="${i}">
@@ -280,6 +282,17 @@ const callRow = (r, c, i, stage) => {
 };
 
 /* ---------- Comparison column (9 aligned rows; empty cells collapse) ---------- */
+/* Live: why Keewano picked these pros, who it skipped, and the unit's repair history. */
+const keewanoHtml = r => {
+  const d = r.discovery; if (!H.isLive(r) || !d || !d.providers || !d.providers.length) return '';
+  const li = p => `<li><b>${esc(p.name)}</b>: ${esc(p.reason || 'no history yet')}</li>`;
+  const called = d.providers.filter(p => p.called), skipped = d.providers.filter(p => !p.called);
+  return H.h(`<p>${icon('chart')} Keewano picked who to call from each pro’s track record.</p>
+    ${called.length ? `<ul>${called.map(li).join('')}</ul>` : ''}
+    ${skipped.length ? `<p>Not calling:</p><ul>${skipped.map(li).join('')}</ul>` : ''}
+    ${d.repairHistory ? `<p>${icon('info')} ${esc(d.repairHistory)}</p>` : ''}`);
+};
+
 const optionCol = (r, q, all, i) => {
   const a = r.approval, open = r.status === 'quotes' && !a;
   const rec = i === 0 && all.length > 1 && !a;
@@ -287,11 +300,11 @@ const optionCol = (r, q, all, i) => {
   const {pro, con} = prosCons(q, all);
   const cls = ['qz-col', rec ? 'qz-rec' : '', chosen ? 'qz-chosen' : '', a && !chosen ? 'qz-dim' : ''].filter(Boolean).join(' ');
   const list = (items, kind, label) => items.length ? `<ul aria-label="${label}">${items.map(t => `<li class="qz-${kind}">${kind === 'pro' ? icon('check') : ''}<span>${esc(t)}</span></li>`).join('')}</ul>` : '';
-  const cta = open ? `<button type="button" class="btn${rec || all.length === 1 ? '' : ' ghost'}" data-book="${esc(q.id)}">Book ${esc(first(q.name))} for ${H.money(q.amountCents)}</button>`
+  const cta = open ? `<button type="button" class="btn${rec || all.length === 1 ? '' : ' ghost'}" data-book="${esc(q.id)}">Book ${esc(q.live ? q.name : first(q.name))} for ${H.price(q)}</button>`
     : chosen ? `<span class="qz-done">${icon('check')} You approved this one</span>` : '';
-  return `<li class="${cls}" aria-label="${esc(q.name)}, ${esc(H.money(q.amountCents))}${rec ? ', recommended' : ''}">`
+  return `<li class="${cls}" aria-label="${esc(q.name)}, ${H.price(q)}${rec ? ', recommended' : ''}">`
     + `<div class="qz-c qz-hd"><h3 class="qz-name">${esc(q.name)}</h3>${rec ? `<span class="tag">${icon('check')} Recommended</span>` : ''}</div>`
-    + `<div class="qz-c qz-price">${H.money(q.amountCents)}</div>`
+    + `<div class="qz-c qz-price">${H.price(q)}${q.feeText ? `<small>${esc(q.feeText)}</small>` : ''}</div>`
     + `<div class="qz-c qz-why">${rec ? esc(recReason(q, all)) : ''}</div>`
     + `<div class="qz-c qz-f">${icon('star','star')}<span>${esc(q.rating)} stars · ${esc(q.reviews)} reviews</span></div>`
     + `<div class="qz-c qz-f">${icon('clock')}<span>Can come ${esc(win(q))}</span></div>`
@@ -307,7 +320,7 @@ const roundsHtml = r => {
   const rounds = r.rounds || [];
   return rounds.map((rd, idx) => {
     const qs = (rd.quotes || []).slice().sort((x, y) => x.amountCents - y.amountCents);
-    let sum = qs.length ? `Earlier prices: ${qs.map(q => `${esc(q.name)} ${H.money(q.amountCents)}`).join(', ')}.` : 'Last time, no one gave me a price.';
+    let sum = qs.length ? `Earlier prices: ${qs.map(q => `${esc(q.name)} ${H.price(q)}`).join(', ')}.` : 'Last time, no one gave me a price.';
     if (rd.booking && rd.approval) sum += ` You had said yes to ${esc(rd.approval.providerName)} and booked a visit. Both were cancelled.`;
     else if (rd.approval) sum += ` You had said yes to ${esc(rd.approval.providerName)}. That was cancelled.`;
     const last = idx === rounds.length - 1;
@@ -329,11 +342,12 @@ const transcriptSheet = (r, c) => {
       : `<div class="row-p"><p class="who">${esc(l.speaker)}</p><div class="bu pro">${esc(l.text)}</div></div>`;
   }).join('');
   const meta = `<p class="qz-sub">${c.timestamp ? `<span>${icon('clock')} ${esc(H.time(c.timestamp))}</span>` : ''}${c.durationSeconds ? `<span>${esc(c.durationSeconds)} sec call</span>` : ''}${c.status === 'completed' && p.rating ? `<span>${icon('star','star')} ${esc(p.rating)}</span>` : ''}${c.status !== 'completed' ? '<span>No answer</span>' : ''}</p>`;
-  const body = c.status === 'completed' && lines
+  const body = c.status === 'in_progress' ? `${meta}<p class="qz-lead">The call is still going. The words appear here when it ends.</p>`
+    : c.status === 'completed' && lines
     ? `${meta}<div class="qz-tx">${lines}</div>`
     : `${meta}<p class="qz-lead">No one answered. Nothing was said.</p>`;
   H.sheet(`What was said · ${c.providerName}`, `${body}
-    <div class="note">${icon('info')}<span>${c.status === 'completed' ? 'This call was made by an AI assistant. It didn’t share your address or book anything.' : 'This call was made by an AI assistant. No one answered.'} ${H.demo('Demo · simulated call')}</span></div>`);
+    <div class="note">${icon('info')}<span>${c.status === 'completed' ? 'This call was made by an AI assistant. It didn’t share your address or book anything.' : 'This call was made by an AI assistant. No one answered.'} ${H.tag(r, 'Demo · simulated call', 'Live · recorded by Dial')}</span></div>`);
 };
 
 const showErr = (d, msg, recovery, label = 'Get new prices', ic = 'refresh') => {
@@ -350,8 +364,8 @@ const confirmReopen = async r0 => {
   let r = H.repair(r0.id) || r0;
   try { const got = await H.api('GET', `/api/repairs/${encodeURIComponent(r0.id)}`); if (got && got.repair) r = got.repair; } catch {}
   const a = r.approval, b = r.booking;
-  const what = b && a ? `This also cancels your yes to ${esc(a.providerName)} for ${H.money(a.amountCents)}, and the visit you booked.`
-    : a ? `This also cancels your yes to ${esc(a.providerName)} for ${H.money(a.amountCents)}.`
+  const what = b && a ? `This also cancels your yes to ${esc(a.providerName)} for ${H.price(a)}, and the visit you booked.`
+    : a ? `This also cancels your yes to ${esc(a.providerName)} for ${H.price(a)}.`
     : 'Nobody is booked.';
   H.sheet('Get new prices?', `
     <p class="qz-lead" style="color:var(--ink)">I’ll call pros again for fresh prices. The prices you have now stay in this chat. ${what}</p>
@@ -381,20 +395,20 @@ const confirmReopen = async r0 => {
 
 const approveSheet = (r, q) => {
   const prop = H.prop ? H.prop(r.property) : null;
-  const total = H.money(q.amountCents), name = q.name;
+  const total = H.price(q), name = q.name;
   const slots = futureWins(q).slice(0, 15), groups = byDay(slots);
   const yesLabel = `${icon('check')} Yes, approve and book ${total}`;
   H.sheet('Approve and book?', `
     <dl class="qz-ok">
       <div><dt>Job</dt><dd>${esc(r.title)}</dd></div>
       <div><dt>Pro</dt><dd>${esc(name)}<small>${icon('star','star')} ${esc(q.rating)} stars · ${esc(q.reviews)} reviews</small></dd></div>
-      <div><dt>Total</dt><dd><span class="big">${total}</span><small>Parts ${esc(dollars(q.parts))} · Labor ${esc(dollars(q.labor))} · provisional, they confirm on site</small></dd></div>
+      <div><dt>Total</dt><dd><span class="big">${total}</span><small>${H.isLive(r) ? `${q.feeText ? esc(q.feeText) + ' · ' : ''}provisional, they confirm on site` : `Parts ${esc(dollars(q.parts))} · Labor ${esc(dollars(q.labor))} · provisional, they confirm on site`}</small></dd></div>
       <div><dt>What they’ll do</dt><dd>${esc(q.scope || r.title)}</dd></div>
       <div><dt>If they find more</dt><dd>${esc(q.conditions || 'Extra work needs a new OK from you.')}</dd></div>
       <div><dt>Guarantee</dt><dd>${esc(guarantee(q.warranty))}</dd></div>
       <div><dt>Where</dt><dd>${esc(prop ? prop.name : 'Your property')}<small>The exact address is shared only after you say yes.</small></dd></div>
     </dl>
-    <div class="note">${icon('info')}<span>Nothing is booked until you say yes. ${H.demo('Demo · simulated price and call')}</span></div>
+    <div class="note">${icon('info')}<span>Nothing is booked until you say yes. ${H.tag(r, 'Demo · simulated price and call', 'Live · real price and booking call')}</span></div>
     <div data-form>
       <section class="qz-when" aria-labelledby="qz-when-h">
         <h3 id="qz-when-h">When are you free?</h3>
@@ -404,7 +418,7 @@ const approveSheet = (r, q) => {
           return `<button type="button" class="qz-chip" data-slot="${i}" aria-pressed="false" aria-label="${esc(H.when(w.start, w.end))}">${icon('check')}<span>${esc(slotText(w))}</span></button>`;
         }).join('')}</div></fieldset>`).join('')}
         <p class="qz-pick-msg" data-pick-msg aria-live="polite"></p>`
-        : `<p class="qz-hint">They didn’t offer any times yet. After you say yes, you can pick a time with them.</p>`}
+        : `<p class="qz-hint">${H.isLive(r) ? 'They didn’t name a specific day and time on the call, so I can’t book yet. Close this and tap “Get new prices” to call again.' : 'They didn’t offer any times yet. After you say yes, you can pick a time with them.'}</p>`}
       </section>
       <label class="qz-consent"><input type="checkbox" data-consent required><span>I approve this pro and this provisional price.</span></label>
       <div class="qz-err" data-err hidden></div>
@@ -414,7 +428,7 @@ const approveSheet = (r, q) => {
     <div data-progress hidden>
       <ol class="qz-steps" aria-live="polite">
         <li data-step="1" data-s="on"><span class="dot">${icon('check')}</span><span data-t>Saying yes…</span></li>
-        <li data-step="2" data-s="wait"><span class="dot">${icon('phone')}</span><span data-t>Calling ${esc(name)} to book…</span>${H.demo('Demo · simulated call')}</li>
+        <li data-step="2" data-s="wait"><span class="dot">${icon('phone')}</span><span data-t>Calling ${esc(name)} to book…</span>${H.tag(r, 'Demo · simulated call', 'Live call')}</li>
       </ol>
     </div>`, (d, close) => {
     const box = d.querySelector('[data-consent]'), yes = d.querySelector('[data-yes]');
@@ -422,7 +436,7 @@ const approveSheet = (r, q) => {
     const step = (n, s, text) => { const li = d.querySelector(`[data-step="${n}"]`); if (!li) return; li.dataset.s = s; if (text) li.querySelector('[data-t]').textContent = text; if (s === 'done') li.querySelector('.dot').innerHTML = icon('check'); };
     /* Slot picking: multi-select up to MAX_SLOTS, at least one when the pro offered times */
     const picked = new Set(), chips = [...d.querySelectorAll('[data-slot]')], msg = d.querySelector('[data-pick-msg]');
-    const needSlot = () => slots.length > 0 && picked.size === 0;
+    const needSlot = () => (slots.length > 0 || H.isLive(r)) && picked.size === 0;
     const sync = () => {
       chips.forEach(c => { const on = picked.has(Number(c.dataset.slot)); c.setAttribute('aria-pressed', String(on)); c.disabled = !on && picked.size >= MAX_SLOTS; });
       if (msg) {
@@ -449,6 +463,11 @@ const approveSheet = (r, q) => {
       await minShow; step(1, 'done', `You said yes to ${name} for ${total}`); step(2, 'on');
       const res = await job;
       await wait(reduced() ? 200 : 1100);
+      if (res && res.status === 'booking') {
+        step(2, 'on', `Calling ${name} to book now. This page updates when they confirm.`);
+        await wait(reduced() ? 300 : 1600);
+        running = false; close(); H.scrollToEnd(); return;
+      }
       if (res && res.status === 'scheduled') {
         step(2, 'done', res.booking ? `Booked for ${H.when(res.booking.window.start, res.booking.window.end)}` : 'Booked');
         await wait(reduced() ? 200 : 700);
@@ -464,10 +483,10 @@ const approveSheet = (r, q) => {
       yes.innerHTML = yesLabel; sync();
       if (fresh.approval && fresh.approval.quoteId === q.id) {
         yes.disabled = true;
-        showErr(d, `You said yes to ${fresh.approval.providerName} for ${H.money(fresh.approval.amountCents)}, but I couldn’t book a time with them yet. Pick a time and I’ll call again.`, () => { close(); H.scrollToEnd(); }, 'Pick a time', 'cal');
+        showErr(d, `You said yes to ${fresh.approval.providerName} for ${H.price(fresh.approval)}, but I couldn’t book a time with them yet. Pick a time and I’ll call again.`, () => { close(); H.scrollToEnd(); }, 'Pick a time', 'cal');
       } else if (fresh.approval) {
         yes.disabled = true;
-        showErr(d, `You already said yes to ${fresh.approval.providerName} for ${H.money(fresh.approval.amountCents)}.`, () => { close(); H.scrollToEnd(); }, 'See it', 'check');
+        showErr(d, `You already said yes to ${fresh.approval.providerName} for ${H.price(fresh.approval)}.`, () => { close(); H.scrollToEnd(); }, 'See it', 'check');
       } else if (/expired/i.test(raw)) {
         showErr(d, 'This price is too old now. I can call again for fresh prices.', () => { close(); confirmReopen(fresh); });
       } else if (/consent/i.test(raw)) {
@@ -483,7 +502,7 @@ const approveSheet = (r, q) => {
 
 /* ---------- Part ---------- */
 H.part('quotes', {
-  owns: ['quotes'],
+  owns: ['quotes', 'quoting'],
   history(r) {
     const calls = r.outreach || [];
     const again = (r.rounds || []).length > 0;
@@ -491,13 +510,13 @@ H.part('quotes', {
     if (!calls.length) return earlier;
     const anim = animating(r), t = anim ? elapsed(r) : Infinity;
     const n = calls.length;
-    let html = earlier + (again ? '' : H.h(`<p>Now I’m calling ${n} ${esc(pros(r, n))} for prices. I tell each one I’m an AI assistant, and I don’t give them your address or book anything.</p>`)) +
+    let html = earlier + keewanoHtml(r) + (again ? '' : H.h(`<p>Now I’m calling ${n} ${esc(pros(r, n))} for prices. I tell each one I’m an AI assistant, and I don’t give them your address or book anything.</p>`)) +
       `<div class="qz-calls" data-qz-calls="${esc(r.id)}">
-        <div class="calls" aria-live="off">${calls.map((c, i) => callRow(r, c, i, stageAt(c, i, t))).join('')}</div>
-        <p class="meta-line qz-foot">${H.demo('Demo · simulated calls')}${anim ? ' <span>You can leave. The prices will be here when you come back.</span>' : ''}</p>
+        <div class="calls" aria-live="off">${calls.map((c, i) => callRow(r, c, i, H.isLive(r) && c.liveStage ? c.liveStage : stageAt(c, i, t))).join('')}</div>
+        <p class="meta-line qz-foot">${H.tag(r, 'Demo · simulated calls', 'Live · real calls')}${anim || r.status === 'quoting' ? ' <span>You can leave. The prices will be here when you come back.</span>' : ''}</p>
         <p class="sr" role="status" aria-live="polite" data-qz-live></p>
       </div>`;
-    if (anim) return html + H.typing();
+    if (anim || r.status === 'quoting') return html + H.typing();
 
     const opts = ranked(r);
     if (opts.length) {
@@ -509,7 +528,7 @@ H.part('quotes', {
       const fresh = revealed.has(r.id); revealed.delete(r.id);
       html += `<section class="qz-opts${fresh ? ' qz-in' : ''}" aria-label="Compare prices">
         <ul class="qz-cmp" data-k="${k}" style="--k:${k}">${opts.map((q, i) => optionCol(r, q, opts, i)).join('')}</ul>
-        <p class="meta-line qz-foot">${k > 1 ? `<span class="qz-swipe">Swipe to see all ${k}.</span>` : ''}${H.demo('Demo · simulated prices')}</p></section>`;
+        <p class="meta-line qz-foot">${k > 1 ? `<span class="qz-swipe">Swipe to see all ${k}.</span>` : ''}${H.tag(r, 'Demo · simulated prices', 'Live · prices from real calls')}</p></section>`;
     } else {
       html += H.h(`<p>No one gave me a price this time. Tap “Get new prices” and I’ll try again.</p>`);
     }
@@ -519,13 +538,15 @@ H.part('quotes', {
 
     const a = r.approval;
     if (a) {
-      const amt = H.money(a.amountCents);
+      const amt = H.price(a);
       html += H.u(`Yes, approve and book ${esc(a.providerName)} for ${amt}`);
       html += H.h(`<p>Thanks. You approved ${esc(a.providerName)} for <b>${amt}</b> at ${esc(H.time(a.timestamp))}.</p>`);
     }
     return html;
   },
   dock(r) {
+    if (r.status === 'quoting') return `<button type="button" class="btn block" disabled>Calling for prices…</button>
+        <p class="meta-line qz-dock-note">${H.tag(r, '', 'Live · real calls')} A real call takes 2–4 minutes. You can leave. The prices will be here when you come back.</p>`;
     if (animating(r)) {
       return `<button type="button" class="btn block" disabled>Getting prices…</button>
         <p class="meta-line qz-dock-note">${H.demo('Demo · simulated calls')} You can leave. The prices will be here when you come back.</p>`;

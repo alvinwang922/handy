@@ -29,3 +29,6 @@ data/db.json.tmp
 sparta/node_modules/
 sparta/**/.env
 sparta/.worlds-dashboard/
+
+# Look B local database (live mode stores real call transcripts)
+data/handy.sqlite*

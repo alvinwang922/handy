@@ -76,6 +76,10 @@ button,input,textarea,select{font:inherit;color:inherit}
 .tag.amber{background:var(--amber-tint);color:var(--amber)}
 .tag.red{background:var(--red-tint);color:var(--red)}
 .tag.demo{background:var(--pinned);color:var(--ink2);border:1px solid var(--line);font-weight:600}
+.tag.live{white-space:nowrap}
+.tag.live::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.qz-steps .tag.live{margin-left:4px}
+.qz-price small{display:block;font-size:14px;font-weight:600;color:var(--ink2);margin-top:2px}
 
 /* Buttons */
 .btn{min-height:52px;padding:0 20px;border:0;border-radius:14px;background:var(--green);color:#fff;font-weight:700;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;flex:1}

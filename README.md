@@ -1,8 +1,10 @@
 # Handy — snap a photo, get it fixed
 
+[![CI](https://github.com/alvinwang922/handy/actions/workflows/ci.yml/badge.svg)](https://github.com/alvinwang922/handy/actions/workflows/ci.yml)
+
 **Handy turns a photo of a home-repair problem into a booked appointment.** Claude diagnoses the photo, Keewano picks which providers are worth calling, AI voice agents (Dial) call them for quotes, and once you approve one, Handy calls back to book it.
 
-Built in one day at SpeedHacks (a16z speedrun × SF Tech Week, 2026-10-11).
+Built in one day at SpeedHacks (a16z speedrun × SF Tech Week, 2026-10-11). **[See the pitch page →](https://claude.ai/artifact/1TTpQgPuEfPM9jMQGxiAqn)**
 
 ## Verified live on 2026-10-11
 
@@ -33,26 +35,19 @@ When something breaks at home, the repair itself is rarely the slow part. Findin
 
 ## How it works
 
-```
-photo + description
-   │
-   ▼
-Claude (Opus 5.5 vision)  ──► diagnosis, trade, urgency, cost range, provider brief (+ DIY plan when safe)
-   │   emergencies (gas, fire, sparks, flooding) stop here with safety guidance
-   ▼
-Keewano  ──► ranks providers from event history (answer rate, on-time rate, final bill vs quote)
-   │        and checks the unit's repair history ("3rd plumbing issue → also ask for a replacement quote")
-   ▼
-Dial  ──► AI voice agents call the top-ranked providers (up to 2 at once); each discloses it is an AI and never commits
-   │
-   ▼
-Claude  ──► transcript → structured quote (price, fee treatment, availability, scope, evidence)
-   │
-   ▼
-You compare and explicitly approve  ──► Dial booking call ──► scheduled + calendar invite (.ics)
+```mermaid
+flowchart TD
+  A["📷 Photo + description"] --> B["<b>Claude Opus 5.5</b> vision<br/>diagnosis, trade, urgency, cost range, provider brief<br/>(+ DIY plan when safe)"]
+  B -- "gas, fire, sparks, flooding" --> X["🚨 Stop with safety guidance"]
+  B --> C["<b>Keewano</b> ranks providers from event history<br/>answer rate, on-time rate, final bill vs quote<br/>+ the unit's repair history (3rd plumbing issue → also ask for a replacement quote)"]
+  C --> D["<b>Dial</b> AI quote calls to the top-ranked providers<br/>up to 2 at once, each discloses it is an AI, never commits"]
+  D --> E["<b>Claude Sonnet 5.5</b><br/>transcript → structured quote: price, fee treatment, availability, scope<br/>checked against the provider's own words"]
+  E --> F{"You compare and<br/>explicitly approve"}
+  F -- "approved quote" --> G["<b>Dial</b> booking call"]
+  G --> H["📅 Scheduled + calendar invite (.ics)"]
 ```
 
-## What's real vs simulated (status at submission)
+## What's real vs simulated
 
 | Piece | Status |
 |---|---|
@@ -95,9 +90,12 @@ npm install
 # npm run dev creates .env.local from .env.example on first run: every MOCK_* = 1, no keys needed (fake calls finish in ~16 s)
 # for real Claude diagnosis: set ANTHROPIC_API_KEY and MOCK_CLAUDE=0 in .env.local
 npm run dev                  # http://127.0.0.1:3000
-npm test                     # vitest
+npm test                     # vitest, mock mode
 npm run typecheck
+npm run lint
 ```
+
+CI runs lint, typecheck, the test suite and `next build` on every pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 To go live, flip each `MOCK_*` flag to `0` as you add its keys (see `.env.example`):
 
@@ -129,9 +127,11 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 | `lib/dial.ts`, `lib/instructions.ts`, `lib/communications/` | Calls, call scripts, photo packets |
 | `lib/keewano.ts`, `scripts/seed-keewano.ts` | Event registry, queries, seed |
 | `lib/types.ts`, `lib/schemas.ts`, `lib/evidence.ts` | Shared contracts and evidence checks |
+| `lib/ics.ts`, `lib/preflight.ts`, `scripts/` | Calendar export, the pre-demo readiness check, live smoke tests and seeding |
+| `tests/` | Vitest suite (runs in mock mode) |
 | `sparta/` | Sparta Worlds deposit-settlement agent and evidence |
 | `prototypes/dial-contract/` | Live Dial contract experiment |
-| `docs/`, `eng-design/`, `PRD.md` | Spec, engineering designs, product requirements |
+| `docs/`, `eng-design/`, `PRD.md` | Spec, engineering designs, product requirements; [`docs/real-world-plan.md`](docs/real-world-plan.md) is the path from demo to real providers and users |
 | `CLAUDE.md` | Shared conventions for every teammate's coding agent |
 
 ## Market and path forward
@@ -143,6 +143,8 @@ API: `POST /api/requests` → `POST /api/requests/:id/outreach` → poll `GET /a
 - **Then:** homeowners, with the same flow and a consumer price.
 
 ## What's next
+
+The full plan, from compliance before any real call to an opted-in provider network, real users and payments, is in [`docs/real-world-plan.md`](docs/real-world-plan.md). The nearest steps:
 
 - Run several providers’ quote calls in parallel live (so far tested in simulation only), and support changing the time of a live booking.
 - Real provider discovery through directory APIs, with verified contacts and service areas. The demo currently uses labeled seeded providers ranked by Keewano.

@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-SpeedHacks hackathon, Sunday 2026-10-11. **Submission deadline 5:00 PM PDT · feature freeze 3:15 PM.**
+Built at the SpeedHacks hackathon on Sunday 2026-10-11. The event is over: changes now land through PRs with green CI.
 Working and honest beats clever. Keep changes small and inside your own files.
 
 ## What we're building
@@ -14,7 +14,7 @@ Claude extracts quotes → user compares and **explicitly approves** → Dial bo
 ## Commands
 - `cp .env.example .env.local` once. With every `MOCK_*=1`, the full flow runs with no keys (fake calls finish in ~16 s).
 - `npm run dev` → http://127.0.0.1:3000 (UI = `public/index.html`, API = `app/api/**`)
-- `npm test` (vitest, `tests/`) · `npm run typecheck`
+- `npm test` (vitest, `tests/`) · `npm run typecheck` · `npm run lint`. CI (`.github/workflows/ci.yml`) runs all three plus `next build` on every PR: keep it green.
 - `npm run setup:receptionist` (P1) · `npm run seed:keewano` (P4)
 
 ## Ownership — edit only your own files; ask in team chat before touching anyone else's

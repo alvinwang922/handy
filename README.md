@@ -103,6 +103,7 @@ To go live, flip each `MOCK_*` flag to `0` as you add its keys (see `.env.exampl
 
 | Command | What it does |
 |---|---|
+| `npm run preflight` | Pre-demo check, no calls placed: mock flags, keys, call limits, verified providers, who Keewano would call, Dial numbers, Claude models, app running. Prints no keys or numbers |
 | `npm run seed:keewano` | Loads the labeled seed history |
 | `npm run try:diagnose` | Tests Claude diagnosis on its own |
 | `npm run smoke:dial` | A controlled live Dial quote call |
